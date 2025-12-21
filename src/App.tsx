@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import Teams from "./pages/Teams";
 import TeamDetail from "./pages/TeamDetail";
 import Projects from "./pages/Projects";
+import ProjectDetail from "./pages/ProjectDetail";
 import Siege from "./pages/Siege";
 import Rankings from "./pages/Rankings";
 import Profile from "./pages/Profile";
@@ -59,6 +60,7 @@ function AppRoutes() {
         <Route path="teams" element={<Teams />} />
         <Route path="teams/:teamId" element={<TeamDetail />} />
         <Route path="projects" element={<Projects />} />
+        <Route path="projects/:projectId" element={<ProjectDetail />} />
         <Route path="siege" element={<Siege />} />
         <Route path="rankings" element={<Rankings />} />
         <Route path="profile" element={<Profile />} />
