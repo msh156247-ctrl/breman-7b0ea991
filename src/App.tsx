@@ -9,6 +9,7 @@ import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Teams from "./pages/Teams";
+import TeamDetail from "./pages/TeamDetail";
 import Projects from "./pages/Projects";
 import Siege from "./pages/Siege";
 import Rankings from "./pages/Rankings";
@@ -56,6 +57,7 @@ function AppRoutes() {
       }>
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="teams" element={<Teams />} />
+        <Route path="teams/:teamId" element={<TeamDetail />} />
         <Route path="projects" element={<Projects />} />
         <Route path="siege" element={<Siege />} />
         <Route path="rankings" element={<Rankings />} />
