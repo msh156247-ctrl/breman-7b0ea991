@@ -7,6 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
+import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Teams from "./pages/Teams";
 import TeamDetail from "./pages/TeamDetail";
@@ -49,6 +50,11 @@ function AppRoutes() {
       {/* Public routes */}
       <Route path="/" element={<Landing />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/onboarding" element={
+        <ProtectedRoute>
+          <Onboarding />
+        </ProtectedRoute>
+      } />
       
       {/* Protected routes with AppShell */}
       <Route path="/" element={
