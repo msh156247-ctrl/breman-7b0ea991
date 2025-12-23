@@ -6,7 +6,6 @@ import {
   Briefcase, 
   Swords, 
   Trophy,
-  Bell,
   Search,
   Menu,
   X,
@@ -26,6 +25,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
+import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
@@ -152,10 +152,7 @@ export function AppShell() {
 
             <div className="flex items-center gap-2">
               {/* Notifications */}
-              <Button variant="ghost" size="icon" className="relative">
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full" />
-              </Button>
+              <NotificationsDropdown />
 
               {/* User menu */}
               <DropdownMenu>
