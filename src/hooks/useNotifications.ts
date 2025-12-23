@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 import type { Tables } from '@/integrations/supabase/types';
 
 export type Notification = Tables<'notifications'>;
@@ -57,6 +58,15 @@ export function useNotifications() {
             const newNotification = payload.new as Notification;
             setNotifications(prev => [newNotification, ...prev].slice(0, 20));
             setUnreadCount(prev => prev + 1);
+            
+            // Show toast notification
+            toast(newNotification.title, {
+              description: newNotification.message || undefined,
+              action: newNotification.link ? {
+                label: 'View',
+                onClick: () => window.location.href = newNotification.link!,
+              } : undefined,
+            });
           } else if (payload.eventType === 'UPDATE') {
             const updated = payload.new as Notification;
             setNotifications(prev => 
