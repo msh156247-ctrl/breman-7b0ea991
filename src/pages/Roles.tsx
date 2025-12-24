@@ -90,6 +90,125 @@ export default function Roles() {
         </div>
       </section>
 
+      {/* Comparison Table */}
+      <section className="py-16 px-4 bg-muted/30">
+        <div className="container mx-auto max-w-6xl">
+          <div className="text-center mb-10">
+            <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
+              역할 <span className="gradient-text">비교표</span>
+            </h2>
+            <p className="text-muted-foreground">
+              한눈에 비교하고 나에게 맞는 역할을 찾아보세요.
+            </p>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse bg-card rounded-2xl overflow-hidden shadow-sm">
+              <thead>
+                <tr className="border-b border-border">
+                  <th className="p-4 text-left text-sm font-semibold text-muted-foreground w-32">항목</th>
+                  {(Object.entries(ROLES) as [UserRole, typeof ROLES[UserRole]][]).map(([key, role]) => (
+                    <th key={key} className="p-4 text-center">
+                      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r ${role.gradient} text-primary-foreground text-sm font-medium`}>
+                        <span>{role.icon}</span>
+                        <span>{role.name}</span>
+                      </div>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {/* Title */}
+                <tr className="border-b border-border/50">
+                  <td className="p-4 text-sm font-medium text-muted-foreground">역할</td>
+                  {(Object.entries(ROLES) as [UserRole, typeof ROLES[UserRole]][]).map(([key, role]) => (
+                    <td key={key} className="p-4 text-center text-sm font-semibold">{role.title}</td>
+                  ))}
+                </tr>
+                {/* Description */}
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <td className="p-4 text-sm font-medium text-muted-foreground">설명</td>
+                  {(Object.entries(ROLES) as [UserRole, typeof ROLES[UserRole]][]).map(([key, role]) => (
+                    <td key={key} className="p-4 text-center text-sm text-muted-foreground">{role.description}</td>
+                  ))}
+                </tr>
+                {/* Keywords */}
+                <tr className="border-b border-border/50">
+                  <td className="p-4 text-sm font-medium text-muted-foreground">키워드</td>
+                  {(Object.entries(ROLES) as [UserRole, typeof ROLES[UserRole]][]).map(([key, role]) => (
+                    <td key={key} className="p-4 text-center">
+                      <div className="flex flex-wrap justify-center gap-1">
+                        {role.keywords.map((kw) => (
+                          <span key={kw} className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                            {kw}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+                {/* Responsibilities */}
+                <tr className="border-b border-border/50 bg-muted/20">
+                  <td className="p-4 text-sm font-medium text-muted-foreground align-top">담당 업무</td>
+                  {(Object.entries(ROLES) as [UserRole, typeof ROLES[UserRole]][]).map(([key, role]) => (
+                    <td key={key} className="p-4 text-left">
+                      <ul className="space-y-1">
+                        {role.responsibilities.map((resp, i) => (
+                          <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                            <span className="w-1 h-1 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                            {resp}
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                  ))}
+                </tr>
+                {/* Required Skills */}
+                <tr className="border-b border-border/50">
+                  <td className="p-4 text-sm font-medium text-muted-foreground align-top">필수 스킬</td>
+                  {(Object.keys(ROLES) as UserRole[]).map((key) => (
+                    <td key={key} className="p-4">
+                      <div className="flex flex-wrap justify-center gap-1">
+                        {ROLE_SKILLS[key].required.map((skill) => (
+                          <span key={skill} className="text-xs px-2 py-0.5 rounded-lg bg-primary/10 text-primary border border-primary/20">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+                {/* Metrics */}
+                <tr className="bg-muted/20">
+                  <td className="p-4 text-sm font-medium text-muted-foreground">성장 지표</td>
+                  {(Object.entries(ROLES) as [UserRole, typeof ROLES[UserRole]][]).map(([key, role]) => (
+                    <td key={key} className="p-4">
+                      <div className="flex flex-wrap justify-center gap-1">
+                        {role.metrics.map((metric) => (
+                          <Tooltip key={metric}>
+                            <TooltipTrigger asChild>
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground cursor-help">
+                                📊 {metric}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <p className="font-semibold mb-1">{metric}</p>
+                              {METRIC_DESCRIPTIONS[metric] && (
+                                <p className="text-xs text-muted-foreground">{METRIC_DESCRIPTIONS[metric].calculation}</p>
+                              )}
+                            </TooltipContent>
+                          </Tooltip>
+                        ))}
+                      </div>
+                    </td>
+                  ))}
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       {/* Role Cards */}
       <section className="py-16 px-4">
         <div className="container mx-auto max-w-6xl space-y-16">
