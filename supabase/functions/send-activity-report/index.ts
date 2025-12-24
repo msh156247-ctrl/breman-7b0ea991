@@ -59,11 +59,16 @@ function formatDate(dateStr: string): string {
 function generateReportHtml(
   logs: ActivityLog[],
   adminProfiles: Record<string, AdminProfile>,
-  reportType: 'daily' | 'weekly',
+  reportType: 'daily' | 'weekly' | 'monthly',
   startDate: Date,
   endDate: Date
 ): string {
-  const reportTitle = reportType === 'daily' ? '일일 활동 보고서' : '주간 활동 보고서';
+  const reportTitles: Record<string, string> = {
+    daily: '일일 활동 보고서',
+    weekly: '주간 활동 보고서',
+    monthly: '월간 활동 보고서',
+  };
+  const reportTitle = reportTitles[reportType] || '활동 보고서';
   const periodText = reportType === 'daily' 
     ? startDate.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })
     : `${startDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })} - ${endDate.toLocaleDateString('ko-KR', { month: 'long', day: 'numeric' })}`;
@@ -216,6 +221,57 @@ function generateReportHtml(
   `;
 }
 
+interface ScheduleSettings {
+  id: string;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  delivery_hour: number;
+  delivery_minute: number;
+  weekly_day: number;
+  monthly_day: number;
+  is_enabled: boolean;
+  timezone: string;
+}
+
+function shouldSendReport(settings: ScheduleSettings, now: Date): boolean {
+  if (!settings.is_enabled) {
+    console.log("Report sending is disabled");
+    return false;
+  }
+
+  // Convert to KST (Asia/Seoul is UTC+9)
+  const kstOffset = 9 * 60; // minutes
+  const utcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  const kstMinutes = (utcMinutes + kstOffset) % (24 * 60);
+  const kstHour = Math.floor(kstMinutes / 60);
+  const kstDay = new Date(now.getTime() + kstOffset * 60 * 1000).getUTCDay();
+  const kstDate = new Date(now.getTime() + kstOffset * 60 * 1000).getUTCDate();
+
+  // Check if current hour matches delivery hour (we run hourly)
+  if (kstHour !== settings.delivery_hour) {
+    console.log(`Not delivery hour. Current: ${kstHour}, Expected: ${settings.delivery_hour}`);
+    return false;
+  }
+
+  // Check frequency-specific conditions
+  if (settings.frequency === 'daily') {
+    return true;
+  } else if (settings.frequency === 'weekly') {
+    if (kstDay !== settings.weekly_day) {
+      console.log(`Not delivery day. Current: ${kstDay}, Expected: ${settings.weekly_day}`);
+      return false;
+    }
+    return true;
+  } else if (settings.frequency === 'monthly') {
+    if (kstDate !== settings.monthly_day) {
+      console.log(`Not delivery date. Current: ${kstDate}, Expected: ${settings.monthly_day}`);
+      return false;
+    }
+    return true;
+  }
+
+  return false;
+}
+
 const handler = async (req: Request): Promise<Response> => {
   console.log("send-activity-report function called");
 
@@ -230,25 +286,60 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Parse request body for report type (daily or weekly)
-    let reportType: 'daily' | 'weekly' = 'daily';
+    // Parse request body
+    let forceType: 'daily' | 'weekly' | 'monthly' | null = null;
+    let isScheduledRun = false;
     try {
       const body = await req.json();
-      if (body.report_type === 'weekly') {
-        reportType = 'weekly';
+      if (body.report_type) {
+        forceType = body.report_type;
+      }
+      if (body.scheduled === true) {
+        isScheduledRun = true;
       }
     } catch {
-      // Default to daily if no body
+      // No body, assume scheduled run
+      isScheduledRun = true;
     }
 
-    // Calculate date range
+    // Fetch schedule settings
+    const { data: settingsData, error: settingsError } = await supabase
+      .from('report_schedule_settings')
+      .select('*')
+      .single();
+
+    if (settingsError) {
+      console.error("Error fetching schedule settings:", settingsError);
+      throw new Error("Failed to fetch schedule settings");
+    }
+
+    const settings = settingsData as ScheduleSettings;
     const now = new Date();
+
+    // If this is a scheduled run, check if we should send based on settings
+    if (isScheduledRun && !forceType) {
+      if (!shouldSendReport(settings, now)) {
+        console.log("Skipping report - not time to send based on schedule settings");
+        return new Response(
+          JSON.stringify({ message: "Not scheduled to send at this time", skipped: true }),
+          { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
+    }
+
+    // Determine report type from settings or force type
+    const reportType = forceType || settings.frequency;
+
+    // Calculate date range based on frequency
     const endDate = new Date(now);
     let startDate: Date;
     
     if (reportType === 'weekly') {
       startDate = new Date(now);
       startDate.setDate(startDate.getDate() - 7);
+    } else if (reportType === 'monthly') {
+      startDate = new Date(now);
+      startDate.setMonth(startDate.getMonth() - 1);
     } else {
       startDate = new Date(now);
       startDate.setDate(startDate.getDate() - 1);
@@ -343,7 +434,8 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     // Send email to all admins
-    const reportTitle = reportType === 'daily' ? '일일 활동 보고서' : '주간 활동 보고서';
+    const reportTitles: Record<string, string> = { daily: '일일 활동 보고서', weekly: '주간 활동 보고서', monthly: '월간 활동 보고서' };
+    const reportTitle = reportTitles[reportType] || '활동 보고서';
     const emailPromises = adminEmails.map(async (admin) => {
       console.log(`Sending ${reportType} report to: ${admin.email}`);
 
