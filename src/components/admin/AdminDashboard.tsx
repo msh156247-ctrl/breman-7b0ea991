@@ -2,12 +2,19 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Activity, Users, Megaphone, Shield, TrendingUp, Crown, Wifi } from 'lucide-react';
+import { Activity, Users, Megaphone, Shield, TrendingUp, Crown, Wifi, Mail, Loader2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format, subDays, startOfDay, eachDayOfInterval } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface ActionStats {
   total: number;
@@ -39,6 +46,7 @@ const PIE_COLORS = ['#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#10b981', '#ec4
 
 export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
+  const [sendingReport, setSendingReport] = useState<'daily' | 'weekly' | null>(null);
   const [actionStats, setActionStats] = useState<ActionStats>({ total: 0, byType: {}, byAction: {} });
   const [topAdmins, setTopAdmins] = useState<AdminStats[]>([]);
   const [dailyActivity, setDailyActivity] = useState<DailyActivity[]>([]);
@@ -230,6 +238,23 @@ export function AdminDashboard() {
     }
   };
 
+  const handleSendReport = async (reportType: 'daily' | 'weekly') => {
+    setSendingReport(reportType);
+    try {
+      const { error } = await supabase.functions.invoke('send-activity-report', {
+        body: { report_type: reportType },
+      });
+
+      if (error) throw error;
+      toast.success(`${reportType === 'daily' ? '일일' : '주간'} 보고서가 모든 관리자에게 발송되었습니다`);
+    } catch (error) {
+      console.error('Error sending report:', error);
+      toast.error('보고서 발송에 실패했습니다');
+    } finally {
+      setSendingReport(null);
+    }
+  };
+
   const pieData = Object.entries(actionStats.byType).map(([name, value]) => ({
     name: getTargetTypeLabel(name),
     value,
@@ -254,16 +279,40 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Realtime Status */}
-      {isRealtimeConnected && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
-            <Wifi className="h-3 w-3 mr-1" />
-            실시간 연결됨
-          </Badge>
-          <span>대시보드가 자동으로 업데이트됩니다</span>
+      {/* Header with Actions */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {isRealtimeConnected && (
+            <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+              <Wifi className="h-3 w-3 mr-1" />
+              실시간 연결됨
+            </Badge>
+          )}
+          {isRealtimeConnected && (
+            <span className="text-sm text-muted-foreground">대시보드가 자동으로 업데이트됩니다</span>
+          )}
         </div>
-      )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" disabled={sendingReport !== null}>
+              {sendingReport ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Mail className="h-4 w-4 mr-2" />
+              )}
+              보고서 발송
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => handleSendReport('daily')} disabled={sendingReport !== null}>
+              일일 보고서 발송
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleSendReport('weekly')} disabled={sendingReport !== null}>
+              주간 보고서 발송
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
