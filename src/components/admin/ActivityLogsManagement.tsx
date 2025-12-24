@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Activity, Search, RefreshCw, User, Settings, Megaphone, Shield, Download, Calendar, X, Loader2, Wifi } from 'lucide-react';
+import { Activity, Search, RefreshCw, User, Settings, Megaphone, Shield, Download, Calendar, X, Loader2, Wifi, FileText } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -14,11 +14,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Label } from '@/components/ui/label';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface ActivityLog {
   id: string;
@@ -269,6 +277,97 @@ export function ActivityLogsManagement() {
     toast.success('CSV 파일이 다운로드되었습니다');
   };
 
+  const handleExportPDF = () => {
+    if (filteredLogs.length === 0) {
+      toast.error('내보낼 로그가 없습니다');
+      return;
+    }
+
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    // Title
+    doc.setFontSize(18);
+    doc.text('Activity Logs Report', 14, 20);
+    
+    // Metadata
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`Generated: ${format(new Date(), 'yyyy-MM-dd HH:mm:ss')}`, 14, 28);
+    doc.text(`Total Records: ${filteredLogs.length}`, 14, 34);
+    
+    // Add filter info if any
+    let filterInfo = [];
+    if (filterType !== 'all') filterInfo.push(`Type: ${getTargetTypeLabel(filterType)}`);
+    if (filterAdmin !== 'all') {
+      const admin = adminUsers.find(a => a.id === filterAdmin);
+      if (admin) filterInfo.push(`Admin: ${admin.name}`);
+    }
+    if (startDate) filterInfo.push(`From: ${format(startDate, 'yyyy-MM-dd')}`);
+    if (endDate) filterInfo.push(`To: ${format(endDate, 'yyyy-MM-dd')}`);
+    if (filterInfo.length > 0) {
+      doc.text(`Filters: ${filterInfo.join(' | ')}`, 14, 40);
+    }
+
+    // Table data
+    const tableData = filteredLogs.map(log => [
+      format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss'),
+      log.admin_profile?.name || 'Unknown',
+      log.admin_profile?.email || 'N/A',
+      getActionLabel(log.action),
+      getTargetTypeLabel(log.target_type),
+      log.target_id ? log.target_id.substring(0, 8) + '...' : '-',
+      log.details ? Object.entries(log.details).slice(0, 2).map(([k, v]) => `${k}: ${String(v).substring(0, 20)}`).join(', ') : '-',
+    ]);
+
+    autoTable(doc, {
+      head: [['Date', 'Admin', 'Email', 'Action', 'Target Type', 'Target ID', 'Details']],
+      body: tableData,
+      startY: filterInfo.length > 0 ? 45 : 40,
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+      },
+      headStyles: {
+        fillColor: [99, 102, 241],
+        textColor: 255,
+        fontStyle: 'bold',
+      },
+      alternateRowStyles: {
+        fillColor: [245, 245, 250],
+      },
+      columnStyles: {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 45 },
+        3: { cellWidth: 30 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 25 },
+        6: { cellWidth: 'auto' },
+      },
+    });
+
+    // Footer
+    const pageCount = doc.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150);
+      doc.text(
+        `Page ${i} of ${pageCount} - Confidential Audit Report`,
+        doc.internal.pageSize.getWidth() / 2,
+        doc.internal.pageSize.getHeight() - 10,
+        { align: 'center' }
+      );
+    }
+
+    doc.save(`activity_logs_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`);
+    toast.success('PDF 파일이 다운로드되었습니다');
+  };
+
   const getActionIcon = (targetType: string) => {
     switch (targetType) {
       case 'user':
@@ -399,10 +498,24 @@ export function ActivityLogsManagement() {
             </CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={handleExportCSV} disabled={filteredLogs.length === 0}>
-              <Download className="h-4 w-4 mr-2" />
-              CSV 내보내기
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" disabled={filteredLogs.length === 0}>
+                  <Download className="h-4 w-4 mr-2" />
+                  내보내기
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={handleExportCSV}>
+                  <Download className="h-4 w-4 mr-2" />
+                  CSV 내보내기
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={handleExportPDF}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  PDF 내보내기
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <Button variant="outline" size="icon" onClick={handleRefresh} disabled={refreshing}>
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </Button>
