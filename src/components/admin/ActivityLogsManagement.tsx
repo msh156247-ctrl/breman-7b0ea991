@@ -36,6 +36,12 @@ interface ActivityLog {
 
 const PAGE_SIZE = 50;
 
+interface AdminUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export function ActivityLogsManagement() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +49,8 @@ export function ActivityLogsManagement() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterAdmin, setFilterAdmin] = useState<string>('all');
+  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [hasMore, setHasMore] = useState(true);
@@ -60,7 +68,40 @@ export function ActivityLogsManagement() {
     return data;
   };
 
+  // Fetch admin users for filter dropdown
+  const fetchAdminUsers = async () => {
+    try {
+      // Get all unique admin IDs from activity logs
+      const { data: logAdmins, error: logError } = await supabase
+        .from('activity_logs')
+        .select('admin_id')
+        .not('admin_id', 'is', null);
+
+      if (logError) throw logError;
+
+      const uniqueAdminIds = [...new Set((logAdmins || []).map(l => l.admin_id).filter(Boolean))] as string[];
+
+      if (uniqueAdminIds.length > 0) {
+        const { data: profiles, error: profileError } = await supabase
+          .from('profiles')
+          .select('id, name, email')
+          .in('id', uniqueAdminIds);
+
+        if (profileError) throw profileError;
+
+        setAdminUsers((profiles || []).map(p => ({
+          id: p.id,
+          name: p.name,
+          email: p.email,
+        })));
+      }
+    } catch (error) {
+      console.error('Error fetching admin users:', error);
+    }
+  };
+
   useEffect(() => {
+    fetchAdminUsers();
     fetchLogs(true);
 
     // Set up realtime subscription
@@ -284,6 +325,8 @@ export function ActivityLogsManagement() {
       (log.details && JSON.stringify(log.details).toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesFilter = filterType === 'all' || log.target_type === filterType;
+    
+    const matchesAdmin = filterAdmin === 'all' || log.admin_id === filterAdmin;
 
     const logDate = new Date(log.created_at);
     let matchesDateRange = true;
@@ -299,7 +342,7 @@ export function ActivityLogsManagement() {
       matchesDateRange = logDate <= endOfDay(endDate);
     }
     
-    return matchesSearch && matchesFilter && matchesDateRange;
+    return matchesSearch && matchesFilter && matchesAdmin && matchesDateRange;
   });
 
   const clearDateFilter = () => {
@@ -383,10 +426,27 @@ export function ActivityLogsManagement() {
               <SelectValue placeholder="유형 필터" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">전체</SelectItem>
+              <SelectItem value="all">전체 유형</SelectItem>
               <SelectItem value="user">사용자</SelectItem>
               <SelectItem value="announcement">공지사항</SelectItem>
               <SelectItem value="role">역할</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={filterAdmin} onValueChange={setFilterAdmin}>
+            <SelectTrigger className="w-48">
+              <User className="h-4 w-4 mr-2" />
+              <SelectValue placeholder="관리자 필터" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체 관리자</SelectItem>
+              {adminUsers.map((admin) => (
+                <SelectItem key={admin.id} value={admin.id}>
+                  <div className="flex flex-col">
+                    <span>{admin.name}</span>
+                    <span className="text-xs text-muted-foreground">{admin.email}</span>
+                  </div>
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -500,7 +560,7 @@ export function ActivityLogsManagement() {
               ))}
               
               {/* Load More Button */}
-              {hasMore && !searchQuery && filterType === 'all' && !startDate && !endDate && (
+              {hasMore && !searchQuery && filterType === 'all' && filterAdmin === 'all' && !startDate && !endDate && (
                 <div className="pt-4 pb-2">
                   <Button 
                     variant="outline" 
