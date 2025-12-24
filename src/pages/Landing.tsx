@@ -3,6 +3,7 @@ import { ArrowRight, Users, Briefcase, Swords, Trophy, Star, Zap, Shield, Info }
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { BackToTop } from '@/components/ui/BackToTop';
 import { ROLES, METRIC_DESCRIPTIONS } from '@/lib/constants';
 
 export default function Landing() {
@@ -344,6 +345,8 @@ export default function Landing() {
           </div>
         </div>
       </footer>
+      {/* Back to Top */}
+      <BackToTop />
     </div>
   );
 }
