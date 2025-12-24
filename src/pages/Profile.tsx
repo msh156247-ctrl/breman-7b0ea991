@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { ROLES, type SkillTier } from '@/lib/constants';
 import { NotificationPreferences } from '@/components/notifications/NotificationPreferences';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { BackToTop } from '@/components/ui/BackToTop';
 
 // Sample data
 const userSkills = [
@@ -84,115 +86,120 @@ export default function Profile() {
   return (
     <div className="space-y-6">
       {/* Profile header */}
-      <Card className="overflow-hidden">
-        {/* Banner */}
-        <div className={`h-32 bg-gradient-to-r ${ROLES[role].gradient}`} />
-        
-        <CardContent className="relative pb-6">
-          {/* Avatar */}
-          <div className="absolute -top-16 left-6">
-            <Avatar className="h-32 w-32 border-4 border-card">
-              <AvatarImage src={profile?.avatar_url || undefined} />
-              <AvatarFallback className="text-4xl bg-muted">
-                {profile?.name?.[0] || 'U'}
-              </AvatarFallback>
-            </Avatar>
-          </div>
-
-          {/* Edit button */}
-          <div className="flex justify-end mb-4">
-            <Button variant="outline" size="sm">
-              <Edit className="w-4 h-4 mr-2" />
-              프로필 수정
-            </Button>
-          </div>
-
-          {/* User info */}
-          <div className="mt-8">
-            <div className="flex flex-wrap items-center gap-3 mb-2">
-              <h1 className="text-2xl font-display font-bold">{profile?.name || '사용자'}</h1>
-              <RoleBadge role={role} level={level} />
-              {profile?.verified && (
-                <span className="px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success">
-                  ✓ 인증됨
-                </span>
-              )}
+      <ScrollReveal animation="fade-up">
+        <Card className="overflow-hidden">
+          {/* Banner */}
+          <div className={`h-32 bg-gradient-to-r ${ROLES[role].gradient}`} />
+          
+          <CardContent className="relative pb-6">
+            {/* Avatar */}
+            <div className="absolute -top-16 left-6">
+              <Avatar className="h-32 w-32 border-4 border-card">
+                <AvatarImage src={profile?.avatar_url || undefined} />
+                <AvatarFallback className="text-4xl bg-muted">
+                  {profile?.name?.[0] || 'U'}
+                </AvatarFallback>
+              </Avatar>
             </div>
 
-            <p className="text-muted-foreground mb-4 max-w-2xl">
-              {profile?.bio || '아직 소개가 없습니다. 프로필을 수정해서 자기소개를 추가해보세요!'}
-            </p>
-
-            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-6">
-              <div className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                <span>2024년 1월 가입</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Star className="w-4 h-4 text-secondary" />
-                <span>{profile?.rating_avg || 0} 평점</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                <span>{userTeams.length}개 팀</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Award className="w-4 h-4" />
-                <span>{userBadges.length}개 배지</span>
-              </div>
+            {/* Edit button */}
+            <div className="flex justify-end mb-4">
+              <Button variant="outline" size="sm">
+                <Edit className="w-4 h-4 mr-2" />
+                프로필 수정
+              </Button>
             </div>
 
-            {/* XP Bar */}
-            <XPBar current={xp} max={maxXP} level={level} />
-          </div>
-        </CardContent>
-      </Card>
+            {/* User info */}
+            <div className="mt-8">
+              <div className="flex flex-wrap items-center gap-3 mb-2">
+                <h1 className="text-2xl font-display font-bold">{profile?.name || '사용자'}</h1>
+                <RoleBadge role={role} level={level} />
+                {profile?.verified && (
+                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success">
+                    ✓ 인증됨
+                  </span>
+                )}
+              </div>
+
+              <p className="text-muted-foreground mb-4 max-w-2xl">
+                {profile?.bio || '아직 소개가 없습니다. 프로필을 수정해서 자기소개를 추가해보세요!'}
+              </p>
+
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-6">
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  <span>2024년 1월 가입</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Star className="w-4 h-4 text-secondary" />
+                  <span>{profile?.rating_avg || 0} 평점</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Users className="w-4 h-4" />
+                  <span>{userTeams.length}개 팀</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Award className="w-4 h-4" />
+                  <span>{userBadges.length}개 배지</span>
+                </div>
+              </div>
+
+              {/* XP Bar */}
+              <XPBar current={xp} max={maxXP} level={level} />
+            </div>
+          </CardContent>
+        </Card>
+      </ScrollReveal>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Trophy className="w-8 h-8 mx-auto mb-2 text-primary" />
-            <p className="text-2xl font-bold">#42</p>
-            <p className="text-xs text-muted-foreground">전체 랭킹</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Briefcase className="w-8 h-8 mx-auto mb-2 text-secondary" />
-            <p className="text-2xl font-bold">12</p>
-            <p className="text-xs text-muted-foreground">완료 프로젝트</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Code className="w-8 h-8 mx-auto mb-2 text-accent" />
-            <p className="text-2xl font-bold">{userSkills.length}</p>
-            <p className="text-xs text-muted-foreground">스킬</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <Star className="w-8 h-8 mx-auto mb-2 text-tier-gold" />
-            <p className="text-2xl font-bold">4.9</p>
-            <p className="text-xs text-muted-foreground">평균 평점</p>
-          </CardContent>
-        </Card>
-      </div>
+      <ScrollReveal animation="fade-up" delay={100}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Trophy className="w-8 h-8 mx-auto mb-2 text-primary" />
+              <p className="text-2xl font-bold">#42</p>
+              <p className="text-xs text-muted-foreground">전체 랭킹</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Briefcase className="w-8 h-8 mx-auto mb-2 text-secondary" />
+              <p className="text-2xl font-bold">12</p>
+              <p className="text-xs text-muted-foreground">완료 프로젝트</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Code className="w-8 h-8 mx-auto mb-2 text-accent" />
+              <p className="text-2xl font-bold">{userSkills.length}</p>
+              <p className="text-xs text-muted-foreground">스킬</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4 text-center">
+              <Star className="w-8 h-8 mx-auto mb-2 text-tier-gold" />
+              <p className="text-2xl font-bold">4.9</p>
+              <p className="text-xs text-muted-foreground">평균 평점</p>
+            </CardContent>
+          </Card>
+        </div>
+      </ScrollReveal>
 
       {/* Tabs */}
-      <Tabs defaultValue="skills" className="w-full">
-        <TabsList className="w-full md:w-auto flex-wrap">
-          <TabsTrigger value="skills">스킬</TabsTrigger>
-          <TabsTrigger value="teams">팀</TabsTrigger>
-          <TabsTrigger value="badges">배지</TabsTrigger>
-          <TabsTrigger value="experience">경력</TabsTrigger>
-          <TabsTrigger value="reviews">리뷰</TabsTrigger>
-          <TabsTrigger value="settings" className="flex items-center gap-1">
-            <Mail className="w-3 h-3" />
-            알림 설정
-          </TabsTrigger>
-        </TabsList>
+      <ScrollReveal animation="fade-up" delay={200}>
+        <Tabs defaultValue="skills" className="w-full">
+          <TabsList className="w-full md:w-auto flex-wrap">
+            <TabsTrigger value="skills">스킬</TabsTrigger>
+            <TabsTrigger value="teams">팀</TabsTrigger>
+            <TabsTrigger value="badges">배지</TabsTrigger>
+            <TabsTrigger value="experience">경력</TabsTrigger>
+            <TabsTrigger value="reviews">리뷰</TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-1">
+              <Mail className="w-3 h-3" />
+              알림 설정
+            </TabsTrigger>
+          </TabsList>
 
         {/* Skills Tab */}
         <TabsContent value="skills" className="mt-6">
@@ -336,11 +343,14 @@ export default function Profile() {
           </Card>
         </TabsContent>
 
-        {/* Settings Tab */}
-        <TabsContent value="settings" className="mt-6">
-          <NotificationPreferences />
-        </TabsContent>
-      </Tabs>
+          {/* Settings Tab */}
+          <TabsContent value="settings" className="mt-6">
+            <NotificationPreferences />
+          </TabsContent>
+        </Tabs>
+      </ScrollReveal>
+
+      <BackToTop />
     </div>
   );
 }
