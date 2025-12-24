@@ -10,6 +10,7 @@ import { RoleBadge } from '@/components/ui/RoleBadge';
 import { XPBar } from '@/components/ui/XPBar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAuth } from '@/hooks/useAuth';
+import { AnnouncementsBanner, AnnouncementsWidget } from '@/components/dashboard/AnnouncementsWidget';
 
 // Sample data for demo
 const myTeams = [
@@ -35,10 +36,6 @@ const notifications = [
   { id: '3', type: 'milestone', message: '마일스톤 검토가 완료되었습니다', time: '3시간 전' },
 ];
 
-const announcements = [
-  { id: '1', title: '🎉 신규 기능: Siege 실시간 랭킹 도입', content: '이제 Siege 진행 중 실시간으로 순위를 확인할 수 있습니다.' },
-];
-
 export default function Dashboard() {
   const { profile } = useAuth();
   
@@ -49,6 +46,8 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Announcement Banner */}
+      <AnnouncementsBanner />
       {/* Welcome section */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
@@ -278,21 +277,8 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Announcements */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-display">공지사항</CardTitle>
-              <MessageSquare className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              {announcements.map((ann) => (
-                <div key={ann.id} className="p-3 rounded-lg bg-muted/50">
-                  <p className="font-medium text-sm mb-1">{ann.title}</p>
-                  <p className="text-xs text-muted-foreground">{ann.content}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          {/* Announcements - Now using real data */}
+          <AnnouncementsWidget />
         </div>
       </div>
     </div>
