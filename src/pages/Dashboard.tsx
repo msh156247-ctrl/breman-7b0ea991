@@ -12,6 +12,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { AnnouncementsBanner, AnnouncementsWidget } from '@/components/dashboard/AnnouncementsWidget';
 import { BackToTop } from '@/components/ui/BackToTop';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
 // Sample data for demo
 const myTeams = [
@@ -49,237 +50,254 @@ export default function Dashboard() {
     <div className="space-y-6">
       {/* Announcement Banner */}
       <AnnouncementsBanner />
+      
       {/* Welcome section */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-display font-bold">
-            안녕하세요, {profile?.name || '사용자'}님! 👋
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            오늘도 함께 성장해요.
-          </p>
+      <ScrollReveal animation="fade-up">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-display font-bold">
+              안녕하세요, {profile?.name || '사용자'}님! 👋
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              오늘도 함께 성장해요.
+            </p>
+          </div>
+          <div className="flex gap-3">
+            <Link to="/teams/create">
+              <Button variant="outline" size="sm">
+                <Users className="w-4 h-4 mr-2" />
+                팀 만들기
+              </Button>
+            </Link>
+            <Link to="/projects">
+              <Button size="sm" className="bg-gradient-primary">
+                <Briefcase className="w-4 h-4 mr-2" />
+                프로젝트 찾기
+              </Button>
+            </Link>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <Link to="/teams/create">
-            <Button variant="outline" size="sm">
-              <Users className="w-4 h-4 mr-2" />
-              팀 만들기
-            </Button>
-          </Link>
-          <Link to="/projects">
-            <Button size="sm" className="bg-gradient-primary">
-              <Briefcase className="w-4 h-4 mr-2" />
-              프로젝트 찾기
-            </Button>
-          </Link>
-        </div>
-      </div>
+      </ScrollReveal>
 
       {/* Stats cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-primary" />
+      <ScrollReveal animation="fade-up" delay={100}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <TrendingUp className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{level}</p>
+                  <p className="text-xs text-muted-foreground">레벨</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{level}</p>
-                <p className="text-xs text-muted-foreground">레벨</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+                  <Star className="w-5 h-5 text-secondary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{currentXP.toLocaleString()}</p>
+                  <p className="text-xs text-muted-foreground">XP</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
-                <Star className="w-5 h-5 text-secondary" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
+                  <Users className="w-5 h-5 text-success" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{myTeams.length}</p>
+                  <p className="text-xs text-muted-foreground">소속 팀</p>
+                </div>
               </div>
-              <div>
-                <p className="text-2xl font-bold">{currentXP.toLocaleString()}</p>
-                <p className="text-xs text-muted-foreground">XP</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
+                  <Trophy className="w-5 h-5 text-accent" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">5</p>
+                  <p className="text-xs text-muted-foreground">배지</p>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-success/10 flex items-center justify-center">
-                <Users className="w-5 h-5 text-success" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{myTeams.length}</p>
-                <p className="text-xs text-muted-foreground">소속 팀</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-accent/10 flex items-center justify-center">
-                <Trophy className="w-5 h-5 text-accent" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">5</p>
-                <p className="text-xs text-muted-foreground">배지</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
+        </div>
+      </ScrollReveal>
 
       {/* XP Progress */}
-      <Card>
-        <CardContent className="p-4">
-          <XPBar current={currentXP} max={maxXP} level={level} />
-        </CardContent>
-      </Card>
+      <ScrollReveal animation="fade-up" delay={150}>
+        <Card>
+          <CardContent className="p-4">
+            <XPBar current={currentXP} max={maxXP} level={level} />
+          </CardContent>
+        </Card>
+      </ScrollReveal>
 
       {/* Main grid */}
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Left column - Teams & Projects */}
         <div className="lg:col-span-2 space-y-6">
           {/* My Teams */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-display">내 팀</CardTitle>
-              <Link to="/teams">
-                <Button variant="ghost" size="sm" className="text-primary">
-                  전체 보기 <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {myTeams.length > 0 ? myTeams.map((team) => (
-                <Link 
-                  key={team.id}
-                  to={`/teams/${team.id}`}
-                  className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl">
-                    {team.emblem}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{team.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <RoleBadge role={team.role} size="sm" showName={false} />
-                      <span className="text-xs text-muted-foreground">{team.members}명</span>
-                    </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-muted-foreground" />
+          <ScrollReveal animation="fade-up" delay={200}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg font-display">내 팀</CardTitle>
+                <Link to="/teams">
+                  <Button variant="ghost" size="sm" className="text-primary">
+                    전체 보기 <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
                 </Link>
-              )) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                  <p>아직 소속된 팀이 없습니다</p>
-                  <Link to="/teams">
-                    <Button variant="link" size="sm">팀 찾아보기</Button>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {myTeams.length > 0 ? myTeams.map((team) => (
+                  <Link 
+                    key={team.id}
+                    to={`/teams/${team.id}`}
+                    className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl">
+                      {team.emblem}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{team.name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <RoleBadge role={team.role} size="sm" showName={false} />
+                        <span className="text-xs text-muted-foreground">{team.members}명</span>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
                   </Link>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                )) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>아직 소속된 팀이 없습니다</p>
+                    <Link to="/teams">
+                      <Button variant="link" size="sm">팀 찾아보기</Button>
+                    </Link>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </ScrollReveal>
 
           {/* Active Projects */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-display">진행중인 프로젝트</CardTitle>
-              <Link to="/projects">
-                <Button variant="ghost" size="sm" className="text-primary">
-                  전체 보기 <ArrowRight className="w-4 h-4 ml-1" />
-                </Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {activeProjects.map((project) => (
-                <Link 
-                  key={project.id}
-                  to={`/projects/${project.id}`}
-                  className="block p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <p className="font-medium line-clamp-1">{project.title}</p>
-                    <StatusBadge 
-                      status={project.status} 
-                      variant={project.status === '진행중' ? 'primary' : 'secondary'}
-                      size="sm"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                    <span>{project.client}</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all"
-                      style={{ width: `${project.progress}%` }}
-                    />
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">{project.progress}% 완료</p>
+          <ScrollReveal animation="fade-up" delay={250}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg font-display">진행중인 프로젝트</CardTitle>
+                <Link to="/projects">
+                  <Button variant="ghost" size="sm" className="text-primary">
+                    전체 보기 <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
                 </Link>
-              ))}
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {activeProjects.map((project) => (
+                  <Link 
+                    key={project.id}
+                    to={`/projects/${project.id}`}
+                    className="block p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="font-medium line-clamp-1">{project.title}</p>
+                      <StatusBadge 
+                        status={project.status} 
+                        variant={project.status === '진행중' ? 'primary' : 'secondary'}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                      <span>{project.client}</span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all"
+                        style={{ width: `${project.progress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{project.progress}% 완료</p>
+                  </Link>
+                ))}
+              </CardContent>
+            </Card>
+          </ScrollReveal>
         </div>
 
         {/* Right column - Siege, Notifications, Announcements */}
         <div className="space-y-6">
           {/* Upcoming Siege */}
-          <Card className="overflow-hidden">
-            <div className="bg-gradient-to-br from-primary to-accent p-4 text-primary-foreground">
-              <div className="flex items-center gap-2 mb-2">
-                <Swords className="w-5 h-5" />
-                <span className="text-sm font-medium">다가오는 Siege</span>
-              </div>
-              <h3 className="font-display font-bold text-lg mb-3">{upcomingSiege.title}</h3>
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <div className="bg-background/20 rounded-lg p-2">
-                  <p className="text-lg font-bold">{upcomingSiege.startsIn}</p>
-                  <p className="text-xs opacity-80">시작까지</p>
+          <ScrollReveal animation="fade-up" delay={200}>
+            <Card className="overflow-hidden">
+              <div className="bg-gradient-to-br from-primary to-accent p-4 text-primary-foreground">
+                <div className="flex items-center gap-2 mb-2">
+                  <Swords className="w-5 h-5" />
+                  <span className="text-sm font-medium">다가오는 Siege</span>
                 </div>
-                <div className="bg-background/20 rounded-lg p-2">
-                  <p className="text-lg font-bold">{upcomingSiege.prize}</p>
-                  <p className="text-xs opacity-80">상금</p>
-                </div>
-                <div className="bg-background/20 rounded-lg p-2">
-                  <p className="text-lg font-bold">{upcomingSiege.participants}</p>
-                  <p className="text-xs opacity-80">참가팀</p>
-                </div>
-              </div>
-            </div>
-            <CardContent className="p-4">
-              <Link to="/siege">
-                <Button className="w-full">참가 신청하기</Button>
-              </Link>
-            </CardContent>
-          </Card>
-
-          {/* Notifications */}
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-lg font-display">알림</CardTitle>
-              <Bell className="w-4 h-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {notifications.map((notif) => (
-                <div 
-                  key={notif.id}
-                  className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                >
-                  <div className="w-2 h-2 rounded-full bg-primary mt-2" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm line-clamp-2">{notif.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
+                <h3 className="font-display font-bold text-lg mb-3">{upcomingSiege.title}</h3>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div className="bg-background/20 rounded-lg p-2">
+                    <p className="text-lg font-bold">{upcomingSiege.startsIn}</p>
+                    <p className="text-xs opacity-80">시작까지</p>
+                  </div>
+                  <div className="bg-background/20 rounded-lg p-2">
+                    <p className="text-lg font-bold">{upcomingSiege.prize}</p>
+                    <p className="text-xs opacity-80">상금</p>
+                  </div>
+                  <div className="bg-background/20 rounded-lg p-2">
+                    <p className="text-lg font-bold">{upcomingSiege.participants}</p>
+                    <p className="text-xs opacity-80">참가팀</p>
                   </div>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
+              </div>
+              <CardContent className="p-4">
+                <Link to="/siege">
+                  <Button className="w-full">참가 신청하기</Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+
+          {/* Notifications */}
+          <ScrollReveal animation="fade-up" delay={250}>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg font-display">알림</CardTitle>
+                <Bell className="w-4 h-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {notifications.map((notif) => (
+                  <div 
+                    key={notif.id}
+                    className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                  >
+                    <div className="w-2 h-2 rounded-full bg-primary mt-2" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm line-clamp-2">{notif.message}</p>
+                      <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </ScrollReveal>
 
           {/* Announcements - Now using real data */}
-          <AnnouncementsWidget />
+          <ScrollReveal animation="fade-up" delay={300}>
+            <AnnouncementsWidget />
+          </ScrollReveal>
         </div>
       </div>
 
