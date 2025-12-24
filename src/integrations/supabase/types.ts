@@ -275,6 +275,7 @@ export type Database = {
       notification_preferences: {
         Row: {
           created_at: string
+          digest_day: number | null
           digest_mode: string | null
           digest_time: string | null
           email_badge: boolean
@@ -293,6 +294,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          digest_day?: number | null
           digest_mode?: string | null
           digest_time?: string | null
           email_badge?: boolean
@@ -311,6 +313,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          digest_day?: number | null
           digest_mode?: string | null
           digest_time?: string | null
           email_badge?: boolean

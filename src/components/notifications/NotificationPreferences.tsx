@@ -24,6 +24,7 @@ interface NotificationPreference {
   email_system: boolean;
   digest_mode: 'instant' | 'daily' | 'weekly';
   digest_time: string;
+  digest_day: number;
 }
 
 const preferenceConfig = [
@@ -48,6 +49,16 @@ const timeOptions = Array.from({ length: 24 }, (_, i) => {
   const hour = i.toString().padStart(2, '0');
   return { value: `${hour}:00:00`, label: `${hour}:00` };
 });
+
+const dayOptions = [
+  { value: 0, label: '일요일' },
+  { value: 1, label: '월요일' },
+  { value: 2, label: '화요일' },
+  { value: 3, label: '수요일' },
+  { value: 4, label: '목요일' },
+  { value: 5, label: '금요일' },
+  { value: 6, label: '토요일' },
+];
 
 export function NotificationPreferences() {
   const { user } = useAuth();
@@ -161,6 +172,31 @@ export function NotificationPreferences() {
       toast.success('요약 발송 시간이 변경되었습니다');
     } catch (error) {
       console.error('Error saving digest time:', error);
+      toast.error('설정 저장에 실패했습니다');
+      setPreferences(preferences);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDigestDayChange = async (value: string) => {
+    if (!preferences || !user) return;
+
+    const dayValue = parseInt(value);
+    const updatedPreferences = { ...preferences, digest_day: dayValue };
+    setPreferences(updatedPreferences);
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('notification_preferences')
+        .update({ digest_day: dayValue })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast.success('요약 발송 요일이 변경되었습니다');
+    } catch (error) {
+      console.error('Error saving digest day:', error);
       toast.error('설정 저장에 실패했습니다');
       setPreferences(preferences);
     } finally {
@@ -321,16 +357,39 @@ export function NotificationPreferences() {
           </div>
 
           {(preferences?.digest_mode === 'daily' || preferences?.digest_mode === 'weekly') && (
-            <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+            <div className="flex flex-wrap items-center gap-4 p-4 bg-muted/50 rounded-lg">
+              {preferences?.digest_mode === 'weekly' && (
+                <>
+                  <Label htmlFor="digest-day" className="whitespace-nowrap">
+                    발송 요일
+                  </Label>
+                  <Select
+                    value={String(preferences?.digest_day ?? 1)}
+                    onValueChange={handleDigestDayChange}
+                    disabled={saving}
+                  >
+                    <SelectTrigger id="digest-day" className="w-28">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dayOptions.map((day) => (
+                        <SelectItem key={day.value} value={String(day.value)}>
+                          {day.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </>
+              )}
               <Label htmlFor="digest-time" className="whitespace-nowrap">
-                요약 발송 시간
+                발송 시간
               </Label>
               <Select
                 value={preferences?.digest_time || '09:00:00'}
                 onValueChange={handleDigestTimeChange}
                 disabled={saving}
               >
-                <SelectTrigger id="digest-time" className="w-32">
+                <SelectTrigger id="digest-time" className="w-28">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -342,7 +401,10 @@ export function NotificationPreferences() {
                 </SelectContent>
               </Select>
               <span className="text-sm text-muted-foreground">
-                {preferences?.digest_mode === 'daily' ? '(매일)' : '(매주 월요일)'}
+                {preferences?.digest_mode === 'daily' 
+                  ? '(매일)' 
+                  : `(매주 ${dayOptions.find(d => d.value === (preferences?.digest_day ?? 1))?.label})`
+                }
               </span>
             </div>
           )}
