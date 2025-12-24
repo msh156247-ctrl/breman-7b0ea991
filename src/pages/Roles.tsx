@@ -3,6 +3,7 @@ import { ArrowLeft, ArrowRight, TrendingUp, Target, Sparkles, CheckCircle2, Info
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { BackToTop } from '@/components/ui/BackToTop';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { ROLES, METRIC_DESCRIPTIONS, type UserRole } from '@/lib/constants';
 
 const ROLE_SKILLS: Record<UserRole, { required: string[]; optional: string[] }> = {
@@ -80,37 +81,46 @@ export default function Roles() {
       {/* Hero */}
       <section className="py-16 px-4 bg-gradient-hero">
         <div className="container mx-auto max-w-4xl text-center">
-          <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">
-            브래맨 <span className="gradient-text">역할 체계</span>
-          </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6">
-            브레멘 음악대의 동물들처럼, 각자의 특기를 살려 팀에 기여하세요.
-            <br />
-            역할별 스킬 요구사항과 커리어 패스를 확인해보세요.
-          </p>
-          <Link to="/role-quiz">
-            <Button variant="outline" size="lg" className="gap-2 border-primary/30 hover:bg-primary/10">
-              <Sparkles className="w-4 h-4" />
-              어떤 역할이 나에게 맞을까? 퀴즈 풀기
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </Link>
+          <ScrollReveal>
+            <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">
+              브래맨 <span className="gradient-text">역할 체계</span>
+            </h1>
+          </ScrollReveal>
+          <ScrollReveal delay={0.1}>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6">
+              브레멘 음악대의 동물들처럼, 각자의 특기를 살려 팀에 기여하세요.
+              <br />
+              역할별 스킬 요구사항과 커리어 패스를 확인해보세요.
+            </p>
+          </ScrollReveal>
+          <ScrollReveal delay={0.2}>
+            <Link to="/role-quiz">
+              <Button variant="outline" size="lg" className="gap-2 border-primary/30 hover:bg-primary/10">
+                <Sparkles className="w-4 h-4" />
+                어떤 역할이 나에게 맞을까? 퀴즈 풀기
+                <ArrowRight className="w-4 h-4" />
+              </Button>
+            </Link>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* Comparison Table */}
       <section className="py-16 px-4 bg-muted/30">
         <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-10">
-            <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
-              역할 <span className="gradient-text">비교표</span>
-            </h2>
-            <p className="text-muted-foreground">
-              한눈에 비교하고 나에게 맞는 역할을 찾아보세요.
-            </p>
-          </div>
+          <ScrollReveal>
+            <div className="text-center mb-10">
+              <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
+                역할 <span className="gradient-text">비교표</span>
+              </h2>
+              <p className="text-muted-foreground">
+                한눈에 비교하고 나에게 맞는 역할을 찾아보세요.
+              </p>
+            </div>
+          </ScrollReveal>
 
-          <div className="overflow-x-auto">
+          <ScrollReveal delay={0.1}>
+            <div className="overflow-x-auto">
             <table className="w-full border-collapse bg-card rounded-2xl overflow-hidden shadow-sm">
               <thead>
                 <tr className="border-b border-border">
@@ -213,7 +223,8 @@ export default function Roles() {
                 </tr>
               </tbody>
             </table>
-          </div>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -221,10 +232,10 @@ export default function Roles() {
       <section className="py-16 px-4">
         <div className="container mx-auto max-w-6xl space-y-16">
           {(Object.entries(ROLES) as [UserRole, typeof ROLES[UserRole]][]).map(([key, role], index) => (
-            <div 
-              key={key}
-              className={`grid lg:grid-cols-2 gap-8 items-start ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
-            >
+            <ScrollReveal key={key} delay={index * 0.1}>
+              <div 
+                className={`grid lg:grid-cols-2 gap-8 items-start ${index % 2 === 1 ? 'lg:flex-row-reverse' : ''}`}
+              >
               {/* Role Overview */}
               <div className={`${index % 2 === 1 ? 'lg:order-2' : ''}`}>
                 <div className="p-8 rounded-3xl bg-card border border-border">
@@ -373,6 +384,7 @@ export default function Roles() {
                 </div>
               </div>
             </div>
+          </ScrollReveal>
           ))}
         </div>
       </section>
@@ -380,18 +392,24 @@ export default function Roles() {
       {/* CTA */}
       <section className="py-16 px-4 bg-gradient-primary text-primary-foreground">
         <div className="container mx-auto max-w-3xl text-center">
-          <h2 className="text-3xl font-display font-bold mb-4">
-            나에게 맞는 역할을 찾으셨나요?
-          </h2>
-          <p className="text-primary-foreground/80 mb-8">
-            지금 바로 가입하고 온보딩 과정에서 역할을 선택하세요.
-          </p>
-          <Link to="/auth?mode=signup">
-            <Button size="lg" variant="secondary" className="px-8">
-              무료로 시작하기
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          </Link>
+          <ScrollReveal>
+            <h2 className="text-3xl font-display font-bold mb-4">
+              나에게 맞는 역할을 찾으셨나요?
+            </h2>
+          </ScrollReveal>
+          <ScrollReveal delay={0.1}>
+            <p className="text-primary-foreground/80 mb-8">
+              지금 바로 가입하고 온보딩 과정에서 역할을 선택하세요.
+            </p>
+          </ScrollReveal>
+          <ScrollReveal delay={0.2}>
+            <Link to="/auth?mode=signup">
+              <Button size="lg" variant="secondary" className="px-8">
+                무료로 시작하기
+                <ArrowRight className="w-5 h-5 ml-2" />
+              </Button>
+            </Link>
+          </ScrollReveal>
         </div>
       </section>
 
