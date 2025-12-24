@@ -272,6 +272,54 @@ export type Database = {
           },
         ]
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          email_badge: boolean
+          email_contract: boolean
+          email_dispute: boolean
+          email_payment: boolean
+          email_project: boolean
+          email_review: boolean
+          email_siege: boolean
+          email_system: boolean
+          email_team: boolean
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_badge?: boolean
+          email_contract?: boolean
+          email_dispute?: boolean
+          email_payment?: boolean
+          email_project?: boolean
+          email_review?: boolean
+          email_siege?: boolean
+          email_system?: boolean
+          email_team?: boolean
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_badge?: boolean
+          email_contract?: boolean
+          email_dispute?: boolean
+          email_payment?: boolean
+          email_project?: boolean
+          email_review?: boolean
+          email_siege?: boolean
+          email_system?: boolean
+          email_team?: boolean
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string | null

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Edit, MapPin, Calendar, Star, Users, Briefcase, Award, 
-  Settings, ChevronRight, Trophy, Code
+  Settings, ChevronRight, Trophy, Code, Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +13,7 @@ import { XPBar } from '@/components/ui/XPBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { ROLES, type SkillTier } from '@/lib/constants';
+import { NotificationPreferences } from '@/components/notifications/NotificationPreferences';
 
 // Sample data
 const userSkills = [
@@ -181,12 +182,16 @@ export default function Profile() {
 
       {/* Tabs */}
       <Tabs defaultValue="skills" className="w-full">
-        <TabsList className="w-full md:w-auto">
+        <TabsList className="w-full md:w-auto flex-wrap">
           <TabsTrigger value="skills">스킬</TabsTrigger>
           <TabsTrigger value="teams">팀</TabsTrigger>
           <TabsTrigger value="badges">배지</TabsTrigger>
           <TabsTrigger value="experience">경력</TabsTrigger>
           <TabsTrigger value="reviews">리뷰</TabsTrigger>
+          <TabsTrigger value="settings" className="flex items-center gap-1">
+            <Mail className="w-3 h-3" />
+            알림 설정
+          </TabsTrigger>
         </TabsList>
 
         {/* Skills Tab */}
@@ -329,6 +334,11 @@ export default function Profile() {
               ))}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Settings Tab */}
+        <TabsContent value="settings" className="mt-6">
+          <NotificationPreferences />
         </TabsContent>
       </Tabs>
     </div>
