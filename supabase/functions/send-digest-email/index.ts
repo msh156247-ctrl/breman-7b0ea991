@@ -165,6 +165,11 @@ const handler = async (req: Request): Promise<Response> => {
         const digestTitle = digest_type === 'daily' ? '일일 알림 요약' : '주간 알림 요약';
         const periodText = digest_type === 'daily' ? '오늘' : '이번 주';
 
+        // Generate unsubscribe links
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const unsubscribeToken = btoa(userPref.user_id);
+        const unsubscribeAllUrl = `${supabaseUrl}/functions/v1/email-unsubscribe?token=${unsubscribeToken}`;
+
         const notificationItems = notifications.map((n: any) => `
           <tr>
             <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
@@ -204,9 +209,14 @@ const handler = async (req: Request): Promise<Response> => {
                   </a>
                 </div>
               </div>
-              <p style="text-align: center; color: #9ca3af; font-size: 12px; margin-top: 16px;">
-                알림 설정은 프로필에서 변경하실 수 있습니다.
-              </p>
+              <div style="text-align: center; padding: 16px; border-top: 1px solid #e5e7eb; margin-top: 16px;">
+                <p style="color: #9ca3af; font-size: 12px; margin: 0 0 8px 0;">
+                  알림 설정은 프로필에서 변경하실 수 있습니다.
+                </p>
+                <a href="${unsubscribeAllUrl}" style="color: #6b7280; font-size: 12px; text-decoration: underline;">
+                  모든 알림 이메일 수신 거부
+                </a>
+              </div>
             </div>
           </body>
           </html>
@@ -218,6 +228,10 @@ const handler = async (req: Request): Promise<Response> => {
           to: [profile.email],
           subject: `[${digestTitle}] ${notifications.length}개의 새 알림`,
           html: emailHtml,
+          headers: {
+            "List-Unsubscribe": `<${unsubscribeAllUrl}>`,
+            "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+          },
         });
 
         console.log(`Digest email sent to ${profile.email}:`, emailResponse);

@@ -29,6 +29,12 @@ const notificationTypeLabels: Record<string, string> = {
   system: "시스템",
 };
 
+// Generate unsubscribe token
+function generateUnsubscribeToken(userId: string, type?: string): string {
+  const data = type ? `${userId}:${type}` : userId;
+  return btoa(data);
+}
+
 const handler = async (req: Request): Promise<Response> => {
   console.log("send-notification-email function called");
 
@@ -37,8 +43,9 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabase = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
+      supabaseUrl,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
@@ -80,7 +87,12 @@ const handler = async (req: Request): Promise<Response> => {
     }
 
     const typeLabel = notificationTypeLabels[notification_type] || notification_type;
-    const appUrl = Deno.env.get("SUPABASE_URL")?.replace(".supabase.co", "") || "";
+    
+    // Generate unsubscribe links
+    const unsubscribeToken = generateUnsubscribeToken(user_id, notification_type);
+    const unsubscribeAllToken = generateUnsubscribeToken(user_id);
+    const unsubscribeTypeUrl = `${supabaseUrl}/functions/v1/email-unsubscribe?token=${unsubscribeToken}&type=${notification_type}`;
+    const unsubscribeAllUrl = `${supabaseUrl}/functions/v1/email-unsubscribe?token=${unsubscribeAllToken}`;
     
     const emailHtml = `
       <!DOCTYPE html>
@@ -97,7 +109,10 @@ const handler = async (req: Request): Promise<Response> => {
             .title { font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 12px; }
             .message { color: #6b7280; line-height: 1.6; margin-bottom: 24px; }
             .button { display: inline-block; background: #6366f1; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500; }
-            .footer { background: #f9fafb; padding: 16px 24px; text-align: center; color: #9ca3af; font-size: 12px; }
+            .footer { background: #f9fafb; padding: 16px 24px; text-align: center; color: #9ca3af; font-size: 12px; border-top: 1px solid #e5e7eb; }
+            .unsubscribe { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
+            .unsubscribe a { color: #6b7280; text-decoration: underline; margin: 0 8px; }
+            .unsubscribe a:hover { color: #374151; }
           </style>
         </head>
         <body>
@@ -114,6 +129,11 @@ const handler = async (req: Request): Promise<Response> => {
             <div class="footer">
               이 이메일은 알림 설정에 따라 발송되었습니다.<br>
               설정에서 이메일 알림을 변경할 수 있습니다.
+              <div class="unsubscribe">
+                <a href="${unsubscribeTypeUrl}">${typeLabel} 알림 수신 거부</a>
+                |
+                <a href="${unsubscribeAllUrl}">모든 알림 수신 거부</a>
+              </div>
             </div>
           </div>
         </body>
@@ -127,6 +147,10 @@ const handler = async (req: Request): Promise<Response> => {
       to: [profile.email],
       subject: `[${typeLabel}] ${title}`,
       html: emailHtml,
+      headers: {
+        "List-Unsubscribe": `<${unsubscribeAllUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      },
     });
 
     console.log("Email sent successfully:", emailResponse);
