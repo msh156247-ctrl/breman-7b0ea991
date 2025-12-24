@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Activity, Search, RefreshCw, User, Settings, Megaphone, Shield, Download, Calendar, X } from 'lucide-react';
+import { Activity, Search, RefreshCw, User, Settings, Megaphone, Shield, Download, Calendar, X, Loader2 } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -34,28 +34,46 @@ interface ActivityLog {
   } | null;
 }
 
+const PAGE_SIZE = 50;
+
 export function ActivityLogsManagement() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [startDate, setStartDate] = useState<Date | undefined>(undefined);
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
 
   useEffect(() => {
-    fetchLogs();
+    fetchLogs(true);
   }, []);
 
-  const fetchLogs = async () => {
+  const fetchLogs = async (reset: boolean = false) => {
     try {
+      const offset = reset ? 0 : logs.length;
+      
+      // Get total count first (only on initial load or refresh)
+      if (reset) {
+        const { count } = await supabase
+          .from('activity_logs')
+          .select('*', { count: 'exact', head: true });
+        setTotalCount(count);
+      }
+
       const { data, error } = await supabase
         .from('activity_logs')
         .select('*')
         .order('created_at', { ascending: false })
-        .limit(100);
+        .range(offset, offset + PAGE_SIZE - 1);
 
       if (error) throw error;
+
+      // Check if there are more records
+      setHasMore((data?.length || 0) === PAGE_SIZE);
 
       // Fetch admin profiles for each log
       const adminIds = [...new Set((data || []).map(log => log.admin_id).filter(Boolean))];
@@ -86,18 +104,28 @@ export function ActivityLogsManagement() {
         admin_profile: log.admin_id ? profiles[log.admin_id] : null
       }));
 
-      setLogs(logsWithProfiles);
+      if (reset) {
+        setLogs(logsWithProfiles);
+      } else {
+        setLogs(prev => [...prev, ...logsWithProfiles]);
+      }
     } catch (error) {
       console.error('Error fetching activity logs:', error);
       toast.error('활동 로그를 불러오는데 실패했습니다');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
+  };
+
+  const handleLoadMore = async () => {
+    setLoadingMore(true);
+    await fetchLogs(false);
   };
 
   const handleRefresh = async () => {
     setRefreshing(true);
-    await fetchLogs();
+    await fetchLogs(true);
     setRefreshing(false);
   };
 
@@ -247,7 +275,11 @@ export function ActivityLogsManagement() {
               활동 로그
             </CardTitle>
             <CardDescription>
-              최근 100개의 관리자 활동 내역
+              {totalCount !== null ? (
+                <>총 {totalCount.toLocaleString()}개 중 {logs.length.toLocaleString()}개 로드됨</>
+              ) : (
+                '관리자 활동 내역'
+              )}
             </CardDescription>
           </div>
           <div className="flex gap-2">
@@ -393,6 +425,27 @@ export function ActivityLogsManagement() {
                   </div>
                 </div>
               ))}
+              
+              {/* Load More Button */}
+              {hasMore && !searchQuery && filterType === 'all' && !startDate && !endDate && (
+                <div className="pt-4 pb-2">
+                  <Button 
+                    variant="outline" 
+                    className="w-full" 
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                  >
+                    {loadingMore ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        로딩 중...
+                      </>
+                    ) : (
+                      <>더 불러오기 ({PAGE_SIZE}개)</>
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </ScrollArea>
