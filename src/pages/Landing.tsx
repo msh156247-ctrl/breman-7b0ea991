@@ -77,15 +77,16 @@ export default function Landing() {
             {Object.entries(ROLES).map(([key, role], index) => (
               <div 
                 key={key}
-                className="group relative p-6 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg animate-fade-up"
+                className="group relative p-6 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 animate-fade-up cursor-pointer"
                 style={{ animationDelay: `${index * 100}ms` }}
               >
-                <div className="text-5xl mb-4 group-hover:scale-110 transition-transform">
+                <div className="text-5xl mb-4 group-hover:scale-125 group-hover:rotate-6 transition-all duration-300 ease-out">
                   {role.icon}
                 </div>
-                <h3 className="font-display font-bold text-lg mb-1">{role.name}</h3>
-                <p className="text-sm text-muted-foreground">{role.description}</p>
-                <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${role.gradient} opacity-0 group-hover:opacity-5 transition-opacity`} />
+                <h3 className="font-display font-bold text-lg mb-1 group-hover:text-primary transition-colors">{role.name}</h3>
+                <p className="text-sm text-muted-foreground group-hover:text-foreground/80 transition-colors">{role.description}</p>
+                <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${role.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
+                <div className={`absolute -inset-0.5 rounded-2xl bg-gradient-to-br ${role.gradient} opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500 -z-10`} />
               </div>
             ))}
           </div>
@@ -142,15 +143,18 @@ export default function Landing() {
             {Object.entries(ROLES).map(([key, role]) => (
               <div 
                 key={key}
-                className="group p-6 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all hover:shadow-lg"
+                className="group relative p-6 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden"
               >
+                {/* Animated background gradient */}
+                <div className={`absolute inset-0 bg-gradient-to-br ${role.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
+                
                 {/* Header */}
-                <div className="flex items-start gap-4 mb-5">
-                  <div className={`flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${role.gradient} flex items-center justify-center text-4xl shadow-md`}>
+                <div className="relative flex items-start gap-4 mb-5">
+                  <div className={`flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${role.gradient} flex items-center justify-center text-4xl shadow-md group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg transition-all duration-300`}>
                     {role.icon}
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-display font-bold text-xl">
+                    <h3 className="font-display font-bold text-xl group-hover:text-primary transition-colors duration-300">
                       {role.name} <span className="text-muted-foreground font-normal text-base">({role.nameEn})</span>
                     </h3>
                     <p className="text-sm font-medium text-primary">{role.title}</p>
