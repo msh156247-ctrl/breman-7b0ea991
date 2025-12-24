@@ -289,6 +289,7 @@ export type Database = {
           email_team: boolean
           id: string
           last_digest_sent_at: string | null
+          timezone: string | null
           updated_at: string
           user_id: string
         }
@@ -308,6 +309,7 @@ export type Database = {
           email_team?: boolean
           id?: string
           last_digest_sent_at?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id: string
         }
@@ -327,6 +329,7 @@ export type Database = {
           email_team?: boolean
           id?: string
           last_digest_sent_at?: string | null
+          timezone?: string | null
           updated_at?: string
           user_id?: string
         }
