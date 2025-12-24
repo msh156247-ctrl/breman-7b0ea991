@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { ROLES, type UserRole } from '@/lib/constants';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { cn } from '@/lib/utils';
 
 interface Question {
@@ -191,14 +192,15 @@ export default function RoleQuiz() {
       <div className="min-h-screen bg-background">
         {/* Header */}
         <header className="sticky top-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
-          <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
-                <span className="text-lg">🎵</span>
-              </div>
-              <span className="font-display font-bold text-lg">브래맨</span>
-            </Link>
-          </div>
+        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
+          <Link to="/" className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
+              <span className="text-lg">🎵</span>
+            </div>
+            <span className="font-display font-bold text-lg">브래맨</span>
+          </Link>
+          <ThemeToggle />
+        </div>
         </header>
 
         <main className="container mx-auto px-4 py-12">
@@ -301,11 +303,14 @@ export default function RoleQuiz() {
             </div>
             <span className="font-display font-bold text-lg">브래맨</span>
           </Link>
-          <Link to="/roles">
-            <Button variant="ghost" size="sm">
-              역할 소개 보기
-            </Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Link to="/roles">
+              <Button variant="ghost" size="sm">
+                역할 소개 보기
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
