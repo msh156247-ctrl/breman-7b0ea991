@@ -22,6 +22,44 @@ const notificationTypeLabels: Record<string, string> = {
   system: '시스템',
 };
 
+// Timezone offset map (in hours, negative for behind UTC)
+const timezoneOffsets: Record<string, number> = {
+  'Pacific/Auckland': 12, // NZST (can be +13 in summer)
+  'Australia/Sydney': 10, // AEST (can be +11 in summer)
+  'Asia/Seoul': 9,
+  'Asia/Tokyo': 9,
+  'Asia/Shanghai': 8,
+  'Asia/Singapore': 8,
+  'Asia/Hong_Kong': 8,
+  'Asia/Bangkok': 7,
+  'Asia/Kolkata': 5.5,
+  'Asia/Dubai': 4,
+  'Europe/Moscow': 3,
+  'Europe/Istanbul': 3,
+  'Europe/Berlin': 1, // CET (can be +2 in summer)
+  'Europe/Paris': 1, // CET (can be +2 in summer)
+  'Europe/London': 0, // GMT (can be +1 in summer)
+  'America/Sao_Paulo': -3,
+  'America/New_York': -5, // EST (can be -4 in summer)
+  'America/Chicago': -6, // CST (can be -5 in summer)
+  'America/Denver': -7, // MST (can be -6 in summer)
+  'America/Los_Angeles': -8, // PST (can be -7 in summer)
+};
+
+function getLocalTime(timezone: string): { hour: number; dayOfWeek: number } {
+  const now = new Date();
+  const offset = timezoneOffsets[timezone] ?? 9; // Default to Seoul
+  
+  // Create a date adjusted to the user's timezone
+  const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const localTime = new Date(utcTime + (offset * 3600000));
+  
+  return {
+    hour: localTime.getUTCHours(),
+    dayOfWeek: localTime.getUTCDay(),
+  };
+}
+
 const handler = async (req: Request): Promise<Response> => {
   console.log("Digest email function called");
 
@@ -40,7 +78,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get users who have this digest type enabled
     const { data: usersWithDigest, error: usersError } = await supabase
       .from("notification_preferences")
-      .select("user_id, digest_time, digest_day, last_digest_sent_at")
+      .select("user_id, digest_time, digest_day, timezone, last_digest_sent_at")
       .eq("digest_mode", digest_type);
 
     if (usersError) {
@@ -50,18 +88,26 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Found ${usersWithDigest?.length || 0} users with ${digest_type} digest enabled`);
 
-    // Get current day of week (0 = Sunday, 1 = Monday, etc.)
-    const currentDay = new Date().getUTCDay();
-    console.log(`Current UTC day of week: ${currentDay}`);
-
     const results = [];
 
     for (const userPref of usersWithDigest || []) {
-      // For weekly digests, check if today matches the user's selected day
+      const userTimezone = userPref.timezone || 'Asia/Seoul';
+      const { hour: localHour, dayOfWeek: localDay } = getLocalTime(userTimezone);
+      
+      // Parse user's preferred digest time (e.g., "09:00:00" -> 9)
+      const preferredHour = parseInt(userPref.digest_time?.split(':')[0] || '9');
+      
+      // Check if it's the right hour in user's timezone
+      if (localHour !== preferredHour) {
+        console.log(`Skipping user ${userPref.user_id}: local hour is ${localHour}, preferred is ${preferredHour} (${userTimezone})`);
+        continue;
+      }
+
+      // For weekly digests, check if today matches the user's selected day in their timezone
       if (digest_type === 'weekly') {
         const userDigestDay = userPref.digest_day ?? 1; // Default to Monday
-        if (currentDay !== userDigestDay) {
-          console.log(`Skipping user ${userPref.user_id}: digest_day is ${userDigestDay}, today is ${currentDay}`);
+        if (localDay !== userDigestDay) {
+          console.log(`Skipping user ${userPref.user_id}: local day is ${localDay}, preferred is ${userDigestDay}`);
           continue;
         }
       }

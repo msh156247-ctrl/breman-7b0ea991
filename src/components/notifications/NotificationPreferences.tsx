@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Mail, Bell, Trophy, Users, FileText, CreditCard, AlertTriangle, Star, Settings, Send, Loader2, Clock, Calendar } from 'lucide-react';
+import { Mail, Bell, Trophy, Users, FileText, CreditCard, AlertTriangle, Star, Settings, Send, Loader2, Clock, Calendar, Globe } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -25,6 +25,7 @@ interface NotificationPreference {
   digest_mode: 'instant' | 'daily' | 'weekly';
   digest_time: string;
   digest_day: number;
+  timezone: string;
 }
 
 const preferenceConfig = [
@@ -58,6 +59,29 @@ const dayOptions = [
   { value: 4, label: '목요일' },
   { value: 5, label: '금요일' },
   { value: 6, label: '토요일' },
+];
+
+const timezoneOptions = [
+  { value: 'Asia/Seoul', label: '서울 (KST, UTC+9)' },
+  { value: 'Asia/Tokyo', label: '도쿄 (JST, UTC+9)' },
+  { value: 'Asia/Shanghai', label: '상하이 (CST, UTC+8)' },
+  { value: 'Asia/Singapore', label: '싱가포르 (SGT, UTC+8)' },
+  { value: 'Asia/Hong_Kong', label: '홍콩 (HKT, UTC+8)' },
+  { value: 'Asia/Bangkok', label: '방콕 (ICT, UTC+7)' },
+  { value: 'Asia/Kolkata', label: '뭄바이 (IST, UTC+5:30)' },
+  { value: 'Asia/Dubai', label: '두바이 (GST, UTC+4)' },
+  { value: 'Europe/Moscow', label: '모스크바 (MSK, UTC+3)' },
+  { value: 'Europe/Istanbul', label: '이스탄불 (TRT, UTC+3)' },
+  { value: 'Europe/Berlin', label: '베를린 (CET, UTC+1/+2)' },
+  { value: 'Europe/Paris', label: '파리 (CET, UTC+1/+2)' },
+  { value: 'Europe/London', label: '런던 (GMT, UTC+0/+1)' },
+  { value: 'America/Sao_Paulo', label: '상파울루 (BRT, UTC-3)' },
+  { value: 'America/New_York', label: '뉴욕 (EST, UTC-5/-4)' },
+  { value: 'America/Chicago', label: '시카고 (CST, UTC-6/-5)' },
+  { value: 'America/Denver', label: '덴버 (MST, UTC-7/-6)' },
+  { value: 'America/Los_Angeles', label: '로스앤젤레스 (PST, UTC-8/-7)' },
+  { value: 'Pacific/Auckland', label: '오클랜드 (NZST, UTC+12/+13)' },
+  { value: 'Australia/Sydney', label: '시드니 (AEST, UTC+10/+11)' },
 ];
 
 export function NotificationPreferences() {
@@ -197,6 +221,30 @@ export function NotificationPreferences() {
       toast.success('요약 발송 요일이 변경되었습니다');
     } catch (error) {
       console.error('Error saving digest day:', error);
+      toast.error('설정 저장에 실패했습니다');
+      setPreferences(preferences);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleTimezoneChange = async (value: string) => {
+    if (!preferences || !user) return;
+
+    const updatedPreferences = { ...preferences, timezone: value };
+    setPreferences(updatedPreferences);
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('notification_preferences')
+        .update({ timezone: value })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast.success('시간대가 변경되었습니다');
+    } catch (error) {
+      console.error('Error saving timezone:', error);
       toast.error('설정 저장에 실패했습니다');
       setPreferences(preferences);
     } finally {
@@ -400,12 +448,31 @@ export function NotificationPreferences() {
                   ))}
                 </SelectContent>
               </Select>
-              <span className="text-sm text-muted-foreground">
-                {preferences?.digest_mode === 'daily' 
-                  ? '(매일)' 
-                  : `(매주 ${dayOptions.find(d => d.value === (preferences?.digest_day ?? 1))?.label})`
-                }
-              </span>
+            </div>
+          )}
+
+          {(preferences?.digest_mode === 'daily' || preferences?.digest_mode === 'weekly') && (
+            <div className="flex flex-wrap items-center gap-4 p-4 bg-muted/50 rounded-lg">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+              <Label htmlFor="digest-timezone" className="whitespace-nowrap">
+                시간대
+              </Label>
+              <Select
+                value={preferences?.timezone || 'Asia/Seoul'}
+                onValueChange={handleTimezoneChange}
+                disabled={saving}
+              >
+                <SelectTrigger id="digest-timezone" className="w-64">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {timezoneOptions.map((tz) => (
+                    <SelectItem key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
         </CardContent>
