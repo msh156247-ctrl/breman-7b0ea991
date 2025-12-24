@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ROLES, SKILL_TIERS, type UserRole } from '@/lib/constants';
 import { RoleBadge } from '@/components/ui/RoleBadge';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Check, ChevronLeft, ChevronRight, Loader2, Sparkles, X, Info } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -136,6 +137,11 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
+      {/* Theme toggle in top right */}
+      <div className="fixed top-4 right-4 z-50">
+        <ThemeToggle />
+      </div>
+
       <div className="w-full max-w-2xl">
         {/* Progress */}
         <div className="mb-8">
