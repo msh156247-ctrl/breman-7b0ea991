@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.89.0";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { 
+  renderNotificationEmail, 
+  defaultBranding, 
+  notificationTypeLabels,
+  type EmailBranding 
+} from "../_shared/email-templates.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -16,18 +22,6 @@ interface NotificationEmailRequest {
   message: string;
   link?: string;
 }
-
-const notificationTypeLabels: Record<string, string> = {
-  contract: "계약",
-  project: "프로젝트",
-  team: "팀",
-  payment: "결제",
-  dispute: "분쟁",
-  review: "리뷰",
-  siege: "시즈",
-  badge: "뱃지",
-  system: "시스템",
-};
 
 // Generate unsubscribe token
 function generateUnsubscribeToken(userId: string, type?: string): string {
@@ -86,6 +80,19 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
+    // Fetch branding settings
+    let branding: EmailBranding = defaultBranding;
+    const { data: brandingData, error: brandingError } = await supabase
+      .from("email_branding")
+      .select("*")
+      .limit(1)
+      .single();
+
+    if (!brandingError && brandingData) {
+      branding = brandingData as EmailBranding;
+    }
+    console.log("Using branding:", branding.brand_name);
+
     const typeLabel = notificationTypeLabels[notification_type] || notification_type;
     
     // Generate unsubscribe links
@@ -94,56 +101,21 @@ const handler = async (req: Request): Promise<Response> => {
     const unsubscribeTypeUrl = `${supabaseUrl}/functions/v1/email-unsubscribe?token=${unsubscribeToken}&type=${notification_type}`;
     const unsubscribeAllUrl = `${supabaseUrl}/functions/v1/email-unsubscribe?token=${unsubscribeAllToken}`;
     
-    const emailHtml = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <style>
-            body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; margin: 0; padding: 20px; }
-            .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-            .header { background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 24px; text-align: center; }
-            .header h1 { color: white; margin: 0; font-size: 24px; }
-            .badge { display: inline-block; background: rgba(255,255,255,0.2); color: white; padding: 4px 12px; border-radius: 16px; font-size: 12px; margin-top: 8px; }
-            .content { padding: 32px 24px; }
-            .title { font-size: 18px; font-weight: 600; color: #1f2937; margin-bottom: 12px; }
-            .message { color: #6b7280; line-height: 1.6; margin-bottom: 24px; }
-            .button { display: inline-block; background: #6366f1; color: white; text-decoration: none; padding: 12px 24px; border-radius: 6px; font-weight: 500; }
-            .footer { background: #f9fafb; padding: 16px 24px; text-align: center; color: #9ca3af; font-size: 12px; border-top: 1px solid #e5e7eb; }
-            .unsubscribe { margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; }
-            .unsubscribe a { color: #6b7280; text-decoration: underline; margin: 0 8px; }
-            .unsubscribe a:hover { color: #374151; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="header">
-              <h1>새로운 알림</h1>
-              <span class="badge">${typeLabel}</span>
-            </div>
-            <div class="content">
-              <div class="title">${title}</div>
-              <div class="message">${message || ""}</div>
-              ${link ? `<a href="${link}" class="button">자세히 보기</a>` : ""}
-            </div>
-            <div class="footer">
-              이 이메일은 알림 설정에 따라 발송되었습니다.<br>
-              설정에서 이메일 알림을 변경할 수 있습니다.
-              <div class="unsubscribe">
-                <a href="${unsubscribeTypeUrl}">${typeLabel} 알림 수신 거부</a>
-                |
-                <a href="${unsubscribeAllUrl}">모든 알림 수신 거부</a>
-              </div>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
+    const emailHtml = renderNotificationEmail({
+      branding,
+      userName: profile.name,
+      notificationType: notification_type,
+      title,
+      message,
+      link,
+      unsubscribeTypeUrl,
+      unsubscribeAllUrl,
+    });
 
     console.log("Sending email to:", profile.email);
 
     const emailResponse = await resend.emails.send({
-      from: "Lovable App <onboarding@resend.dev>",
+      from: `${branding.brand_name} <onboarding@resend.dev>`,
       to: [profile.email],
       subject: `[${typeLabel}] ${title}`,
       html: emailHtml,

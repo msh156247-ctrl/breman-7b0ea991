@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { Resend } from "https://esm.sh/resend@2.0.0";
+import { 
+  renderDigestEmail, 
+  defaultBranding,
+  type EmailBranding 
+} from "../_shared/email-templates.ts";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 
@@ -14,19 +19,10 @@ interface DigestRequest {
   test_user_id?: string; // Optional: for testing a specific user immediately
 }
 
-const notificationTypeLabels: Record<string, string> = {
-  team_invite: '팀 초대',
-  application: '지원',
-  project_match: '프로젝트 매칭',
-  milestone: '마일스톤',
-  siege: 'Siege',
-  system: '시스템',
-};
-
 // Timezone offset map (in hours, negative for behind UTC)
 const timezoneOffsets: Record<string, number> = {
-  'Pacific/Auckland': 12, // NZST (can be +13 in summer)
-  'Australia/Sydney': 10, // AEST (can be +11 in summer)
+  'Pacific/Auckland': 12,
+  'Australia/Sydney': 10,
   'Asia/Seoul': 9,
   'Asia/Tokyo': 9,
   'Asia/Shanghai': 8,
@@ -37,21 +33,19 @@ const timezoneOffsets: Record<string, number> = {
   'Asia/Dubai': 4,
   'Europe/Moscow': 3,
   'Europe/Istanbul': 3,
-  'Europe/Berlin': 1, // CET (can be +2 in summer)
-  'Europe/Paris': 1, // CET (can be +2 in summer)
-  'Europe/London': 0, // GMT (can be +1 in summer)
+  'Europe/Berlin': 1,
+  'Europe/Paris': 1,
+  'Europe/London': 0,
   'America/Sao_Paulo': -3,
-  'America/New_York': -5, // EST (can be -4 in summer)
-  'America/Chicago': -6, // CST (can be -5 in summer)
-  'America/Denver': -7, // MST (can be -6 in summer)
-  'America/Los_Angeles': -8, // PST (can be -7 in summer)
+  'America/New_York': -5,
+  'America/Chicago': -6,
+  'America/Denver': -7,
+  'America/Los_Angeles': -8,
 };
 
 function getLocalTime(timezone: string): { hour: number; dayOfWeek: number } {
   const now = new Date();
-  const offset = timezoneOffsets[timezone] ?? 9; // Default to Seoul
-  
-  // Create a date adjusted to the user's timezone
+  const offset = timezoneOffsets[timezone] ?? 9;
   const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
   const localTime = new Date(utcTime + (offset * 3600000));
   
@@ -76,16 +70,27 @@ const handler = async (req: Request): Promise<Response> => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
+    // Fetch branding settings
+    let branding: EmailBranding = defaultBranding;
+    const { data: brandingData, error: brandingError } = await supabase
+      .from("email_branding")
+      .select("*")
+      .limit(1)
+      .single();
+
+    if (!brandingError && brandingData) {
+      branding = brandingData as EmailBranding;
+    }
+    console.log("Using branding:", branding.brand_name);
+
     // Build query for users with digest enabled
     let query = supabase
       .from("notification_preferences")
       .select("user_id, digest_time, digest_day, timezone, last_digest_sent_at");
 
     if (test_user_id) {
-      // For testing: get specific user regardless of digest mode
       query = query.eq("user_id", test_user_id);
     } else {
-      // Normal operation: get users with this digest type
       query = query.eq("digest_mode", digest_type);
     }
 
@@ -106,24 +111,22 @@ const handler = async (req: Request): Promise<Response> => {
         const userTimezone = userPref.timezone || 'Asia/Seoul';
         const { hour: localHour, dayOfWeek: localDay } = getLocalTime(userTimezone);
         
-        // Parse user's preferred digest time (e.g., "09:00:00" -> 9)
         const preferredHour = parseInt(userPref.digest_time?.split(':')[0] || '9');
         
-        // Check if it's the right hour in user's timezone
         if (localHour !== preferredHour) {
           console.log(`Skipping user ${userPref.user_id}: local hour is ${localHour}, preferred is ${preferredHour} (${userTimezone})`);
           continue;
         }
 
-        // For weekly digests, check if today matches the user's selected day in their timezone
         if (digest_type === 'weekly') {
-          const userDigestDay = userPref.digest_day ?? 1; // Default to Monday
+          const userDigestDay = userPref.digest_day ?? 1;
           if (localDay !== userDigestDay) {
             console.log(`Skipping user ${userPref.user_id}: local day is ${localDay}, preferred is ${userDigestDay}`);
             continue;
           }
         }
       }
+
       try {
         // Get user profile
         const { data: profile, error: profileError } = await supabase
@@ -176,68 +179,24 @@ const handler = async (req: Request): Promise<Response> => {
         }
 
         const digestTitle = digest_type === 'daily' ? '일일 알림 요약' : '주간 알림 요약';
-        const periodText = digest_type === 'daily' ? '오늘' : '이번 주';
 
         // Generate unsubscribe links
-        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
         const unsubscribeToken = btoa(userPref.user_id);
         const unsubscribeAllUrl = `${supabaseUrl}/functions/v1/email-unsubscribe?token=${unsubscribeToken}`;
+        const viewAllUrl = `https://kazkjbkldqxjdnzgiaqp.lovableproject.com/notifications`;
 
-        const notificationItems = notifications.map((n: any) => `
-          <tr>
-            <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
-              <div style="font-weight: 600; color: #1f2937; margin-bottom: 4px;">${n.title}</div>
-              <div style="color: #6b7280; font-size: 14px; margin-bottom: 4px;">${n.message || ''}</div>
-              <div style="display: flex; gap: 8px; font-size: 12px; color: #9ca3af;">
-                <span>${notificationTypeLabels[n.type] || n.type}</span>
-                <span>•</span>
-                <span>${new Date(n.created_at).toLocaleDateString('ko-KR')}</span>
-              </div>
-            </td>
-          </tr>
-        `).join('');
-
-        const emailHtml = `
-          <!DOCTYPE html>
-          <html>
-          <head>
-            <meta charset="utf-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          </head>
-          <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background-color: #f3f4f6;">
-            <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-              <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px; border-radius: 16px 16px 0 0; text-align: center;">
-                <h1 style="color: white; margin: 0; font-size: 24px;">${digestTitle}</h1>
-                <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0;">안녕하세요, ${profile.name}님!</p>
-              </div>
-              <div style="background: white; padding: 24px; border-radius: 0 0 16px 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                <p style="color: #4b5563; margin-bottom: 20px;">${periodText} 받으신 알림이 ${notifications.length}개 있습니다:</p>
-                <table style="width: 100%; border-collapse: collapse;">
-                  ${notificationItems}
-                </table>
-                <div style="text-align: center; margin-top: 24px;">
-                  <a href="https://kazkjbkldqxjdnzgiaqp.lovableproject.com/notifications" 
-                     style="display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-decoration: none; padding: 12px 24px; border-radius: 8px; font-weight: 600;">
-                    모든 알림 보기
-                  </a>
-                </div>
-              </div>
-              <div style="text-align: center; padding: 16px; border-top: 1px solid #e5e7eb; margin-top: 16px;">
-                <p style="color: #9ca3af; font-size: 12px; margin: 0 0 8px 0;">
-                  알림 설정은 프로필에서 변경하실 수 있습니다.
-                </p>
-                <a href="${unsubscribeAllUrl}" style="color: #6b7280; font-size: 12px; text-decoration: underline;">
-                  모든 알림 이메일 수신 거부
-                </a>
-              </div>
-            </div>
-          </body>
-          </html>
-        `;
+        const emailHtml = renderDigestEmail({
+          branding,
+          userName: profile.name,
+          digestType: digest_type,
+          notifications: notifications as any[],
+          unsubscribeAllUrl,
+          viewAllUrl,
+        });
 
         // Send email
         const emailResponse = await resend.emails.send({
-          from: "알림 <onboarding@resend.dev>",
+          from: `${branding.brand_name} <onboarding@resend.dev>`,
           to: [profile.email],
           subject: `[${digestTitle}] ${notifications.length}개의 새 알림`,
           html: emailHtml,

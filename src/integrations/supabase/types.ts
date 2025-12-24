@@ -186,6 +186,54 @@ export type Database = {
           },
         ]
       }
+      email_branding: {
+        Row: {
+          accent_color: string
+          background_color: string
+          brand_name: string
+          created_at: string
+          footer_text: string | null
+          id: string
+          logo_url: string | null
+          primary_color: string
+          secondary_color: string
+          support_email: string | null
+          text_color: string
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          accent_color?: string
+          background_color?: string
+          brand_name?: string
+          created_at?: string
+          footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          secondary_color?: string
+          support_email?: string | null
+          text_color?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          accent_color?: string
+          background_color?: string
+          brand_name?: string
+          created_at?: string
+          footer_text?: string | null
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          secondary_color?: string
+          support_email?: string | null
+          text_color?: string
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: []
+      }
       milestone_submissions: {
         Row: {
           files: string[] | null
