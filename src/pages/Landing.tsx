@@ -141,28 +141,61 @@ export default function Landing() {
             {Object.entries(ROLES).map(([key, role]) => (
               <div 
                 key={key}
-                className="flex gap-6 p-6 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all"
+                className="group p-6 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all hover:shadow-lg"
               >
-                <div className="flex-shrink-0 w-20 h-20 rounded-2xl bg-gradient-to-br from-muted to-background flex items-center justify-center text-5xl">
-                  {role.icon}
+                {/* Header */}
+                <div className="flex items-start gap-4 mb-5">
+                  <div className={`flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${role.gradient} flex items-center justify-center text-4xl shadow-md`}>
+                    {role.icon}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-display font-bold text-xl">
+                      {role.name} <span className="text-muted-foreground font-normal text-base">({role.nameEn})</span>
+                    </h3>
+                    <p className="text-sm font-medium text-primary">{role.title}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{role.description}</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-display font-bold text-xl mb-2">
-                    {role.name} <span className="text-muted-foreground font-normal">({role.nameEn})</span>
-                  </h3>
-                  <p className="text-muted-foreground mb-3">{role.description}</p>
+
+                {/* Responsibilities */}
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">담당 업무</h4>
+                  <ul className="grid grid-cols-2 gap-1.5">
+                    {role.responsibilities.map((resp, i) => (
+                      <li key={i} className="text-sm text-foreground/80 flex items-center gap-1.5">
+                        <span className="w-1 h-1 rounded-full bg-primary" />
+                        {resp}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {/* Keywords */}
+                <div className="mb-4">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">키워드</h4>
                   <div className="flex flex-wrap gap-2">
-                    {key === 'horse' && ['리더십', '백엔드', 'DB설계', 'API'].map(s => (
-                      <span key={s} className="text-xs px-2 py-1 rounded-full bg-muted">{s}</span>
+                    {role.keywords.map((keyword) => (
+                      <span 
+                        key={keyword} 
+                        className={`text-xs px-2.5 py-1 rounded-full bg-gradient-to-r ${role.gradient} text-primary-foreground font-medium`}
+                      >
+                        {keyword}
+                      </span>
                     ))}
-                    {key === 'dog' && ['QA', '보안', '테스트', '코드리뷰'].map(s => (
-                      <span key={s} className="text-xs px-2 py-1 rounded-full bg-muted">{s}</span>
-                    ))}
-                    {key === 'cat' && ['UI/UX', '그래픽', '프로토타입', '브랜딩'].map(s => (
-                      <span key={s} className="text-xs px-2 py-1 rounded-full bg-muted">{s}</span>
-                    ))}
-                    {key === 'rooster' && ['프론트엔드', 'React', 'CSS', '반응형'].map(s => (
-                      <span key={s} className="text-xs px-2 py-1 rounded-full bg-muted">{s}</span>
+                  </div>
+                </div>
+
+                {/* Metrics */}
+                <div className="pt-4 border-t border-border">
+                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">성장 지표</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {role.metrics.map((metric) => (
+                      <span 
+                        key={metric} 
+                        className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground"
+                      >
+                        📊 {metric}
+                      </span>
                     ))}
                   </div>
                 </div>
