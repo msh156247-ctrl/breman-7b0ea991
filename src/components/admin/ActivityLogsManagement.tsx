@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Activity, Search, RefreshCw, User, Settings, Megaphone, Shield, Download } from 'lucide-react';
+import { Activity, Search, RefreshCw, User, Settings, Megaphone, Shield, Download, Calendar, X } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -14,8 +14,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { format } from 'date-fns';
+import { format, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar as CalendarComponent } from '@/components/ui/calendar';
+import { Label } from '@/components/ui/label';
 
 interface ActivityLog {
   id: string;
@@ -37,6 +40,8 @@ export function ActivityLogsManagement() {
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     fetchLogs();
@@ -189,9 +194,28 @@ export function ActivityLogsManagement() {
       (log.details && JSON.stringify(log.details).toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesFilter = filterType === 'all' || log.target_type === filterType;
+
+    const logDate = new Date(log.created_at);
+    let matchesDateRange = true;
     
-    return matchesSearch && matchesFilter;
+    if (startDate && endDate) {
+      matchesDateRange = isWithinInterval(logDate, {
+        start: startOfDay(startDate),
+        end: endOfDay(endDate),
+      });
+    } else if (startDate) {
+      matchesDateRange = logDate >= startOfDay(startDate);
+    } else if (endDate) {
+      matchesDateRange = logDate <= endOfDay(endDate);
+    }
+    
+    return matchesSearch && matchesFilter && matchesDateRange;
   });
+
+  const clearDateFilter = () => {
+    setStartDate(undefined);
+    setEndDate(undefined);
+  };
 
   if (loading) {
     return (
@@ -239,8 +263,8 @@ export function ActivityLogsManagement() {
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Filters */}
-        <div className="flex gap-4">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap gap-4">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="검색..."
@@ -260,6 +284,61 @@ export function ActivityLogsManagement() {
               <SelectItem value="role">역할</SelectItem>
             </SelectContent>
           </Select>
+        </div>
+
+        {/* Date Range Filter */}
+        <div className="flex flex-wrap items-end gap-4 p-4 rounded-lg border bg-muted/30">
+          <div className="space-y-2">
+            <Label className="text-sm">시작일</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-[160px] justify-start text-left font-normal">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {startDate ? format(startDate, 'yyyy-MM-dd') : '선택...'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={startDate}
+                  onSelect={setStartDate}
+                  initialFocus
+                  locale={ko}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-sm">종료일</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-[160px] justify-start text-left font-normal">
+                  <Calendar className="mr-2 h-4 w-4" />
+                  {endDate ? format(endDate, 'yyyy-MM-dd') : '선택...'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <CalendarComponent
+                  mode="single"
+                  selected={endDate}
+                  onSelect={setEndDate}
+                  initialFocus
+                  locale={ko}
+                />
+              </PopoverContent>
+            </Popover>
+          </div>
+          {(startDate || endDate) && (
+            <Button variant="ghost" size="sm" onClick={clearDateFilter} className="h-10">
+              <X className="h-4 w-4 mr-1" />
+              초기화
+            </Button>
+          )}
+          {(startDate || endDate) && (
+            <div className="text-sm text-muted-foreground ml-auto">
+              {filteredLogs.length}개 결과
+            </div>
+          )}
         </div>
 
         {/* Logs List */}
