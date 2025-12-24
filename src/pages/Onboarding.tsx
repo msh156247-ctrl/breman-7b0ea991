@@ -169,27 +169,64 @@ export default function Onboarding() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {(Object.entries(ROLES) as [UserRole, typeof ROLES[UserRole]][]).map(([key, role]) => (
                     <button
                       key={key}
                       onClick={() => setSelectedRole(key)}
-                      className={`p-6 rounded-xl border-2 transition-all text-left ${
+                      className={`p-5 rounded-xl border-2 transition-all text-left ${
                         selectedRole === key
                           ? 'border-primary bg-primary/5 shadow-glow'
                           : 'border-border hover:border-primary/50 hover:bg-muted/50'
                       }`}
                     >
-                      <div className="text-4xl mb-3">{role.icon}</div>
-                      <div className="font-bold text-lg">{role.name}</div>
-                      <div className="text-sm text-muted-foreground">{role.nameEn}</div>
-                      <div className="text-sm text-muted-foreground mt-2">{role.description}</div>
-                      {selectedRole === key && (
-                        <div className="mt-3 flex items-center gap-1 text-primary text-sm">
-                          <Check className="h-4 w-4" />
-                          선택됨
+                      {/* Header */}
+                      <div className="flex items-start gap-3 mb-3">
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${role.gradient} flex items-center justify-center text-2xl flex-shrink-0`}>
+                          {role.icon}
                         </div>
-                      )}
+                        <div className="flex-1 min-w-0">
+                          <div className="font-bold text-lg">{role.name}</div>
+                          <div className="text-xs text-primary font-medium">{role.title}</div>
+                        </div>
+                        {selectedRole === key && (
+                          <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                            <Check className="h-4 w-4 text-primary-foreground" />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-sm text-muted-foreground mb-3">{role.description}</p>
+
+                      {/* Responsibilities (first 2) */}
+                      <div className="mb-3">
+                        <div className="text-xs font-medium text-foreground/70 mb-1.5">담당 업무</div>
+                        <ul className="space-y-1">
+                          {role.responsibilities.slice(0, 2).map((resp, i) => (
+                            <li key={i} className="text-xs text-muted-foreground flex items-center gap-1.5">
+                              <span className="w-1 h-1 rounded-full bg-primary flex-shrink-0" />
+                              {resp}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Keywords */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {role.keywords.map((keyword) => (
+                          <span 
+                            key={keyword}
+                            className={`text-xs px-2 py-0.5 rounded-full ${
+                              selectedRole === key 
+                                ? `bg-gradient-to-r ${role.gradient} text-primary-foreground`
+                                : 'bg-muted text-muted-foreground'
+                            }`}
+                          >
+                            {keyword}
+                          </span>
+                        ))}
+                      </div>
                     </button>
                   ))}
                 </div>
