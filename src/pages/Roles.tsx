@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { ROLES, METRIC_DESCRIPTIONS, type UserRole } from '@/lib/constants';
 
 const ROLE_SKILLS: Record<UserRole, { required: string[]; optional: string[] }> = {
@@ -70,11 +71,14 @@ export default function Roles() {
             <span className="font-display font-bold text-xl">브래맨</span>
           </Link>
           
-          <Link to="/auth?mode=signup">
-            <Button size="sm" className="bg-gradient-primary hover:opacity-90">
-              시작하기
-            </Button>
-          </Link>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Link to="/auth?mode=signup">
+              <Button size="sm" className="bg-gradient-primary hover:opacity-90">
+                시작하기
+              </Button>
+            </Link>
+          </div>
         </div>
       </header>
 
