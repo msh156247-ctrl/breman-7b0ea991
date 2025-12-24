@@ -40,7 +40,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Get users who have this digest type enabled
     const { data: usersWithDigest, error: usersError } = await supabase
       .from("notification_preferences")
-      .select("user_id, digest_time, last_digest_sent_at")
+      .select("user_id, digest_time, digest_day, last_digest_sent_at")
       .eq("digest_mode", digest_type);
 
     if (usersError) {
@@ -50,9 +50,21 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Found ${usersWithDigest?.length || 0} users with ${digest_type} digest enabled`);
 
+    // Get current day of week (0 = Sunday, 1 = Monday, etc.)
+    const currentDay = new Date().getUTCDay();
+    console.log(`Current UTC day of week: ${currentDay}`);
+
     const results = [];
 
     for (const userPref of usersWithDigest || []) {
+      // For weekly digests, check if today matches the user's selected day
+      if (digest_type === 'weekly') {
+        const userDigestDay = userPref.digest_day ?? 1; // Default to Monday
+        if (currentDay !== userDigestDay) {
+          console.log(`Skipping user ${userPref.user_id}: digest_day is ${userDigestDay}, today is ${currentDay}`);
+          continue;
+        }
+      }
       try {
         // Get user profile
         const { data: profile, error: profileError } = await supabase
