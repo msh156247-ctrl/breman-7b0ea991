@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Activity, Search, RefreshCw, User, Settings, Megaphone, Shield, Download, Calendar, X, Loader2 } from 'lucide-react';
+import { Activity, Search, RefreshCw, User, Settings, Megaphone, Shield, Download, Calendar, X, Loader2, Wifi } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -47,9 +47,71 @@ export function ActivityLogsManagement() {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [hasMore, setHasMore] = useState(true);
   const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
+  const [newLogsCount, setNewLogsCount] = useState(0);
+
+  // Fetch admin profile for a single log
+  const fetchAdminProfile = async (adminId: string): Promise<{ name: string; email: string } | null> => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('name, email')
+      .eq('id', adminId)
+      .single();
+    return data;
+  };
 
   useEffect(() => {
     fetchLogs(true);
+
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('activity-logs-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'activity_logs'
+        },
+        async (payload) => {
+          const newLog = payload.new as {
+            id: string;
+            admin_id: string | null;
+            action: string;
+            target_type: string;
+            target_id: string | null;
+            details: Record<string, unknown> | null;
+            created_at: string;
+          };
+
+          // Fetch admin profile for the new log
+          let adminProfile = null;
+          if (newLog.admin_id) {
+            adminProfile = await fetchAdminProfile(newLog.admin_id);
+          }
+
+          const logWithProfile: ActivityLog = {
+            ...newLog,
+            admin_profile: adminProfile,
+          };
+
+          setLogs(prev => [logWithProfile, ...prev]);
+          setTotalCount(prev => (prev ?? 0) + 1);
+          setNewLogsCount(prev => prev + 1);
+
+          // Clear new logs indicator after 3 seconds
+          setTimeout(() => {
+            setNewLogsCount(prev => Math.max(0, prev - 1));
+          }, 3000);
+        }
+      )
+      .subscribe((status) => {
+        setIsRealtimeConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchLogs = async (reset: boolean = false) => {
@@ -274,11 +336,22 @@ export function ActivityLogsManagement() {
               <Activity className="h-5 w-5" />
               활동 로그
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="flex items-center gap-2">
               {totalCount !== null ? (
                 <>총 {totalCount.toLocaleString()}개 중 {logs.length.toLocaleString()}개 로드됨</>
               ) : (
                 '관리자 활동 내역'
+              )}
+              {isRealtimeConnected && (
+                <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20 text-xs ml-2">
+                  <Wifi className="h-3 w-3 mr-1" />
+                  실시간
+                </Badge>
+              )}
+              {newLogsCount > 0 && (
+                <Badge variant="secondary" className="animate-pulse text-xs">
+                  +{newLogsCount} 새 활동
+                </Badge>
               )}
             </CardDescription>
           </div>

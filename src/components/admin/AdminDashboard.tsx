@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Activity, Users, Megaphone, Shield, TrendingUp, Crown } from 'lucide-react';
+import { Activity, Users, Megaphone, Shield, TrendingUp, Crown, Wifi } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format, subDays, startOfDay, eachDayOfInterval } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -43,9 +43,64 @@ export function AdminDashboard() {
   const [topAdmins, setTopAdmins] = useState<AdminStats[]>([]);
   const [dailyActivity, setDailyActivity] = useState<DailyActivity[]>([]);
   const [recentActions, setRecentActions] = useState<{ action: string; target_type: string; created_at: string }[]>([]);
+  const [isRealtimeConnected, setIsRealtimeConnected] = useState(false);
 
   useEffect(() => {
     fetchDashboardData();
+
+    // Set up realtime subscription for dashboard updates
+    const channel = supabase
+      .channel('dashboard-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'activity_logs'
+        },
+        (payload) => {
+          const newLog = payload.new as {
+            action: string;
+            target_type: string;
+            created_at: string;
+            admin_id: string | null;
+          };
+
+          // Update stats
+          setActionStats(prev => ({
+            total: prev.total + 1,
+            byType: {
+              ...prev.byType,
+              [newLog.target_type]: (prev.byType[newLog.target_type] || 0) + 1,
+            },
+            byAction: {
+              ...prev.byAction,
+              [newLog.action]: (prev.byAction[newLog.action] || 0) + 1,
+            },
+          }));
+
+          // Update recent actions
+          setRecentActions(prev => [
+            { action: newLog.action, target_type: newLog.target_type, created_at: newLog.created_at },
+            ...prev.slice(0, 4),
+          ]);
+
+          // Update daily activity for today
+          const today = format(new Date(), 'MM/dd', { locale: ko });
+          setDailyActivity(prev => 
+            prev.map(day => 
+              day.date === today ? { ...day, count: day.count + 1 } : day
+            )
+          );
+        }
+      )
+      .subscribe((status) => {
+        setIsRealtimeConnected(status === 'SUBSCRIBED');
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const fetchDashboardData = async () => {
@@ -199,6 +254,17 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
+      {/* Realtime Status */}
+      {isRealtimeConnected && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Badge variant="outline" className="bg-green-500/10 text-green-500 border-green-500/20">
+            <Wifi className="h-3 w-3 mr-1" />
+            실시간 연결됨
+          </Badge>
+          <span>대시보드가 자동으로 업데이트됩니다</span>
+        </div>
+      )}
+
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
