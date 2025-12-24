@@ -1,3 +1,38 @@
+export const METRIC_DESCRIPTIONS: Record<string, { calculation: string; tracking: string }> = {
+  '프로젝트 성공률': {
+    calculation: '완료된 프로젝트 수 / 전체 참여 프로젝트 수 × 100',
+    tracking: '프로젝트 완료 시 자동 업데이트, 클라이언트 승인 기준'
+  },
+  '팀 완주율': {
+    calculation: '끝까지 함께한 팀 수 / 전체 팀 참여 수 × 100',
+    tracking: '팀 해산 또는 프로젝트 완료 시 측정'
+  },
+  '버그 감소율': {
+    calculation: '(이전 릴리즈 버그 - 현재 릴리즈 버그) / 이전 릴리즈 버그 × 100',
+    tracking: 'QA 리포트 기반, 릴리즈 주기별 집계'
+  },
+  '무사고 릴리즈': {
+    calculation: '크리티컬 이슈 없이 배포 성공한 릴리즈 수',
+    tracking: '배포 후 24시간 내 핫픽스 발생 여부로 판단'
+  },
+  '사용성 점수': {
+    calculation: 'SUS(System Usability Scale) 평균 점수',
+    tracking: '사용자 테스트 및 설문조사 결과 집계'
+  },
+  '사용자 만족도': {
+    calculation: '리뷰 평점 합계 / 총 리뷰 수',
+    tracking: '프로젝트 완료 후 클라이언트 피드백 기반'
+  },
+  'UI 완성도': {
+    calculation: '디자인 시안 대비 구현 일치율',
+    tracking: '디자이너 QA 검수 시 피드백 반영률'
+  },
+  '퍼포먼스 지표': {
+    calculation: 'Core Web Vitals (LCP, FID, CLS) 평균 점수',
+    tracking: 'Lighthouse 리포트 자동 측정, 배포 시 기록'
+  }
+};
+
 export const ROLES = {
   horse: { 
     name: '말', 

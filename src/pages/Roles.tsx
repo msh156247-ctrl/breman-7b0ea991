@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, TrendingUp, Target, Sparkles, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, TrendingUp, Target, Sparkles, CheckCircle2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { ROLES, type UserRole } from '@/lib/constants';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ROLES, METRIC_DESCRIPTIONS, type UserRole } from '@/lib/constants';
 
 const ROLE_SKILLS: Record<UserRole, { required: string[]; optional: string[] }> = {
   horse: {
@@ -159,12 +160,29 @@ export default function Roles() {
                     </h3>
                     <div className="flex flex-wrap gap-2">
                       {role.metrics.map((metric) => (
-                        <span 
-                          key={metric} 
-                          className="px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-sm"
-                        >
-                          📊 {metric}
-                        </span>
+                        <Tooltip key={metric}>
+                          <TooltipTrigger asChild>
+                            <span className="px-3 py-1.5 rounded-full bg-muted text-muted-foreground text-sm cursor-help flex items-center gap-1.5 hover:bg-muted/80 transition-colors">
+                              📊 {metric}
+                              <Info className="w-3 h-3" />
+                            </span>
+                          </TooltipTrigger>
+                          <TooltipContent side="top" className="max-w-xs">
+                            <p className="font-semibold mb-2">{metric}</p>
+                            {METRIC_DESCRIPTIONS[metric] && (
+                              <div className="space-y-2 text-sm">
+                                <div>
+                                  <span className="text-muted-foreground">계산 방식:</span>
+                                  <p className="text-foreground">{METRIC_DESCRIPTIONS[metric].calculation}</p>
+                                </div>
+                                <div>
+                                  <span className="text-muted-foreground">추적 방법:</span>
+                                  <p className="text-foreground">{METRIC_DESCRIPTIONS[metric].tracking}</p>
+                                </div>
+                              </div>
+                            )}
+                          </TooltipContent>
+                        </Tooltip>
                       ))}
                     </div>
                   </div>
