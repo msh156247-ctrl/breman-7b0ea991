@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, ArrowRight, TrendingUp, Target, Sparkles, CheckCircle2, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { BackToTop } from '@/components/ui/BackToTop';
 import { ROLES, METRIC_DESCRIPTIONS, type UserRole } from '@/lib/constants';
 
 const ROLE_SKILLS: Record<UserRole, { required: string[]; optional: string[] }> = {
@@ -393,6 +394,9 @@ export default function Roles() {
           <p>© 2024 브래맨. All rights reserved.</p>
         </div>
       </footer>
+      
+      {/* Back to Top */}
+      <BackToTop />
     </div>
   );
 }
