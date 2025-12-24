@@ -18,7 +18,7 @@ export default function Landing() {
           
           <nav className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">기능</a>
-            <a href="#roles" className="text-sm text-muted-foreground hover:text-foreground transition-colors">역할</a>
+            <Link to="/roles" className="text-sm text-muted-foreground hover:text-foreground transition-colors">역할</Link>
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">요금</a>
           </nav>
           
