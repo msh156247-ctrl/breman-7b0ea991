@@ -6,8 +6,9 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Mail, Bell, Trophy, Users, FileText, CreditCard, AlertTriangle, Star, Settings, Send, Loader2 } from 'lucide-react';
+import { Mail, Bell, Trophy, Users, FileText, CreditCard, AlertTriangle, Star, Settings, Send, Loader2, Clock, Calendar } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 interface NotificationPreference {
   id: string;
@@ -21,6 +22,8 @@ interface NotificationPreference {
   email_siege: boolean;
   email_badge: boolean;
   email_system: boolean;
+  digest_mode: 'instant' | 'daily' | 'weekly';
+  digest_time: string;
 }
 
 const preferenceConfig = [
@@ -34,6 +37,17 @@ const preferenceConfig = [
   { key: 'email_badge', label: '뱃지 알림', description: '새 뱃지 획득 시 이메일 수신', icon: Trophy },
   { key: 'email_system', label: '시스템 알림', description: '공지사항, 중요 업데이트 이메일 수신', icon: Bell },
 ];
+
+const digestModeOptions = [
+  { value: 'instant', label: '즉시 발송', description: '알림 발생 즉시 이메일 발송', icon: Send },
+  { value: 'daily', label: '일일 요약', description: '매일 정해진 시간에 요약 이메일 발송', icon: Clock },
+  { value: 'weekly', label: '주간 요약', description: '매주 정해진 시간에 요약 이메일 발송', icon: Calendar },
+];
+
+const timeOptions = Array.from({ length: 24 }, (_, i) => {
+  const hour = i.toString().padStart(2, '0');
+  return { value: `${hour}:00:00`, label: `${hour}:00` };
+});
 
 export function NotificationPreferences() {
   const { user } = useAuth();
@@ -67,11 +81,11 @@ export function NotificationPreferences() {
           .single();
 
         if (insertError) throw insertError;
-        setPreferences(newData);
+        setPreferences(newData as NotificationPreference);
       } else if (error) {
         throw error;
       } else {
-        setPreferences(data);
+        setPreferences(data as NotificationPreference);
       }
     } catch (error) {
       console.error('Error fetching preferences:', error);
@@ -100,6 +114,54 @@ export function NotificationPreferences() {
       console.error('Error saving preference:', error);
       toast.error('설정 저장에 실패했습니다');
       // Revert on error
+      setPreferences(preferences);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDigestModeChange = async (value: 'instant' | 'daily' | 'weekly') => {
+    if (!preferences || !user) return;
+
+    const updatedPreferences = { ...preferences, digest_mode: value };
+    setPreferences(updatedPreferences);
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('notification_preferences')
+        .update({ digest_mode: value })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast.success('이메일 발송 방식이 변경되었습니다');
+    } catch (error) {
+      console.error('Error saving digest mode:', error);
+      toast.error('설정 저장에 실패했습니다');
+      setPreferences(preferences);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDigestTimeChange = async (value: string) => {
+    if (!preferences || !user) return;
+
+    const updatedPreferences = { ...preferences, digest_time: value };
+    setPreferences(updatedPreferences);
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('notification_preferences')
+        .update({ digest_time: value })
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      toast.success('요약 발송 시간이 변경되었습니다');
+    } catch (error) {
+      console.error('Error saving digest time:', error);
+      toast.error('설정 저장에 실패했습니다');
       setPreferences(preferences);
     } finally {
       setSaving(false);
@@ -211,80 +273,158 @@ export function NotificationPreferences() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Mail className="h-5 w-5" />
-          이메일 알림 설정
-        </CardTitle>
-        <CardDescription>
-          알림 유형별로 이메일 수신 여부를 설정할 수 있습니다
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={handleEnableAll} disabled={saving}>
-            모두 켜기
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleDisableAll} disabled={saving}>
-            모두 끄기
-          </Button>
-          <Button 
-            variant="secondary" 
-            size="sm" 
-            onClick={handleSendTestEmail} 
-            disabled={sendingTest || !preferences?.email_system}
-          >
-            {sendingTest ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                발송 중...
-              </>
-            ) : (
-              <>
-                <Send className="h-4 w-4 mr-2" />
-                테스트 이메일 발송
-              </>
-            )}
-          </Button>
-        </div>
-        
-        {!preferences?.email_system && (
-          <p className="text-sm text-muted-foreground">
-            테스트 이메일을 받으려면 시스템 알림을 활성화해주세요.
-          </p>
-        )}
-
-        <div className="space-y-4">
-          {preferenceConfig.map((config) => {
-            const Icon = config.icon;
-            const value = preferences?.[config.key as keyof NotificationPreference] as boolean;
-            
-            return (
-              <div
-                key={config.key}
-                className="flex items-center justify-between py-3 border-b border-border last:border-0"
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <Label htmlFor={config.key} className="font-medium cursor-pointer">
-                      {config.label}
-                    </Label>
-                    <p className="text-sm text-muted-foreground">{config.description}</p>
+    <div className="space-y-6">
+      {/* Digest Mode Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5" />
+            이메일 발송 방식
+          </CardTitle>
+          <CardDescription>
+            알림 이메일을 즉시 받을지, 요약으로 받을지 선택하세요
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid gap-4">
+            {digestModeOptions.map((option) => {
+              const Icon = option.icon;
+              const isSelected = preferences?.digest_mode === option.value;
+              
+              return (
+                <div
+                  key={option.value}
+                  className={`flex items-center justify-between p-4 rounded-lg border-2 cursor-pointer transition-colors ${
+                    isSelected 
+                      ? 'border-primary bg-primary/5' 
+                      : 'border-border hover:border-primary/50'
+                  }`}
+                  onClick={() => handleDigestModeChange(option.value as 'instant' | 'daily' | 'weekly')}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2 rounded-full ${isSelected ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium">{option.label}</p>
+                      <p className="text-sm text-muted-foreground">{option.description}</p>
+                    </div>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
+                    isSelected ? 'border-primary bg-primary' : 'border-muted-foreground'
+                  }`}>
+                    {isSelected && <div className="w-2 h-2 rounded-full bg-primary-foreground" />}
                   </div>
                 </div>
-                <Switch
-                  id={config.key}
-                  checked={value ?? true}
-                  onCheckedChange={(checked) => handleToggle(config.key, checked)}
-                  disabled={saving}
-                />
-              </div>
-            );
-          })}
-        </div>
-      </CardContent>
-    </Card>
+              );
+            })}
+          </div>
+
+          {(preferences?.digest_mode === 'daily' || preferences?.digest_mode === 'weekly') && (
+            <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+              <Label htmlFor="digest-time" className="whitespace-nowrap">
+                요약 발송 시간
+              </Label>
+              <Select
+                value={preferences?.digest_time || '09:00:00'}
+                onValueChange={handleDigestTimeChange}
+                disabled={saving}
+              >
+                <SelectTrigger id="digest-time" className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {timeOptions.map((time) => (
+                    <SelectItem key={time.value} value={time.value}>
+                      {time.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-muted-foreground">
+                {preferences?.digest_mode === 'daily' ? '(매일)' : '(매주 월요일)'}
+              </span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Individual Notification Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="h-5 w-5" />
+            알림 유형 설정
+          </CardTitle>
+          <CardDescription>
+            알림 유형별로 이메일 수신 여부를 설정할 수 있습니다
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={handleEnableAll} disabled={saving}>
+              모두 켜기
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleDisableAll} disabled={saving}>
+              모두 끄기
+            </Button>
+            <Button 
+              variant="secondary" 
+              size="sm" 
+              onClick={handleSendTestEmail} 
+              disabled={sendingTest || !preferences?.email_system}
+            >
+              {sendingTest ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  발송 중...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  테스트 이메일 발송
+                </>
+              )}
+            </Button>
+          </div>
+          
+          {!preferences?.email_system && (
+            <p className="text-sm text-muted-foreground">
+              테스트 이메일을 받으려면 시스템 알림을 활성화해주세요.
+            </p>
+          )}
+
+          <div className="space-y-4">
+            {preferenceConfig.map((config) => {
+              const Icon = config.icon;
+              const value = preferences?.[config.key as keyof NotificationPreference] as boolean;
+              
+              return (
+                <div
+                  key={config.key}
+                  className="flex items-center justify-between py-3 border-b border-border last:border-0"
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <Label htmlFor={config.key} className="font-medium cursor-pointer">
+                        {config.label}
+                      </Label>
+                      <p className="text-sm text-muted-foreground">{config.description}</p>
+                    </div>
+                  </div>
+                  <Switch
+                    id={config.key}
+                    checked={value ?? true}
+                    onCheckedChange={(checked) => handleToggle(config.key, checked)}
+                    disabled={saving}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

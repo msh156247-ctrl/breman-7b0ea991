@@ -275,6 +275,8 @@ export type Database = {
       notification_preferences: {
         Row: {
           created_at: string
+          digest_mode: string | null
+          digest_time: string | null
           email_badge: boolean
           email_contract: boolean
           email_dispute: boolean
@@ -285,11 +287,14 @@ export type Database = {
           email_system: boolean
           email_team: boolean
           id: string
+          last_digest_sent_at: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
+          digest_mode?: string | null
+          digest_time?: string | null
           email_badge?: boolean
           email_contract?: boolean
           email_dispute?: boolean
@@ -300,11 +305,14 @@ export type Database = {
           email_system?: boolean
           email_team?: boolean
           id?: string
+          last_digest_sent_at?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
+          digest_mode?: string | null
+          digest_time?: string | null
           email_badge?: boolean
           email_contract?: boolean
           email_dispute?: boolean
@@ -315,6 +323,7 @@ export type Database = {
           email_system?: boolean
           email_team?: boolean
           id?: string
+          last_digest_sent_at?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -354,6 +363,42 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "notifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_digest_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          notification_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          notification_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          notification_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_digest_notifications_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: true
+            referencedRelation: "notifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_digest_notifications_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "profiles"
