@@ -6,7 +6,8 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Mail, Bell, Trophy, Users, FileText, CreditCard, AlertTriangle, Star, Settings } from 'lucide-react';
+import { Mail, Bell, Trophy, Users, FileText, CreditCard, AlertTriangle, Star, Settings, Send, Loader2 } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
 
 interface NotificationPreference {
   id: string;
@@ -39,6 +40,7 @@ export function NotificationPreferences() {
   const [preferences, setPreferences] = useState<NotificationPreference | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -162,6 +164,32 @@ export function NotificationPreferences() {
     }
   };
 
+  const handleSendTestEmail = async () => {
+    if (!user) return;
+    
+    setSendingTest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-notification-email', {
+        body: {
+          user_id: user.id,
+          notification_type: 'system',
+          title: '테스트 이메일',
+          message: '이 이메일은 알림 시스템이 정상적으로 작동하는지 확인하기 위한 테스트입니다. 이 메시지를 받으셨다면 이메일 알림이 정상적으로 설정되어 있는 것입니다.',
+          link: window.location.origin + '/notifications',
+        },
+      });
+
+      if (error) throw error;
+      
+      toast.success('테스트 이메일이 발송되었습니다. 이메일을 확인해주세요.');
+    } catch (error: any) {
+      console.error('Error sending test email:', error);
+      toast.error(`테스트 이메일 발송 실패: ${error.message || '알 수 없는 오류'}`);
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -194,14 +222,38 @@ export function NotificationPreferences() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={handleEnableAll} disabled={saving}>
             모두 켜기
           </Button>
           <Button variant="outline" size="sm" onClick={handleDisableAll} disabled={saving}>
             모두 끄기
           </Button>
+          <Button 
+            variant="secondary" 
+            size="sm" 
+            onClick={handleSendTestEmail} 
+            disabled={sendingTest || !preferences?.email_system}
+          >
+            {sendingTest ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                발송 중...
+              </>
+            ) : (
+              <>
+                <Send className="h-4 w-4 mr-2" />
+                테스트 이메일 발송
+              </>
+            )}
+          </Button>
         </div>
+        
+        {!preferences?.email_system && (
+          <p className="text-sm text-muted-foreground">
+            테스트 이메일을 받으려면 시스템 알림을 활성화해주세요.
+          </p>
+        )}
 
         <div className="space-y-4">
           {preferenceConfig.map((config) => {
