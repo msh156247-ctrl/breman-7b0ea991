@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { 
   LayoutDashboard, 
@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 
 const NAV_ITEMS = [
@@ -40,6 +41,26 @@ export function AppShell() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (!user) return;
+      
+      try {
+        const { data, error } = await supabase
+          .rpc('is_admin', { _user_id: user.id });
+        
+        if (!error && data === true) {
+          setIsAdmin(true);
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+      }
+    };
+
+    checkAdminStatus();
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -99,6 +120,23 @@ export function AppShell() {
                 </Link>
               );
             })}
+            
+            {/* Admin link in sidebar for admins */}
+            {isAdmin && (
+              <Link
+                to="/admin"
+                onClick={() => setSidebarOpen(false)}
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all mt-4 border-t border-sidebar-border pt-4',
+                  location.pathname.startsWith('/admin')
+                    ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
+                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
+                )}
+              >
+                <Shield className="w-5 h-5" />
+                관리자
+              </Link>
+            )}
           </nav>
 
           {/* User section */}
@@ -175,7 +213,7 @@ export function AppShell() {
                       프로필
                     </Link>
                   </DropdownMenuItem>
-                  {profile?.user_type === 'admin' && (
+                  {isAdmin && (
                     <DropdownMenuItem asChild>
                       <Link to="/admin" className="cursor-pointer">
                         <Shield className="w-4 h-4 mr-2" />

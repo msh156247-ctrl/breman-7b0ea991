@@ -1,34 +1,70 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmailBrandingSettings } from '@/components/admin/EmailBrandingSettings';
-import { Shield, Palette, Bell, Settings } from 'lucide-react';
+import { UserManagement } from '@/components/admin/UserManagement';
+import { AnnouncementsManagement } from '@/components/admin/AnnouncementsManagement';
+import { Shield, Palette, Users, Megaphone, Settings } from 'lucide-react';
 
 export default function AdminSettings() {
-  const { profile, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && profile?.user_type !== 'admin') {
+    const checkAdminStatus = async () => {
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Check if user has admin role using the is_admin function
+        const { data, error } = await supabase
+          .rpc('is_admin', { _user_id: user.id });
+
+        if (error) {
+          console.error('Error checking admin status:', error);
+          setIsAdmin(false);
+        } else {
+          setIsAdmin(data === true);
+        }
+      } catch (error) {
+        console.error('Error checking admin status:', error);
+        setIsAdmin(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (!authLoading) {
+      checkAdminStatus();
+    }
+  }, [user, authLoading]);
+
+  useEffect(() => {
+    if (!loading && !authLoading && !isAdmin) {
       navigate('/dashboard');
     }
-  }, [profile, loading, navigate]);
+  }, [isAdmin, loading, authLoading, navigate]);
 
-  if (loading) {
+  if (loading || authLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="animate-pulse text-center">
           <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center mx-auto mb-4">
             <Settings className="w-6 h-6 text-white" />
           </div>
-          <p className="text-muted-foreground">로딩중...</p>
+          <p className="text-muted-foreground">권한 확인 중...</p>
         </div>
       </div>
     );
   }
 
-  if (profile?.user_type !== 'admin') {
+  if (!isAdmin) {
     return null;
   }
 
@@ -46,30 +82,32 @@ export default function AdminSettings() {
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="branding" className="space-y-6">
-        <TabsList className="grid w-full max-w-md grid-cols-2">
+      <Tabs defaultValue="users" className="space-y-6">
+        <TabsList className="grid w-full max-w-2xl grid-cols-3">
+          <TabsTrigger value="users" className="gap-2">
+            <Users className="w-4 h-4" />
+            사용자 관리
+          </TabsTrigger>
+          <TabsTrigger value="announcements" className="gap-2">
+            <Megaphone className="w-4 h-4" />
+            공지사항
+          </TabsTrigger>
           <TabsTrigger value="branding" className="gap-2">
             <Palette className="w-4 h-4" />
             이메일 브랜딩
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-2">
-            <Bell className="w-4 h-4" />
-            알림 설정
-          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="users">
+          <UserManagement />
+        </TabsContent>
+
+        <TabsContent value="announcements">
+          <AnnouncementsManagement />
+        </TabsContent>
 
         <TabsContent value="branding">
           <EmailBrandingSettings />
-        </TabsContent>
-
-        <TabsContent value="notifications">
-          <div className="rounded-lg border border-dashed p-12 text-center">
-            <Bell className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">알림 설정</h3>
-            <p className="text-muted-foreground">
-              추후 업데이트 예정입니다
-            </p>
-          </div>
         </TabsContent>
       </Tabs>
     </div>
