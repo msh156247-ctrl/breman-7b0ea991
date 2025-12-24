@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from 'sonner';
-import { Activity, Search, RefreshCw, User, Settings, Megaphone, Shield, Loader2 } from 'lucide-react';
+import { Activity, Search, RefreshCw, User, Settings, Megaphone, Shield, Download } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -94,6 +94,43 @@ export function ActivityLogsManagement() {
     setRefreshing(true);
     await fetchLogs();
     setRefreshing(false);
+  };
+
+  const handleExportCSV = () => {
+    if (filteredLogs.length === 0) {
+      toast.error('내보낼 로그가 없습니다');
+      return;
+    }
+
+    const headers = ['날짜', '관리자', '이메일', '작업', '대상 유형', '대상 ID', '세부 정보'];
+    
+    const rows = filteredLogs.map(log => [
+      format(new Date(log.created_at), 'yyyy-MM-dd HH:mm:ss'),
+      log.admin_profile?.name || '알 수 없음',
+      log.admin_profile?.email || 'N/A',
+      getActionLabel(log.action),
+      getTargetTypeLabel(log.target_type),
+      log.target_id || '',
+      log.details ? JSON.stringify(log.details) : '',
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    const BOM = '\uFEFF';
+    const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `activity_logs_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast.success('CSV 파일이 다운로드되었습니다');
   };
 
   const getActionIcon = (targetType: string) => {
@@ -189,9 +226,15 @@ export function ActivityLogsManagement() {
               최근 100개의 관리자 활동 내역
             </CardDescription>
           </div>
-          <Button variant="outline" size="icon" onClick={handleRefresh} disabled={refreshing}>
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExportCSV} disabled={filteredLogs.length === 0}>
+              <Download className="h-4 w-4 mr-2" />
+              CSV 내보내기
+            </Button>
+            <Button variant="outline" size="icon" onClick={handleRefresh} disabled={refreshing}>
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
