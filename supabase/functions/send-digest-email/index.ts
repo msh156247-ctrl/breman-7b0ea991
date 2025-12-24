@@ -11,6 +11,7 @@ const corsHeaders = {
 
 interface DigestRequest {
   digest_type: 'daily' | 'weekly';
+  test_user_id?: string; // Optional: for testing a specific user immediately
 }
 
 const notificationTypeLabels: Record<string, string> = {
@@ -68,47 +69,59 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { digest_type } = await req.json() as DigestRequest;
-    console.log(`Processing ${digest_type} digest emails`);
+    const { digest_type, test_user_id } = await req.json() as DigestRequest;
+    console.log(`Processing ${digest_type} digest emails${test_user_id ? ` for test user ${test_user_id}` : ''}`);
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Get users who have this digest type enabled
-    const { data: usersWithDigest, error: usersError } = await supabase
+    // Build query for users with digest enabled
+    let query = supabase
       .from("notification_preferences")
-      .select("user_id, digest_time, digest_day, timezone, last_digest_sent_at")
-      .eq("digest_mode", digest_type);
+      .select("user_id, digest_time, digest_day, timezone, last_digest_sent_at");
+
+    if (test_user_id) {
+      // For testing: get specific user regardless of digest mode
+      query = query.eq("user_id", test_user_id);
+    } else {
+      // Normal operation: get users with this digest type
+      query = query.eq("digest_mode", digest_type);
+    }
+
+    const { data: usersWithDigest, error: usersError } = await query;
 
     if (usersError) {
       console.error("Error fetching users with digest preference:", usersError);
       throw usersError;
     }
 
-    console.log(`Found ${usersWithDigest?.length || 0} users with ${digest_type} digest enabled`);
+    console.log(`Found ${usersWithDigest?.length || 0} users to process`);
 
     const results = [];
 
     for (const userPref of usersWithDigest || []) {
-      const userTimezone = userPref.timezone || 'Asia/Seoul';
-      const { hour: localHour, dayOfWeek: localDay } = getLocalTime(userTimezone);
-      
-      // Parse user's preferred digest time (e.g., "09:00:00" -> 9)
-      const preferredHour = parseInt(userPref.digest_time?.split(':')[0] || '9');
-      
-      // Check if it's the right hour in user's timezone
-      if (localHour !== preferredHour) {
-        console.log(`Skipping user ${userPref.user_id}: local hour is ${localHour}, preferred is ${preferredHour} (${userTimezone})`);
-        continue;
-      }
-
-      // For weekly digests, check if today matches the user's selected day in their timezone
-      if (digest_type === 'weekly') {
-        const userDigestDay = userPref.digest_day ?? 1; // Default to Monday
-        if (localDay !== userDigestDay) {
-          console.log(`Skipping user ${userPref.user_id}: local day is ${localDay}, preferred is ${userDigestDay}`);
+      // Skip time/day checks for test mode
+      if (!test_user_id) {
+        const userTimezone = userPref.timezone || 'Asia/Seoul';
+        const { hour: localHour, dayOfWeek: localDay } = getLocalTime(userTimezone);
+        
+        // Parse user's preferred digest time (e.g., "09:00:00" -> 9)
+        const preferredHour = parseInt(userPref.digest_time?.split(':')[0] || '9');
+        
+        // Check if it's the right hour in user's timezone
+        if (localHour !== preferredHour) {
+          console.log(`Skipping user ${userPref.user_id}: local hour is ${localHour}, preferred is ${preferredHour} (${userTimezone})`);
           continue;
+        }
+
+        // For weekly digests, check if today matches the user's selected day in their timezone
+        if (digest_type === 'weekly') {
+          const userDigestDay = userPref.digest_day ?? 1; // Default to Monday
+          if (localDay !== userDigestDay) {
+            console.log(`Skipping user ${userPref.user_id}: local day is ${localDay}, preferred is ${userDigestDay}`);
+            continue;
+          }
         }
       }
       try {
