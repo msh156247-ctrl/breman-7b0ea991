@@ -22,6 +22,7 @@ import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import AdminSettings from "./pages/AdminSettings";
 import NotFound from "./pages/NotFound";
+import RoleQuiz from "./pages/RoleQuiz";
 import { AppShell } from "./components/layout/AppShell";
 
 const queryClient = new QueryClient();
@@ -55,6 +56,7 @@ function AppRoutes() {
       {/* Public routes */}
       <Route path="/" element={<Landing />} />
       <Route path="/roles" element={<Roles />} />
+      <Route path="/role-quiz" element={<RoleQuiz />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/onboarding" element={
         <ProtectedRoute>

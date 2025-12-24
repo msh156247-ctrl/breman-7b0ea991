@@ -66,11 +66,11 @@ export default function Landing() {
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
-              <a href="#features">
+              <Link to="/role-quiz">
                 <Button size="lg" variant="outline">
-                  더 알아보기
+                  나에게 맞는 역할 찾기
                 </Button>
-              </a>
+              </Link>
             </div>
           </div>
 
