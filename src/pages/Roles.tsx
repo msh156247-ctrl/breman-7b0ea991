@@ -83,11 +83,18 @@ export default function Roles() {
           <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">
             브래맨 <span className="gradient-text">역할 체계</span>
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6">
             브레멘 음악대의 동물들처럼, 각자의 특기를 살려 팀에 기여하세요.
             <br />
             역할별 스킬 요구사항과 커리어 패스를 확인해보세요.
           </p>
+          <Link to="/role-quiz">
+            <Button variant="outline" size="lg" className="gap-2 border-primary/30 hover:bg-primary/10">
+              <Sparkles className="w-4 h-4" />
+              어떤 역할이 나에게 맞을까? 퀴즈 풀기
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
         </div>
       </section>
 
