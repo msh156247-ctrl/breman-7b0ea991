@@ -19,6 +19,7 @@ import SiegeDetail from "./pages/SiegeDetail";
 import Rankings from "./pages/Rankings";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
+import AdminSettings from "./pages/AdminSettings";
 import NotFound from "./pages/NotFound";
 import { AppShell } from "./components/layout/AppShell";
 
@@ -76,6 +77,7 @@ function AppRoutes() {
         <Route path="rankings" element={<Rankings />} />
         <Route path="profile" element={<Profile />} />
         <Route path="notifications" element={<Notifications />} />
+        <Route path="admin" element={<AdminSettings />} />
       </Route>
       
       {/* 404 */}

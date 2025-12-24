@@ -8,6 +8,7 @@ import {
   Trophy,
   Search,
   Menu,
+  Shield,
   X,
   LogOut,
   User,
@@ -174,6 +175,14 @@ export function AppShell() {
                       프로필
                     </Link>
                   </DropdownMenuItem>
+                  {profile?.user_type === 'admin' && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/admin" className="cursor-pointer">
+                        <Shield className="w-4 h-4 mr-2" />
+                        관리자 설정
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem 
                     onClick={signOut}
