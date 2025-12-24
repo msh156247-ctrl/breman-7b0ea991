@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Users, Search, Shield, ShieldCheck, ShieldX, Loader2, UserCheck, UserX } from 'lucide-react';
+import { logActivity } from '@/lib/activityLogger';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Table,
@@ -102,6 +103,9 @@ export function UserManagement() {
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     setUpdating(userId);
+    const oldRole = getUserRole(userId);
+    const user = users.find(u => u.id === userId);
+    
     try {
       // Remove existing roles
       await supabase
@@ -127,6 +131,18 @@ export function UserManagement() {
         setUserRoles({ ...userRoles, [userId]: [newRole] });
       }
 
+      // Log the activity
+      await logActivity({
+        action: 'role_change',
+        targetType: 'role',
+        targetId: userId,
+        details: {
+          userName: user?.name,
+          oldRole,
+          newRole,
+        },
+      });
+
       toast.success('사용자 역할이 변경되었습니다');
     } catch (error) {
       console.error('Error updating role:', error);
@@ -138,6 +154,8 @@ export function UserManagement() {
 
   const handleVerifyUser = async (userId: string, verified: boolean) => {
     setUpdating(userId);
+    const user = users.find(u => u.id === userId);
+    
     try {
       const { error } = await supabase
         .from('profiles')
@@ -147,6 +165,18 @@ export function UserManagement() {
       if (error) throw error;
 
       setUsers(users.map(u => u.id === userId ? { ...u, verified } : u));
+
+      // Log the activity
+      await logActivity({
+        action: verified ? 'verify_user' : 'unverify_user',
+        targetType: 'user',
+        targetId: userId,
+        details: {
+          userName: user?.name,
+          verified,
+        },
+      });
+
       toast.success(verified ? '사용자가 인증되었습니다' : '사용자 인증이 해제되었습니다');
     } catch (error) {
       console.error('Error updating verification:', error);

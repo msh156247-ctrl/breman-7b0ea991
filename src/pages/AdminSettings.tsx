@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EmailBrandingSettings } from '@/components/admin/EmailBrandingSettings';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { AnnouncementsManagement } from '@/components/admin/AnnouncementsManagement';
-import { Shield, Palette, Users, Megaphone, Settings } from 'lucide-react';
+import { ActivityLogsManagement } from '@/components/admin/ActivityLogsManagement';
+import { Shield, Palette, Users, Megaphone, Settings, Activity } from 'lucide-react';
 
 export default function AdminSettings() {
   const { user, loading: authLoading } = useAuth();
@@ -83,7 +84,7 @@ export default function AdminSettings() {
 
       {/* Tabs */}
       <Tabs defaultValue="users" className="space-y-6">
-        <TabsList className="grid w-full max-w-2xl grid-cols-3">
+        <TabsList className="grid w-full max-w-3xl grid-cols-4">
           <TabsTrigger value="users" className="gap-2">
             <Users className="w-4 h-4" />
             사용자 관리
@@ -95,6 +96,10 @@ export default function AdminSettings() {
           <TabsTrigger value="branding" className="gap-2">
             <Palette className="w-4 h-4" />
             이메일 브랜딩
+          </TabsTrigger>
+          <TabsTrigger value="logs" className="gap-2">
+            <Activity className="w-4 h-4" />
+            활동 로그
           </TabsTrigger>
         </TabsList>
 
@@ -108,6 +113,10 @@ export default function AdminSettings() {
 
         <TabsContent value="branding">
           <EmailBrandingSettings />
+        </TabsContent>
+
+        <TabsContent value="logs">
+          <ActivityLogsManagement />
         </TabsContent>
       </Tabs>
     </div>
