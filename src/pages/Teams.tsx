@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { BackToTop } from '@/components/ui/BackToTop';
 
 // Sample data
 const teamsData = [
@@ -247,6 +248,9 @@ export default function Teams() {
           </Link>
         </div>
       )}
+
+      {/* Back to Top */}
+      <BackToTop />
     </div>
   );
 }
