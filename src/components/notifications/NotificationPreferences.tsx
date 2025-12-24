@@ -90,6 +90,7 @@ export function NotificationPreferences() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
+  const [sendingTestDigest, setSendingTestDigest] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -336,6 +337,31 @@ export function NotificationPreferences() {
     }
   };
 
+  const handleSendTestDigest = async () => {
+    if (!user) return;
+    
+    setSendingTestDigest(true);
+    try {
+      const digestType = preferences?.digest_mode === 'weekly' ? 'weekly' : 'daily';
+      
+      const { data, error } = await supabase.functions.invoke('send-digest-email', {
+        body: {
+          digest_type: digestType,
+          test_user_id: user.id,
+        },
+      });
+
+      if (error) throw error;
+      
+      toast.success(`테스트 요약 이메일이 발송되었습니다. 이메일을 확인해주세요.`);
+    } catch (error: any) {
+      console.error('Error sending test digest:', error);
+      toast.error(`테스트 요약 이메일 발송 실패: ${error.message || '알 수 없는 오류'}`);
+    } finally {
+      setSendingTestDigest(false);
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -448,6 +474,25 @@ export function NotificationPreferences() {
                   ))}
                 </SelectContent>
               </Select>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleSendTestDigest} 
+                disabled={sendingTestDigest}
+                className="ml-auto"
+              >
+                {sendingTestDigest ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    발송 중...
+                  </>
+                ) : (
+                  <>
+                    <Send className="h-4 w-4 mr-2" />
+                    테스트 요약 발송
+                  </>
+                )}
+              </Button>
             </div>
           )}
 
