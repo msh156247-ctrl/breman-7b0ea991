@@ -645,6 +645,45 @@ export type Database = {
           },
         ]
       }
+      report_schedule_settings: {
+        Row: {
+          created_at: string
+          delivery_hour: number
+          delivery_minute: number
+          frequency: string
+          id: string
+          is_enabled: boolean
+          monthly_day: number | null
+          timezone: string
+          updated_at: string
+          weekly_day: number | null
+        }
+        Insert: {
+          created_at?: string
+          delivery_hour?: number
+          delivery_minute?: number
+          frequency?: string
+          id?: string
+          is_enabled?: boolean
+          monthly_day?: number | null
+          timezone?: string
+          updated_at?: string
+          weekly_day?: number | null
+        }
+        Update: {
+          created_at?: string
+          delivery_hour?: number
+          delivery_minute?: number
+          frequency?: string
+          id?: string
+          is_enabled?: boolean
+          monthly_day?: number | null
+          timezone?: string
+          updated_at?: string
+          weekly_day?: number | null
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
           comment: string | null

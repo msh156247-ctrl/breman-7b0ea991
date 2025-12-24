@@ -8,7 +8,8 @@ import { UserManagement } from '@/components/admin/UserManagement';
 import { AnnouncementsManagement } from '@/components/admin/AnnouncementsManagement';
 import { ActivityLogsManagement } from '@/components/admin/ActivityLogsManagement';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
-import { Shield, Palette, Users, Megaphone, Settings, Activity, LayoutDashboard } from 'lucide-react';
+import { ReportScheduleSettings } from '@/components/admin/ReportScheduleSettings';
+import { Shield, Palette, Users, Megaphone, Settings, Activity, LayoutDashboard, CalendarClock } from 'lucide-react';
 
 export default function AdminSettings() {
   const { user, loading: authLoading } = useAuth();
@@ -85,7 +86,7 @@ export default function AdminSettings() {
 
       {/* Tabs */}
       <Tabs defaultValue="dashboard" className="space-y-6">
-        <TabsList className="grid w-full max-w-4xl grid-cols-5">
+        <TabsList className="grid w-full max-w-5xl grid-cols-6">
           <TabsTrigger value="dashboard" className="gap-2">
             <LayoutDashboard className="w-4 h-4" />
             대시보드
@@ -101,6 +102,10 @@ export default function AdminSettings() {
           <TabsTrigger value="branding" className="gap-2">
             <Palette className="w-4 h-4" />
             브랜딩
+          </TabsTrigger>
+          <TabsTrigger value="reports" className="gap-2">
+            <CalendarClock className="w-4 h-4" />
+            보고서
           </TabsTrigger>
           <TabsTrigger value="logs" className="gap-2">
             <Activity className="w-4 h-4" />
@@ -122,6 +127,10 @@ export default function AdminSettings() {
 
         <TabsContent value="branding">
           <EmailBrandingSettings />
+        </TabsContent>
+
+        <TabsContent value="reports">
+          <ReportScheduleSettings />
         </TabsContent>
 
         <TabsContent value="logs">
