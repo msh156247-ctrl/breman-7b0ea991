@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { ROLES, METRIC_DESCRIPTIONS } from '@/lib/constants';
 
 export default function Landing() {
@@ -26,6 +27,7 @@ export default function Landing() {
           </nav>
           
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <Link to="/auth">
               <Button variant="ghost" size="sm">로그인</Button>
             </Link>
