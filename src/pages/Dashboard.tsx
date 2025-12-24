@@ -11,6 +11,7 @@ import { XPBar } from '@/components/ui/XPBar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { AnnouncementsBanner, AnnouncementsWidget } from '@/components/dashboard/AnnouncementsWidget';
+import { BackToTop } from '@/components/ui/BackToTop';
 
 // Sample data for demo
 const myTeams = [
@@ -281,6 +282,9 @@ export default function Dashboard() {
           <AnnouncementsWidget />
         </div>
       </div>
+
+      {/* Back to Top */}
+      <BackToTop />
     </div>
   );
 }

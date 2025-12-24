@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BackToTop } from '@/components/ui/BackToTop';
 
 // Sample data
 const projectsData = [
@@ -260,6 +261,9 @@ export default function Projects() {
           <p className="text-muted-foreground mb-4">다른 조건으로 검색해보세요</p>
         </div>
       )}
+
+      {/* Back to Top */}
+      <BackToTop />
     </div>
   );
 }
