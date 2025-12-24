@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BackToTop } from '@/components/ui/BackToTop';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
 // Sample data
 const projectsData = [
@@ -128,129 +129,137 @@ export default function Projects() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-display font-bold">프로젝트</h1>
-          <p className="text-muted-foreground mt-1">진행할 프로젝트를 찾거나 의뢰를 등록하세요</p>
+      <ScrollReveal animation="fade-up">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-display font-bold">프로젝트</h1>
+            <p className="text-muted-foreground mt-1">진행할 프로젝트를 찾거나 의뢰를 등록하세요</p>
+          </div>
+          <Link to="/projects/create">
+            <Button className="bg-gradient-primary">
+              <Plus className="w-4 h-4 mr-2" />
+              프로젝트 의뢰하기
+            </Button>
+          </Link>
         </div>
-        <Link to="/projects/create">
-          <Button className="bg-gradient-primary">
-            <Plus className="w-4 h-4 mr-2" />
-            프로젝트 의뢰하기
-          </Button>
-        </Link>
-      </div>
+      </ScrollReveal>
 
       {/* Tabs */}
-      <Tabs defaultValue="all" className="w-full">
-        <TabsList className="w-full justify-start overflow-x-auto">
-          <TabsTrigger value="all" onClick={() => setStatusFilter('all')}>전체</TabsTrigger>
-          <TabsTrigger value="open" onClick={() => setStatusFilter('open')}>모집중</TabsTrigger>
-          <TabsTrigger value="matched" onClick={() => setStatusFilter('matched')}>매칭완료</TabsTrigger>
-          <TabsTrigger value="in_progress" onClick={() => setStatusFilter('in_progress')}>진행중</TabsTrigger>
-          <TabsTrigger value="completed" onClick={() => setStatusFilter('completed')}>완료</TabsTrigger>
-        </TabsList>
-      </Tabs>
+      <ScrollReveal animation="fade-up" delay={100}>
+        <Tabs defaultValue="all" className="w-full">
+          <TabsList className="w-full justify-start overflow-x-auto">
+            <TabsTrigger value="all" onClick={() => setStatusFilter('all')}>전체</TabsTrigger>
+            <TabsTrigger value="open" onClick={() => setStatusFilter('open')}>모집중</TabsTrigger>
+            <TabsTrigger value="matched" onClick={() => setStatusFilter('matched')}>매칭완료</TabsTrigger>
+            <TabsTrigger value="in_progress" onClick={() => setStatusFilter('in_progress')}>진행중</TabsTrigger>
+            <TabsTrigger value="completed" onClick={() => setStatusFilter('completed')}>완료</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </ScrollReveal>
 
       {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="프로젝트 또는 기술 스택 검색..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
-      </div>
+      <ScrollReveal animation="fade-up" delay={150}>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="프로젝트 또는 기술 스택 검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </ScrollReveal>
 
       {/* Projects list */}
       <div className="space-y-4">
-        {filteredProjects.map((project) => (
-          <Link key={project.id} to={`/projects/${project.id}`}>
-            <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer">
-              <CardContent className="p-5">
-                <div className="flex flex-col md:flex-row md:items-start gap-4">
-                  {/* Main content */}
-                  <div className="flex-1 min-w-0">
-                    {/* Title & Status */}
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <h3 className="font-display font-bold text-lg">{project.title}</h3>
-                      <StatusBadge 
-                        status={PROJECT_STATUS[project.status].name} 
-                        variant={getStatusVariant(project.status)}
-                        size="sm"
-                      />
+        {filteredProjects.map((project, index) => (
+          <ScrollReveal key={project.id} animation="fade-up" delay={200 + index * 50}>
+            <Link to={`/projects/${project.id}`}>
+              <Card className="hover:shadow-md transition-all hover:border-primary/30 cursor-pointer">
+                <CardContent className="p-5">
+                  <div className="flex flex-col md:flex-row md:items-start gap-4">
+                    {/* Main content */}
+                    <div className="flex-1 min-w-0">
+                      {/* Title & Status */}
+                      <div className="flex flex-wrap items-center gap-2 mb-2">
+                        <h3 className="font-display font-bold text-lg">{project.title}</h3>
+                        <StatusBadge 
+                          status={PROJECT_STATUS[project.status].name} 
+                          variant={getStatusVariant(project.status)}
+                          size="sm"
+                        />
+                      </div>
+
+                      {/* Description */}
+                      <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
+                        {project.description}
+                      </p>
+
+                      {/* Skills */}
+                      <div className="flex flex-wrap gap-1.5 mb-3">
+                        {project.skills.map((skill) => (
+                          <span 
+                            key={skill}
+                            className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* Required roles */}
+                      <div className="flex flex-wrap gap-1.5">
+                        {project.roles.map((role, i) => (
+                          <RoleBadge key={i} role={role} size="sm" />
+                        ))}
+                      </div>
                     </div>
 
-                    {/* Description */}
-                    <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
-                      {project.description}
-                    </p>
-
-                    {/* Skills */}
-                    <div className="flex flex-wrap gap-1.5 mb-3">
-                      {project.skills.map((skill) => (
-                        <span 
-                          key={skill}
-                          className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground"
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-
-                    {/* Required roles */}
-                    <div className="flex flex-wrap gap-1.5">
-                      {project.roles.map((role, i) => (
-                        <RoleBadge key={i} role={role} size="sm" />
-                      ))}
+                    {/* Right side - Budget, Timeline, Client */}
+                    <div className="flex flex-row md:flex-col gap-4 md:gap-3 md:text-right md:min-w-[160px]">
+                      <div>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground md:justify-end">
+                          <DollarSign className="w-4 h-4" />
+                          <span>예산</span>
+                        </div>
+                        <p className="font-medium">{formatBudget(project.budgetMin, project.budgetMax)}</p>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground md:justify-end">
+                          <Clock className="w-4 h-4" />
+                          <span>기간</span>
+                        </div>
+                        <p className="font-medium">{project.timeline}주</p>
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground md:justify-end">
+                          <Users className="w-4 h-4" />
+                          <span>제안</span>
+                        </div>
+                        <p className="font-medium">{project.proposals}건</p>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Right side - Budget, Timeline, Client */}
-                  <div className="flex flex-row md:flex-col gap-4 md:gap-3 md:text-right md:min-w-[160px]">
-                    <div>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground md:justify-end">
-                        <DollarSign className="w-4 h-4" />
-                        <span>예산</span>
-                      </div>
-                      <p className="font-medium">{formatBudget(project.budgetMin, project.budgetMax)}</p>
+                  {/* Client */}
+                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarImage src={project.client.avatar || undefined} />
+                        <AvatarFallback className="text-xs bg-muted">
+                          {project.client.name[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm text-muted-foreground">{project.client.name}</span>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground md:justify-end">
-                        <Clock className="w-4 h-4" />
-                        <span>기간</span>
-                      </div>
-                      <p className="font-medium">{project.timeline}주</p>
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground md:justify-end">
-                        <Users className="w-4 h-4" />
-                        <span>제안</span>
-                      </div>
-                      <p className="font-medium">{project.proposals}건</p>
-                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {new Date(project.createdAt).toLocaleDateString('ko-KR')}
+                    </span>
                   </div>
-                </div>
-
-                {/* Client */}
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={project.client.avatar || undefined} />
-                      <AvatarFallback className="text-xs bg-muted">
-                        {project.client.name[0]}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm text-muted-foreground">{project.client.name}</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground">
-                    {new Date(project.createdAt).toLocaleDateString('ko-KR')}
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
+                </CardContent>
+              </Card>
+            </Link>
+          </ScrollReveal>
         ))}
       </div>
 
