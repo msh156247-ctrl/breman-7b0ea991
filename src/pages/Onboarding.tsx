@@ -7,9 +7,10 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ROLES, SKILL_TIERS, type UserRole } from '@/lib/constants';
 import { RoleBadge } from '@/components/ui/RoleBadge';
-import { Check, ChevronLeft, ChevronRight, Loader2, Sparkles, X } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Loader2, Sparkles, X, Info } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -199,9 +200,29 @@ export default function Onboarding() {
                       {/* Description */}
                       <p className="text-sm text-muted-foreground mb-3">{role.description}</p>
 
-                      {/* Responsibilities (first 2) */}
+                      {/* Responsibilities (first 2) with tooltip */}
                       <div className="mb-3">
-                        <div className="text-xs font-medium text-foreground/70 mb-1.5">담당 업무</div>
+                        <div className="flex items-center gap-1 mb-1.5">
+                          <span className="text-xs font-medium text-foreground/70">담당 업무</span>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button type="button" className="text-muted-foreground hover:text-foreground transition-colors">
+                                <Info className="w-3 h-3" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <p className="font-semibold mb-2">{role.name} 전체 담당 업무</p>
+                              <ul className="space-y-1">
+                                {role.responsibilities.map((resp, i) => (
+                                  <li key={i} className="flex items-start gap-2 text-sm">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-primary mt-1.5 flex-shrink-0" />
+                                    {resp}
+                                  </li>
+                                ))}
+                              </ul>
+                            </TooltipContent>
+                          </Tooltip>
+                        </div>
                         <ul className="space-y-1">
                           {role.responsibilities.slice(0, 2).map((resp, i) => (
                             <li key={i} className="text-xs text-muted-foreground flex items-center gap-1.5">
