@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Megaphone, Plus, Trash2, Edit2, Loader2, Save, X, ArrowUp, ArrowDown } from 'lucide-react';
+import { logActivity } from '@/lib/activityLogger';
 import {
   Dialog,
   DialogContent,
@@ -110,18 +111,38 @@ export function AnnouncementsManagement() {
           .eq('id', editingAnnouncement.id);
 
         if (error) throw error;
+
+        // Log the activity
+        await logActivity({
+          action: 'update_announcement',
+          targetType: 'announcement',
+          targetId: editingAnnouncement.id,
+          details: { title: formData.title },
+        });
+
         toast.success('공지사항이 수정되었습니다');
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('announcements')
           .insert({
             title: formData.title,
             content: formData.content || null,
             active: formData.active,
             priority: formData.priority,
-          });
+          })
+          .select()
+          .single();
 
         if (error) throw error;
+
+        // Log the activity
+        await logActivity({
+          action: 'create_announcement',
+          targetType: 'announcement',
+          targetId: data?.id,
+          details: { title: formData.title },
+        });
+
         toast.success('공지사항이 추가되었습니다');
       }
 
@@ -136,6 +157,8 @@ export function AnnouncementsManagement() {
   };
 
   const handleDelete = async (id: string) => {
+    const announcement = announcements.find(a => a.id === id);
+    
     try {
       const { error } = await supabase
         .from('announcements')
@@ -143,6 +166,15 @@ export function AnnouncementsManagement() {
         .eq('id', id);
 
       if (error) throw error;
+
+      // Log the activity
+      await logActivity({
+        action: 'delete_announcement',
+        targetType: 'announcement',
+        targetId: id,
+        details: { title: announcement?.title },
+      });
+
       toast.success('공지사항이 삭제되었습니다');
       fetchAnnouncements();
     } catch (error) {
@@ -162,6 +194,18 @@ export function AnnouncementsManagement() {
       setAnnouncements(announcements.map(a => 
         a.id === announcement.id ? { ...a, active: !a.active } : a
       ));
+
+      // Log the activity
+      await logActivity({
+        action: 'toggle_announcement',
+        targetType: 'announcement',
+        targetId: announcement.id,
+        details: { 
+          title: announcement.title,
+          active: !announcement.active,
+        },
+      });
+
       toast.success(announcement.active ? '공지사항이 비활성화되었습니다' : '공지사항이 활성화되었습니다');
     } catch (error) {
       console.error('Error toggling announcement:', error);
