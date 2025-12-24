@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 
 import Landing from "./pages/Landing";
+import Roles from "./pages/Roles";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
@@ -53,6 +54,7 @@ function AppRoutes() {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<Landing />} />
+      <Route path="/roles" element={<Roles />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/onboarding" element={
         <ProtectedRoute>
