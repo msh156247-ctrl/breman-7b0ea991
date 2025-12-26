@@ -11,6 +11,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { RoleBadge } from '@/components/ui/RoleBadge';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { BackToTop } from '@/components/ui/BackToTop';
 import { SIEGE_STATUS } from '@/lib/constants';
 import { 
   ArrowLeft, Calendar, Clock, Users, Trophy, Award, 
@@ -150,23 +152,26 @@ export default function SiegeDetail() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link to="/siege">
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-3 mb-1">
-            <h1 className="text-2xl font-bold">{siege.title}</h1>
-            <StatusBadge status={statusInfo.name} variant={statusInfo.color as any} />
+      <ScrollReveal animation="fade-up">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" asChild>
+            <Link to="/siege">
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+          </Button>
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="text-2xl font-bold">{siege.title}</h1>
+              <StatusBadge status={statusInfo.name} variant={statusInfo.color as any} />
+            </div>
+            <p className="text-muted-foreground">{siege.description}</p>
           </div>
-          <p className="text-muted-foreground">{siege.description}</p>
         </div>
-      </div>
+      </ScrollReveal>
 
       {/* Quick Info Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <ScrollReveal animation="fade-up" delay={100}>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="border-border/50">
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2 rounded-lg bg-primary/10">
@@ -211,10 +216,12 @@ export default function SiegeDetail() {
             </div>
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </ScrollReveal>
 
       {/* Registration Progress */}
       {siege.status === 'registering' && (
+        <ScrollReveal animation="fade-up" delay={150}>
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-2">
@@ -231,12 +238,14 @@ export default function SiegeDetail() {
               <span className="text-muted-foreground">{siege.currentTeams}팀 등록 완료</span>
               <span className="text-muted-foreground">{siege.maxTeams - siege.currentTeams}자리 남음</span>
             </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </ScrollReveal>
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="overview" className="space-y-4">
+      <ScrollReveal animation="fade-up" delay={200}>
+        <Tabs defaultValue="overview" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="overview">개요</TabsTrigger>
           <TabsTrigger value="schedule">일정</TabsTrigger>
@@ -576,7 +585,11 @@ export default function SiegeDetail() {
             </CardContent>
           </Card>
         </TabsContent>
-      </Tabs>
+        </Tabs>
+      </ScrollReveal>
+
+      {/* Back to Top */}
+      <BackToTop />
     </div>
   );
 }
