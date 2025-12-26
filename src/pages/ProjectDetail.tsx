@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { SkillBadge } from '@/components/ui/SkillBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { BackToTop } from '@/components/ui/BackToTop';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
@@ -217,13 +219,16 @@ export default function ProjectDetail() {
   return (
     <div className="space-y-6">
       {/* Back button */}
-      <Link to="/projects" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
-        <ArrowLeft className="w-4 h-4" />
-        <span>프로젝트 목록</span>
-      </Link>
+      <ScrollReveal animation="fade-up">
+        <Link to="/projects" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          <span>프로젝트 목록</span>
+        </Link>
+      </ScrollReveal>
 
       {/* Project header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-accent/5 to-background border">
+      <ScrollReveal animation="fade-up" delay={100}>
+        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary/10 via-accent/5 to-background border">
         <div className="absolute inset-0 bg-grid-pattern opacity-5" />
         <div className="relative p-6 md:p-8">
           <div className="flex flex-col lg:flex-row gap-6">
@@ -418,10 +423,12 @@ export default function ProjectDetail() {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+      </ScrollReveal>
 
       {/* Content Tabs */}
-      <Tabs defaultValue="description" className="space-y-6">
+      <ScrollReveal animation="fade-up" delay={150}>
+        <Tabs defaultValue="description" className="space-y-6">
         <TabsList className="bg-muted/50">
           <TabsTrigger value="description">상세 설명</TabsTrigger>
           <TabsTrigger value="milestones">마일스톤</TabsTrigger>
@@ -575,7 +582,11 @@ export default function ProjectDetail() {
             </Card>
           )}
         </TabsContent>
-      </Tabs>
+        </Tabs>
+      </ScrollReveal>
+
+      {/* Back to Top */}
+      <BackToTop />
     </div>
   );
 }
