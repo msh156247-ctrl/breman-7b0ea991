@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Send, Pin, Trash2, MoreVertical, PinOff } from 'lucide-react';
+import { MessageSquare, Send, Pin, Trash2, MoreVertical, PinOff, Paperclip, X, FileIcon, ImageIcon, FileText, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,6 +23,7 @@ interface TeamMessage {
   user_id: string;
   content: string;
   is_pinned: boolean;
+  attachments: string[] | null;
   created_at: string;
   updated_at: string;
   user?: {
@@ -44,7 +45,10 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
   const [newMessage, setNewMessage] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -107,19 +111,84 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
     scrollToBottom();
   }, [messages]);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const maxFileSize = 10 * 1024 * 1024; // 10MB
+    const validFiles = files.filter((file) => {
+      if (file.size > maxFileSize) {
+        toast({
+          title: '파일 크기 초과',
+          description: `${file.name}의 크기가 10MB를 초과합니다.`,
+          variant: 'destructive',
+        });
+        return false;
+      }
+      return true;
+    });
+    setSelectedFiles((prev) => [...prev, ...validFiles].slice(0, 5)); // Max 5 files
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeSelectedFile = (index: number) => {
+    setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const uploadFiles = async (): Promise<string[]> => {
+    if (selectedFiles.length === 0 || !user) return [];
+
+    const uploadedUrls: string[] = [];
+    setIsUploading(true);
+
+    try {
+      for (const file of selectedFiles) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${teamId}/${user.id}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('team-attachments')
+          .upload(fileName, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('team-attachments')
+          .getPublicUrl(fileName);
+
+        uploadedUrls.push(urlData.publicUrl);
+      }
+    } catch (error) {
+      console.error('Error uploading files:', error);
+      toast({
+        title: '업로드 실패',
+        description: '파일을 업로드할 수 없습니다.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploading(false);
+    }
+
+    return uploadedUrls;
+  };
+
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !user) return;
+    if ((!newMessage.trim() && selectedFiles.length === 0) || !user) return;
 
     setIsSending(true);
     try {
+      const attachmentUrls = await uploadFiles();
+
       const { error } = await supabase.from('team_messages').insert({
         team_id: teamId,
         user_id: user.id,
         content: newMessage.trim(),
+        attachments: attachmentUrls.length > 0 ? attachmentUrls : null,
       });
 
       if (error) throw error;
       setNewMessage('');
+      setSelectedFiles([]);
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -260,8 +329,47 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Selected files preview */}
+          {selectedFiles.length > 0 && (
+            <div className="flex flex-wrap gap-2 mb-3 p-2 bg-muted/50 rounded-lg">
+              {selectedFiles.map((file, index) => (
+                <div
+                  key={index}
+                  className="flex items-center gap-2 bg-background px-3 py-1.5 rounded-md text-sm border"
+                >
+                  <FileIcon className="w-4 h-4 text-muted-foreground" />
+                  <span className="max-w-[150px] truncate">{file.name}</span>
+                  <button
+                    onClick={() => removeSelectedFile(index)}
+                    className="text-muted-foreground hover:text-destructive transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
           {/* Message input */}
           <div className="flex gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileSelect}
+              className="hidden"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={selectedFiles.length >= 5 || isSending}
+              className="flex-shrink-0"
+              title="파일 첨부 (최대 5개)"
+            >
+              <Paperclip className="w-4 h-4" />
+            </Button>
             <Textarea
               placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈)"
               value={newMessage}
@@ -272,8 +380,8 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
             />
             <Button
               onClick={handleSendMessage}
-              disabled={!newMessage.trim() || isSending}
-              className="bg-gradient-primary px-4"
+              disabled={(!newMessage.trim() && selectedFiles.length === 0) || isSending || isUploading}
+              className="bg-gradient-primary px-4 flex-shrink-0"
             >
               <Send className="w-4 h-4" />
             </Button>
@@ -290,6 +398,33 @@ interface MessageCardProps {
   isLeader: boolean;
   onTogglePin: (id: string, isPinned: boolean) => void;
   onDelete: (id: string) => void;
+}
+
+function getFileIcon(url: string) {
+  const ext = url.split('.').pop()?.toLowerCase() || '';
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(ext)) {
+    return <ImageIcon className="w-4 h-4" />;
+  }
+  if (['pdf'].includes(ext)) {
+    return <FileText className="w-4 h-4" />;
+  }
+  return <FileIcon className="w-4 h-4" />;
+}
+
+function getFileName(url: string) {
+  const parts = url.split('/');
+  const fullName = parts[parts.length - 1];
+  // Remove the timestamp and random string prefix
+  const nameParts = fullName.split('_');
+  if (nameParts.length > 2) {
+    return nameParts.slice(2).join('_');
+  }
+  return fullName;
+}
+
+function isImageFile(url: string) {
+  const ext = url.split('.').pop()?.toLowerCase() || '';
+  return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
 }
 
 function MessageCard({ message, isOwn, isLeader, onTogglePin, onDelete }: MessageCardProps) {
@@ -319,7 +454,48 @@ function MessageCard({ message, isOwn, isLeader, onTogglePin, onDelete }: Messag
             <Pin className="w-3 h-3 text-primary" />
           )}
         </div>
-        <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+        {message.content && (
+          <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+        )}
+        {/* Attachments */}
+        {message.attachments && message.attachments.length > 0 && (
+          <div className="mt-2 space-y-2">
+            {/* Image previews */}
+            <div className="flex flex-wrap gap-2">
+              {message.attachments.filter(isImageFile).map((url, index) => (
+                <a
+                  key={index}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block"
+                >
+                  <img
+                    src={url}
+                    alt="첨부 이미지"
+                    className="max-w-[200px] max-h-[150px] rounded-lg border object-cover hover:opacity-90 transition-opacity"
+                  />
+                </a>
+              ))}
+            </div>
+            {/* File attachments */}
+            <div className="flex flex-wrap gap-2">
+              {message.attachments.filter((url) => !isImageFile(url)).map((url, index) => (
+                <a
+                  key={index}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg text-sm hover:bg-muted transition-colors border"
+                >
+                  {getFileIcon(url)}
+                  <span className="max-w-[150px] truncate">{getFileName(url)}</span>
+                  <Download className="w-3 h-3 text-muted-foreground" />
+                </a>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
       {(isOwn || isLeader) && (
         <DropdownMenu>
