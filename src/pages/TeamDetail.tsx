@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
   ArrowLeft, Users, Star, Trophy, Calendar, Settings, 
-  UserPlus, Copy, Check, Shield, Briefcase, Award, Crown
+  UserPlus, Copy, Check, Shield, Briefcase, Award, Crown, MessageSquare
 } from 'lucide-react';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
@@ -31,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { TeamChatBoard } from '@/components/team/TeamChatBoard';
 
 // Sample team data
 const teamData = {
@@ -129,6 +130,7 @@ export default function TeamDetail() {
 
   // Check if current user is the leader (mock)
   const isLeader = false; // Would be determined by auth context
+  const isMember = true; // Mock - assume member for demo
 
   return (
     <div className="space-y-6">
@@ -287,6 +289,7 @@ export default function TeamDetail() {
         <Tabs defaultValue="members" className="space-y-6">
         <TabsList className="bg-muted/50">
           <TabsTrigger value="members">멤버</TabsTrigger>
+          <TabsTrigger value="board">게시판</TabsTrigger>
           <TabsTrigger value="openings">모집 포지션</TabsTrigger>
           <TabsTrigger value="achievements">업적</TabsTrigger>
           <TabsTrigger value="projects">프로젝트</TabsTrigger>
@@ -330,6 +333,15 @@ export default function TeamDetail() {
               ))}
             </div>
           </div>
+        </TabsContent>
+
+        {/* Chat/Board Tab */}
+        <TabsContent value="board" className="space-y-4">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <MessageSquare className="w-5 h-5 text-primary" />
+            팀 게시판
+          </h2>
+          <TeamChatBoard teamId={team.id} isLeader={isLeader} isMember={isMember} />
         </TabsContent>
 
         {/* Open Positions Tab */}
