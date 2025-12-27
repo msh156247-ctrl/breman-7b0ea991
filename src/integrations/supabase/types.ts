@@ -985,6 +985,7 @@ export type Database = {
       }
       team_messages: {
         Row: {
+          attachments: string[] | null
           content: string
           created_at: string
           id: string
@@ -994,6 +995,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attachments?: string[] | null
           content: string
           created_at?: string
           id?: string
@@ -1003,6 +1005,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attachments?: string[] | null
           content?: string
           created_at?: string
           id?: string
