@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Send, Pin, Trash2, MoreVertical, PinOff, Paperclip, X, FileIcon, ImageIcon, FileText, Download } from 'lucide-react';
+import { MessageSquare, Send, Pin, Trash2, MoreVertical, PinOff, Paperclip, X, FileIcon, ImageIcon, FileText, Download, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { useToast } from '@/hooks/use-toast';
@@ -47,6 +48,7 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
   const [isSending, setIsSending] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -277,11 +279,41 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
     );
   }
 
-  const pinnedMessages = messages.filter((m) => m.is_pinned);
-  const regularMessages = messages.filter((m) => !m.is_pinned);
+  // Filter messages based on search query
+  const filteredMessages = messages.filter((m) => {
+    if (!searchQuery.trim()) return true;
+    const query = searchQuery.toLowerCase();
+    return (
+      m.content.toLowerCase().includes(query) ||
+      m.user?.name.toLowerCase().includes(query)
+    );
+  });
+
+  const pinnedMessages = filteredMessages.filter((m) => m.is_pinned);
+  const regularMessages = filteredMessages.filter((m) => !m.is_pinned);
 
   return (
     <div className="space-y-4">
+      {/* Search bar */}
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          type="text"
+          placeholder="메시지 검색..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 bg-background"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery('')}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
       {/* Pinned messages */}
       {pinnedMessages.length > 0 && (
         <ScrollReveal animation="fade-up">
