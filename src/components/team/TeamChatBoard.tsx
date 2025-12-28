@@ -1,11 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Send, Pin, Trash2, MoreVertical, PinOff, Paperclip, X, FileIcon, ImageIcon, FileText, Download, Search } from 'lucide-react';
+import { MessageSquare, Send, Pin, Trash2, MoreVertical, PinOff, Paperclip, X, FileIcon, ImageIcon, FileText, Download, Search, Check, CheckCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,8 +13,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 
 interface TeamMessage {
   id: string;
@@ -49,8 +48,11 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -66,7 +68,6 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
           user:profiles!team_messages_user_id_fkey(name, avatar_url)
         `)
         .eq('team_id', teamId)
-        .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: true });
 
       if (error) throw error;
@@ -127,7 +128,7 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
       }
       return true;
     });
-    setSelectedFiles((prev) => [...prev, ...validFiles].slice(0, 5)); // Max 5 files
+    setSelectedFiles((prev) => [...prev, ...validFiles].slice(0, 5));
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -247,7 +248,7 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
@@ -256,10 +257,10 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
 
   if (!isMember) {
     return (
-      <Card className="bg-muted/30">
+      <Card className="bg-muted/30 border-0 shadow-lg">
         <CardContent className="p-8 text-center">
           <MessageSquare className="w-12 h-12 mx-auto mb-3 text-muted-foreground" />
-          <p className="text-muted-foreground">팀원만 게시판을 이용할 수 있습니다</p>
+          <p className="text-muted-foreground">팀원만 채팅을 이용할 수 있습니다</p>
           <p className="text-sm text-muted-foreground mt-1">팀에 가입하여 멤버들과 소통하세요</p>
         </CardContent>
       </Card>
@@ -268,7 +269,7 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="border-0 shadow-lg">
         <CardContent className="p-8 text-center">
           <div className="animate-pulse space-y-4">
             <div className="h-4 bg-muted rounded w-3/4 mx-auto" />
@@ -290,143 +291,210 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
   });
 
   const pinnedMessages = filteredMessages.filter((m) => m.is_pinned);
-  const regularMessages = filteredMessages.filter((m) => !m.is_pinned);
+
+  // Group messages by date
+  const groupMessagesByDate = (msgs: TeamMessage[]) => {
+    const groups: { date: string; messages: TeamMessage[] }[] = [];
+    let currentDate = '';
+
+    msgs.forEach((msg) => {
+      const msgDate = new Date(msg.created_at);
+      let dateLabel: string;
+
+      if (isToday(msgDate)) {
+        dateLabel = '오늘';
+      } else if (isYesterday(msgDate)) {
+        dateLabel = '어제';
+      } else {
+        dateLabel = format(msgDate, 'yyyy년 M월 d일', { locale: ko });
+      }
+
+      if (dateLabel !== currentDate) {
+        currentDate = dateLabel;
+        groups.push({ date: dateLabel, messages: [msg] });
+      } else {
+        groups[groups.length - 1].messages.push(msg);
+      }
+    });
+
+    return groups;
+  };
+
+  const messageGroups = groupMessagesByDate(filteredMessages);
 
   return (
-    <div className="space-y-4">
-      {/* Search bar */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          type="text"
-          placeholder="메시지 검색..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 bg-background"
-        />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
+    <div className="flex flex-col h-[600px] bg-gradient-to-b from-background to-muted/20 rounded-2xl overflow-hidden border shadow-lg">
+      {/* Chat Header */}
+      <div className="flex items-center justify-between px-4 py-3 bg-background/80 backdrop-blur-sm border-b">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+            <MessageSquare className="w-5 h-5 text-primary-foreground" />
+          </div>
+          <div>
+            <h3 className="font-semibold text-sm">팀 채팅</h3>
+            <p className="text-xs text-muted-foreground">{messages.length}개의 메시지</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          {isSearchOpen ? (
+            <div className="flex items-center gap-2 animate-in slide-in-from-right-2">
+              <Input
+                type="text"
+                placeholder="검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="h-8 w-40 text-sm"
+                autoFocus
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => {
+                  setIsSearchOpen(false);
+                  setSearchQuery('');
+                }}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setIsSearchOpen(true)}
+            >
+              <Search className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
-      {/* Pinned messages */}
+      {/* Pinned Messages Banner */}
       {pinnedMessages.length > 0 && (
-        <ScrollReveal animation="fade-up">
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium flex items-center gap-2 text-muted-foreground">
-              <Pin className="w-4 h-4" />
-              고정된 메시지
-            </h3>
-            {pinnedMessages.map((message) => (
-              <MessageCard
-                key={message.id}
-                message={message}
-                isOwn={message.user_id === user?.id}
-                isLeader={isLeader}
-                onTogglePin={handleTogglePin}
-                onDelete={handleDeleteMessage}
-              />
-            ))}
-          </div>
-        </ScrollReveal>
+        <div className="px-4 py-2 bg-primary/5 border-b flex items-center gap-2 text-sm">
+          <Pin className="w-4 h-4 text-primary" />
+          <span className="font-medium text-primary">{pinnedMessages.length}개의 고정 메시지</span>
+        </div>
       )}
 
-      {/* Message list */}
-      <Card className="border-dashed">
-        <CardContent className="p-4">
-          <div className="max-h-[400px] overflow-y-auto space-y-3 mb-4">
-            {regularMessages.length === 0 && pinnedMessages.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <MessageSquare className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                <p>아직 메시지가 없습니다</p>
-                <p className="text-sm">첫 번째 메시지를 작성해보세요!</p>
-              </div>
-            ) : (
-              regularMessages.map((message) => (
-                <MessageCard
-                  key={message.id}
-                  message={message}
-                  isOwn={message.user_id === user?.id}
-                  isLeader={isLeader}
-                  onTogglePin={handleTogglePin}
-                  onDelete={handleDeleteMessage}
-                />
-              ))
-            )}
-            <div ref={messagesEndRef} />
+      {/* Messages Area */}
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto px-4 py-3 space-y-4"
+        style={{ scrollBehavior: 'smooth' }}
+      >
+        {messageGroups.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <MessageSquare className="w-12 h-12 mb-3 opacity-30" />
+            <p className="text-sm">아직 메시지가 없습니다</p>
+            <p className="text-xs">첫 번째 메시지를 보내보세요!</p>
           </div>
+        ) : (
+          messageGroups.map((group, groupIdx) => (
+            <div key={groupIdx} className="space-y-3">
+              {/* Date Divider */}
+              <div className="flex items-center justify-center">
+                <span className="px-3 py-1 text-xs text-muted-foreground bg-muted/50 rounded-full">
+                  {group.date}
+                </span>
+              </div>
+              {/* Messages */}
+              {group.messages.map((message, msgIdx) => {
+                const isOwn = message.user_id === user?.id;
+                const showAvatar = msgIdx === 0 ||
+                  group.messages[msgIdx - 1]?.user_id !== message.user_id;
 
-          {/* Selected files preview */}
-          {selectedFiles.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3 p-2 bg-muted/50 rounded-lg">
-              {selectedFiles.map((file, index) => (
-                <div
-                  key={index}
-                  className="flex items-center gap-2 bg-background px-3 py-1.5 rounded-md text-sm border"
-                >
-                  <FileIcon className="w-4 h-4 text-muted-foreground" />
-                  <span className="max-w-[150px] truncate">{file.name}</span>
-                  <button
-                    onClick={() => removeSelectedFile(index)}
-                    className="text-muted-foreground hover:text-destructive transition-colors"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
+                return (
+                  <MessageBubble
+                    key={message.id}
+                    message={message}
+                    isOwn={isOwn}
+                    showAvatar={showAvatar}
+                    isLeader={isLeader}
+                    onTogglePin={handleTogglePin}
+                    onDelete={handleDeleteMessage}
+                  />
+                );
+              })}
             </div>
-          )}
+          ))
+        )}
+        <div ref={messagesEndRef} />
+      </div>
 
-          {/* Message input */}
-          <div className="flex gap-2">
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileSelect}
-              className="hidden"
-              multiple
-              accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={selectedFiles.length >= 5 || isSending}
-              className="flex-shrink-0"
-              title="파일 첨부 (최대 5개)"
-            >
-              <Paperclip className="w-4 h-4" />
-            </Button>
-            <Textarea
-              placeholder="메시지를 입력하세요... (Shift+Enter로 줄바꿈)"
+      {/* Selected Files Preview */}
+      {selectedFiles.length > 0 && (
+        <div className="px-4 py-2 border-t bg-background/50">
+          <div className="flex flex-wrap gap-2">
+            {selectedFiles.map((file, index) => (
+              <div
+                key={index}
+                className="flex items-center gap-2 bg-muted px-3 py-1.5 rounded-full text-xs"
+              >
+                <FileIcon className="w-3 h-3" />
+                <span className="max-w-[100px] truncate">{file.name}</span>
+                <button
+                  onClick={() => removeSelectedFile(index)}
+                  className="text-muted-foreground hover:text-destructive transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Input Area */}
+      <div className="px-4 py-3 bg-background/80 backdrop-blur-sm border-t">
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileSelect}
+            className="hidden"
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={selectedFiles.length >= 5 || isSending}
+            className="h-10 w-10 rounded-full flex-shrink-0"
+          >
+            <Paperclip className="w-5 h-5" />
+          </Button>
+          <div className="flex-1 relative">
+            <Input
+              ref={inputRef}
+              placeholder="메시지 입력..."
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={handleKeyDown}
-              rows={2}
-              className="resize-none"
+              className="rounded-full pr-12 bg-muted/50 border-0 focus-visible:ring-1"
             />
-            <Button
-              onClick={handleSendMessage}
-              disabled={(!newMessage.trim() && selectedFiles.length === 0) || isSending || isUploading}
-              className="bg-gradient-primary px-4 flex-shrink-0"
-            >
-              <Send className="w-4 h-4" />
-            </Button>
           </div>
-        </CardContent>
-      </Card>
+          <Button
+            onClick={handleSendMessage}
+            disabled={(!newMessage.trim() && selectedFiles.length === 0) || isSending || isUploading}
+            size="icon"
+            className="h-10 w-10 rounded-full bg-primary hover:bg-primary/90 flex-shrink-0"
+          >
+            <Send className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
 
-interface MessageCardProps {
+interface MessageBubbleProps {
   message: TeamMessage;
   isOwn: boolean;
+  showAvatar: boolean;
   isLeader: boolean;
   onTogglePin: (id: string, isPinned: boolean) => void;
   onDelete: (id: string) => void;
@@ -446,7 +514,6 @@ function getFileIcon(url: string) {
 function getFileName(url: string) {
   const parts = url.split('/');
   const fullName = parts[parts.length - 1];
-  // Remove the timestamp and random string prefix
   const nameParts = fullName.split('_');
   if (nameParts.length > 2) {
     return nameParts.slice(2).join('_');
@@ -459,109 +526,145 @@ function isImageFile(url: string) {
   return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
 }
 
-function MessageCard({ message, isOwn, isLeader, onTogglePin, onDelete }: MessageCardProps) {
+function MessageBubble({ message, isOwn, showAvatar, isLeader, onTogglePin, onDelete }: MessageBubbleProps) {
   const userName = message.user?.name || '알 수 없음';
   const userInitial = userName.charAt(0).toUpperCase();
+  const timeStr = format(new Date(message.created_at), 'HH:mm');
 
   return (
-    <div
-      className={`flex gap-3 p-3 rounded-lg transition-colors ${
-        message.is_pinned
-          ? 'bg-primary/5 border border-primary/20'
-          : 'hover:bg-muted/50'
-      }`}
-    >
-      <Avatar className="w-8 h-8 flex-shrink-0">
-        <AvatarFallback className="bg-gradient-to-br from-primary/20 to-accent/20 text-sm">
-          {userInitial}
-        </AvatarFallback>
-      </Avatar>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 mb-1">
-          <span className="font-medium text-sm">{userName}</span>
-          <span className="text-xs text-muted-foreground">
-            {format(new Date(message.created_at), 'M/d HH:mm', { locale: ko })}
-          </span>
-          {message.is_pinned && (
-            <Pin className="w-3 h-3 text-primary" />
-          )}
-        </div>
-        {message.content && (
-          <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
+    <div className={cn(
+      'flex gap-2 group',
+      isOwn ? 'flex-row-reverse' : 'flex-row'
+    )}>
+      {/* Avatar */}
+      <div className="w-8 flex-shrink-0">
+        {!isOwn && showAvatar && (
+          <Avatar className="w-8 h-8">
+            {message.user?.avatar_url ? (
+              <AvatarImage src={message.user.avatar_url} alt={userName} />
+            ) : null}
+            <AvatarFallback className="bg-gradient-to-br from-primary/30 to-accent/30 text-xs font-medium">
+              {userInitial}
+            </AvatarFallback>
+          </Avatar>
         )}
-        {/* Attachments */}
-        {message.attachments && message.attachments.length > 0 && (
-          <div className="mt-2 space-y-2">
-            {/* Image previews */}
-            <div className="flex flex-wrap gap-2">
-              {message.attachments.filter(isImageFile).map((url, index) => (
-                <a
-                  key={index}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block"
-                >
-                  <img
-                    src={url}
-                    alt="첨부 이미지"
-                    className="max-w-[200px] max-h-[150px] rounded-lg border object-cover hover:opacity-90 transition-opacity"
-                  />
-                </a>
-              ))}
-            </div>
-            {/* File attachments */}
-            <div className="flex flex-wrap gap-2">
-              {message.attachments.filter((url) => !isImageFile(url)).map((url, index) => (
-                <a
-                  key={index}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 px-3 py-2 bg-muted/50 rounded-lg text-sm hover:bg-muted transition-colors border"
-                >
-                  {getFileIcon(url)}
-                  <span className="max-w-[150px] truncate">{getFileName(url)}</span>
-                  <Download className="w-3 h-3 text-muted-foreground" />
-                </a>
-              ))}
-            </div>
+      </div>
+
+      {/* Message Content */}
+      <div className={cn(
+        'flex flex-col max-w-[70%]',
+        isOwn ? 'items-end' : 'items-start'
+      )}>
+        {/* Name (only for others) */}
+        {!isOwn && showAvatar && (
+          <span className="text-xs text-muted-foreground mb-1 ml-1">{userName}</span>
+        )}
+
+        <div className={cn(
+          'flex items-end gap-1.5',
+          isOwn ? 'flex-row-reverse' : 'flex-row'
+        )}>
+          {/* Bubble */}
+          <div className={cn(
+            'relative px-3 py-2 rounded-2xl text-sm',
+            isOwn
+              ? 'bg-primary text-primary-foreground rounded-tr-sm'
+              : 'bg-muted rounded-tl-sm',
+            message.is_pinned && 'ring-2 ring-primary/50'
+          )}>
+            {message.is_pinned && (
+              <Pin className="absolute -top-1 -right-1 w-3 h-3 text-primary" />
+            )}
+            {message.content && (
+              <p className="whitespace-pre-wrap break-words">{message.content}</p>
+            )}
+            {/* Attachments */}
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="mt-2 space-y-2">
+                {message.attachments.filter(isImageFile).map((url, index) => (
+                  <a
+                    key={index}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <img
+                      src={url}
+                      alt="첨부 이미지"
+                      className="max-w-[200px] max-h-[150px] rounded-lg object-cover hover:opacity-90 transition-opacity"
+                    />
+                  </a>
+                ))}
+                {message.attachments.filter((url) => !isImageFile(url)).map((url, index) => (
+                  <a
+                    key={index}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={cn(
+                      'flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:opacity-80 transition-opacity',
+                      isOwn ? 'bg-primary-foreground/20' : 'bg-background/50'
+                    )}
+                  >
+                    {getFileIcon(url)}
+                    <span className="max-w-[120px] truncate">{getFileName(url)}</span>
+                    <Download className="w-3 h-3" />
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Time & Actions */}
+          <div className={cn(
+            'flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity',
+            isOwn ? 'flex-row-reverse' : 'flex-row'
+          )}>
+            <span className="text-[10px] text-muted-foreground">{timeStr}</span>
+            {(isOwn || isLeader) && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-6 w-6">
+                    <MoreVertical className="w-3 h-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align={isOwn ? 'end' : 'start'} className="w-32">
+                  {isLeader && (
+                    <DropdownMenuItem onClick={() => onTogglePin(message.id, message.is_pinned)}>
+                      {message.is_pinned ? (
+                        <>
+                          <PinOff className="w-4 h-4 mr-2" />
+                          고정 해제
+                        </>
+                      ) : (
+                        <>
+                          <Pin className="w-4 h-4 mr-2" />
+                          고정
+                        </>
+                      )}
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem
+                    onClick={() => onDelete(message.id)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    삭제
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
+        </div>
+
+        {/* Read indicator (for own messages) */}
+        {isOwn && (
+          <div className="flex items-center gap-0.5 mt-0.5 mr-1">
+            <CheckCheck className="w-3 h-3 text-primary/70" />
           </div>
         )}
       </div>
-      {(isOwn || isLeader) && (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 flex-shrink-0">
-              <MoreVertical className="w-4 h-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {isLeader && (
-              <DropdownMenuItem onClick={() => onTogglePin(message.id, message.is_pinned)}>
-                {message.is_pinned ? (
-                  <>
-                    <PinOff className="w-4 h-4 mr-2" />
-                    고정 해제
-                  </>
-                ) : (
-                  <>
-                    <Pin className="w-4 h-4 mr-2" />
-                    고정하기
-                  </>
-                )}
-              </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onClick={() => onDelete(message.id)}
-              className="text-destructive focus:text-destructive"
-            >
-              <Trash2 className="w-4 h-4 mr-2" />
-              삭제
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
     </div>
   );
 }
