@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { MessageSquare, Send, Pin, Trash2, MoreVertical, PinOff, Paperclip, X, FileIcon, ImageIcon, FileText, Download, Search, Check, CheckCheck } from 'lucide-react';
+import { MessageSquare, Send, Pin, Trash2, MoreVertical, PinOff, Paperclip, X, FileIcon, ImageIcon, FileText, Download, Search, CheckCheck, Reply, CornerDownRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -24,12 +24,19 @@ interface TeamMessage {
   content: string;
   is_pinned: boolean;
   attachments: string[] | null;
+  reply_to_id: string | null;
   created_at: string;
   updated_at: string;
   user?: {
     name: string;
     avatar_url: string | null;
   };
+}
+
+interface ReplyInfo {
+  id: string;
+  userName: string;
+  content: string;
 }
 
 interface TeamChatBoardProps {
@@ -49,6 +56,7 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
   const [isUploading, setIsUploading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [replyTo, setReplyTo] = useState<ReplyInfo | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -113,6 +121,13 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Focus input when replying
+  useEffect(() => {
+    if (replyTo && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [replyTo]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -187,11 +202,13 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
         user_id: user.id,
         content: newMessage.trim(),
         attachments: attachmentUrls.length > 0 ? attachmentUrls : null,
+        reply_to_id: replyTo?.id || null,
       });
 
       if (error) throw error;
       setNewMessage('');
       setSelectedFiles([]);
+      setReplyTo(null);
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
@@ -248,11 +265,32 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
     }
   };
 
+  const handleReply = (message: TeamMessage) => {
+    setReplyTo({
+      id: message.id,
+      userName: message.user?.name || '알 수 없음',
+      content: message.content,
+    });
+  };
+
+  const cancelReply = () => {
+    setReplyTo(null);
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
+    if (e.key === 'Escape' && replyTo) {
+      cancelReply();
+    }
+  };
+
+  // Get replied message info
+  const getReplyMessage = (replyToId: string | null): TeamMessage | undefined => {
+    if (!replyToId) return undefined;
+    return messages.find((m) => m.id === replyToId);
   };
 
   if (!isMember) {
@@ -405,6 +443,7 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
                 const isOwn = message.user_id === user?.id;
                 const showAvatar = msgIdx === 0 ||
                   group.messages[msgIdx - 1]?.user_id !== message.user_id;
+                const replyMessage = getReplyMessage(message.reply_to_id);
 
                 return (
                   <MessageBubble
@@ -413,8 +452,10 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
                     isOwn={isOwn}
                     showAvatar={showAvatar}
                     isLeader={isLeader}
+                    replyMessage={replyMessage}
                     onTogglePin={handleTogglePin}
                     onDelete={handleDeleteMessage}
+                    onReply={handleReply}
                   />
                 );
               })}
@@ -423,6 +464,29 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Reply Preview */}
+      {replyTo && (
+        <div className="px-4 py-2 border-t bg-muted/30 animate-in slide-in-from-bottom-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm">
+              <CornerDownRight className="w-4 h-4 text-primary" />
+              <span className="font-medium text-primary">{replyTo.userName}</span>
+              <span className="text-muted-foreground truncate max-w-[200px]">
+                {replyTo.content || '(첨부파일)'}
+              </span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={cancelReply}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Selected Files Preview */}
       {selectedFiles.length > 0 && (
@@ -470,7 +534,7 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
           <div className="flex-1 relative">
             <Input
               ref={inputRef}
-              placeholder="메시지 입력..."
+              placeholder={replyTo ? `${replyTo.userName}님에게 답장...` : "메시지 입력..."}
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -496,8 +560,10 @@ interface MessageBubbleProps {
   isOwn: boolean;
   showAvatar: boolean;
   isLeader: boolean;
+  replyMessage?: TeamMessage;
   onTogglePin: (id: string, isPinned: boolean) => void;
   onDelete: (id: string) => void;
+  onReply: (message: TeamMessage) => void;
 }
 
 function getFileIcon(url: string) {
@@ -526,7 +592,7 @@ function isImageFile(url: string) {
   return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
 }
 
-function MessageBubble({ message, isOwn, showAvatar, isLeader, onTogglePin, onDelete }: MessageBubbleProps) {
+function MessageBubble({ message, isOwn, showAvatar, isLeader, replyMessage, onTogglePin, onDelete, onReply }: MessageBubbleProps) {
   const userName = message.user?.name || '알 수 없음';
   const userInitial = userName.charAt(0).toUpperCase();
   const timeStr = format(new Date(message.created_at), 'HH:mm');
@@ -575,6 +641,26 @@ function MessageBubble({ message, isOwn, showAvatar, isLeader, onTogglePin, onDe
             {message.is_pinned && (
               <Pin className="absolute -top-1 -right-1 w-3 h-3 text-primary" />
             )}
+            
+            {/* Reply Preview */}
+            {replyMessage && (
+              <div className={cn(
+                'mb-2 pb-2 border-b text-xs',
+                isOwn ? 'border-primary-foreground/30' : 'border-foreground/10'
+              )}>
+                <div className="flex items-center gap-1 mb-0.5">
+                  <Reply className="w-3 h-3" />
+                  <span className="font-medium">{replyMessage.user?.name || '알 수 없음'}</span>
+                </div>
+                <p className={cn(
+                  'truncate max-w-[180px]',
+                  isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
+                )}>
+                  {replyMessage.content || '(첨부파일)'}
+                </p>
+              </div>
+            )}
+
             {message.content && (
               <p className="whitespace-pre-wrap break-words">{message.content}</p>
             )}
@@ -622,29 +708,33 @@ function MessageBubble({ message, isOwn, showAvatar, isLeader, onTogglePin, onDe
             isOwn ? 'flex-row-reverse' : 'flex-row'
           )}>
             <span className="text-[10px] text-muted-foreground">{timeStr}</span>
-            {(isOwn || isLeader) && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-6 w-6">
-                    <MoreVertical className="w-3 h-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align={isOwn ? 'end' : 'start'} className="w-32">
-                  {isLeader && (
-                    <DropdownMenuItem onClick={() => onTogglePin(message.id, message.is_pinned)}>
-                      {message.is_pinned ? (
-                        <>
-                          <PinOff className="w-4 h-4 mr-2" />
-                          고정 해제
-                        </>
-                      ) : (
-                        <>
-                          <Pin className="w-4 h-4 mr-2" />
-                          고정
-                        </>
-                      )}
-                    </DropdownMenuItem>
-                  )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-6 w-6">
+                  <MoreVertical className="w-3 h-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align={isOwn ? 'end' : 'start'} className="w-32">
+                <DropdownMenuItem onClick={() => onReply(message)}>
+                  <Reply className="w-4 h-4 mr-2" />
+                  답장
+                </DropdownMenuItem>
+                {isLeader && (
+                  <DropdownMenuItem onClick={() => onTogglePin(message.id, message.is_pinned)}>
+                    {message.is_pinned ? (
+                      <>
+                        <PinOff className="w-4 h-4 mr-2" />
+                        고정 해제
+                      </>
+                    ) : (
+                      <>
+                        <Pin className="w-4 h-4 mr-2" />
+                        고정
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                )}
+                {(isOwn || isLeader) && (
                   <DropdownMenuItem
                     onClick={() => onDelete(message.id)}
                     className="text-destructive focus:text-destructive"
@@ -652,9 +742,9 @@ function MessageBubble({ message, isOwn, showAvatar, isLeader, onTogglePin, onDe
                     <Trash2 className="w-4 h-4 mr-2" />
                     삭제
                   </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 

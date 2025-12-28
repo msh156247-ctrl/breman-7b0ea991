@@ -990,6 +990,7 @@ export type Database = {
           created_at: string
           id: string
           is_pinned: boolean | null
+          reply_to_id: string | null
           team_id: string
           updated_at: string
           user_id: string
@@ -1000,6 +1001,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_pinned?: boolean | null
+          reply_to_id?: string | null
           team_id: string
           updated_at?: string
           user_id: string
@@ -1010,11 +1012,19 @@ export type Database = {
           created_at?: string
           id?: string
           is_pinned?: boolean | null
+          reply_to_id?: string | null
           team_id?: string
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "team_messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "team_messages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "team_messages_team_id_fkey"
             columns: ["team_id"]
