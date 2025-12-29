@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Users, Star, Trophy, Calendar, Settings, 
-  UserPlus, Copy, Check, Shield, Briefcase, Award, Crown, MessageSquare
+  UserPlus, Copy, Check, Shield, Briefcase, Award, Crown, MessageSquare, ExternalLink
 } from 'lucide-react';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
@@ -78,6 +79,7 @@ const teamData = {
 
 export default function TeamDetail() {
   const { teamId } = useParams();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
@@ -131,6 +133,47 @@ export default function TeamDetail() {
   // Check if current user is the leader (mock)
   const isLeader = false; // Would be determined by auth context
   const isMember = true; // Mock - assume member for demo
+
+  const handleNavigateToChat = async () => {
+    if (!team) return;
+    
+    try {
+      // Check if team conversation exists
+      const { data: existingConvo } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('type', 'team')
+        .eq('team_id', team.id)
+        .single();
+
+      if (existingConvo) {
+        navigate(`/chat/${existingConvo.id}`);
+        return;
+      }
+
+      // Create new team conversation
+      const { data: newConvo, error } = await supabase
+        .from('conversations')
+        .insert({ 
+          type: 'team',
+          team_id: team.id,
+          name: team.name
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      navigate(`/chat/${newConvo.id}`);
+    } catch (error) {
+      console.error('Error navigating to chat:', error);
+      toast({
+        title: '오류',
+        description: '채팅 페이지로 이동할 수 없습니다.',
+        variant: 'destructive',
+      });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -337,10 +380,24 @@ export default function TeamDetail() {
 
         {/* Chat/Board Tab */}
         <TabsContent value="board" className="space-y-4">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <MessageSquare className="w-5 h-5 text-primary" />
-            팀 게시판
-          </h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              팀 게시판
+            </h2>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                // Navigate to the dedicated chat page
+                // First check if conversation exists, if not create one
+                handleNavigateToChat();
+              }}
+            >
+              <ExternalLink className="w-4 h-4 mr-2" />
+              채팅 페이지로 이동
+            </Button>
+          </div>
           <TeamChatBoard teamId={team.id} isLeader={isLeader} isMember={isMember} />
         </TabsContent>
 
