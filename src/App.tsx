@@ -11,6 +11,8 @@ import Roles from "./pages/Roles";
 import Auth from "./pages/Auth";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
+import Chat from "./pages/Chat";
+import ChatRoom from "./pages/ChatRoom";
 import Teams from "./pages/Teams";
 import TeamDetail from "./pages/TeamDetail";
 import Projects from "./pages/Projects";
@@ -72,6 +74,8 @@ function AppRoutes() {
         </ProtectedRoute>
       }>
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="chat" element={<Chat />} />
+        <Route path="chat/:conversationId" element={<ChatRoom />} />
         <Route path="teams" element={<Teams />} />
         <Route path="teams/:teamId" element={<TeamDetail />} />
         <Route path="projects" element={<Projects />} />

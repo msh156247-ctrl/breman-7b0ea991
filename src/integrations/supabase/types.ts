@@ -149,6 +149,93 @@ export type Database = {
           },
         ]
       }
+      conversation_participants: {
+        Row: {
+          conversation_id: string
+          id: string
+          joined_at: string
+          last_read_at: string | null
+          team_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          conversation_id: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          team_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          conversation_id?: string
+          id?: string
+          joined_at?: string
+          last_read_at?: string | null
+          team_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversation_participants_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_participants_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversation_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      conversations: {
+        Row: {
+          created_at: string
+          id: string
+          last_message_at: string | null
+          name: string | null
+          team_id: string | null
+          type: Database["public"]["Enums"]["conversation_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          name?: string | null
+          team_id?: string | null
+          type: Database["public"]["Enums"]["conversation_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          name?: string | null
+          team_id?: string | null
+          type?: Database["public"]["Enums"]["conversation_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       disputes: {
         Row: {
           admin_note: string | null
@@ -263,6 +350,74 @@ export type Database = {
           website_url?: string | null
         }
         Relationships: []
+      }
+      messages: {
+        Row: {
+          attachments: string[] | null
+          content: string
+          conversation_id: string
+          created_at: string
+          id: string
+          is_pinned: boolean | null
+          reply_to_id: string | null
+          sender_id: string
+          sender_team_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          attachments?: string[] | null
+          content: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean | null
+          reply_to_id?: string | null
+          sender_id: string
+          sender_team_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attachments?: string[] | null
+          content?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          is_pinned?: boolean | null
+          reply_to_id?: string | null
+          sender_id?: string
+          sender_team_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_reply_to_id_fkey"
+            columns: ["reply_to_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_team_id_fkey"
+            columns: ["sender_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       milestone_submissions: {
         Row: {
@@ -1260,6 +1415,7 @@ export type Database = {
         | "completed"
         | "disputed"
         | "cancelled"
+      conversation_type: "direct" | "team" | "team_to_team"
       dispute_status: "open" | "investigating" | "resolved" | "closed"
       escrow_status:
         | "not_funded"
@@ -1431,6 +1587,7 @@ export const Constants = {
         "disputed",
         "cancelled",
       ],
+      conversation_type: ["direct", "team", "team_to_team"],
       dispute_status: ["open", "investigating", "resolved", "closed"],
       escrow_status: [
         "not_funded",
