@@ -12,7 +12,8 @@ import {
   X,
   LogOut,
   User,
-  ChevronDown
+  ChevronDown,
+  MessageSquare
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -32,6 +33,7 @@ import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
 const NAV_ITEMS = [
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
+  { href: '/chat', label: '채팅', icon: MessageSquare },
   { href: '/teams', label: '팀', icon: Users },
   { href: '/projects', label: '프로젝트', icon: Briefcase },
   { href: '/siege', label: 'Siege', icon: Swords },

@@ -1,0 +1,488 @@
+import { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { 
+  ArrowLeft, 
+  Send, 
+  MoreVertical,
+  Reply,
+  X,
+  Users,
+  MessageCircle,
+  UsersRound
+} from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { format, isToday, isYesterday, isSameDay } from 'date-fns';
+import { ko } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
+
+interface Message {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  sender_team_id: string | null;
+  content: string;
+  reply_to_id: string | null;
+  attachments: string[];
+  created_at: string;
+  sender?: {
+    name: string;
+    avatar_url: string | null;
+  };
+  reply_to?: {
+    content: string;
+    sender_name: string;
+  };
+}
+
+interface Conversation {
+  id: string;
+  type: 'direct' | 'team' | 'team_to_team';
+  name: string | null;
+  team_id: string | null;
+}
+
+interface ConversationInfo {
+  title: string;
+  subtitle: string;
+  avatar?: string;
+  type: 'direct' | 'team' | 'team_to_team';
+}
+
+export default function ChatRoom() {
+  const { conversationId } = useParams<{ conversationId: string }>();
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  
+  const [conversation, setConversation] = useState<Conversation | null>(null);
+  const [conversationInfo, setConversationInfo] = useState<ConversationInfo | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+  
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (conversationId && user) {
+      fetchConversation();
+      fetchMessages();
+
+      // Realtime subscription
+      const channel = supabase
+        .channel(`chat-${conversationId}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${conversationId}`
+          },
+          async (payload) => {
+            const newMsg = payload.new as Message;
+            // Fetch sender info
+            const { data: sender } = await supabase
+              .from('profiles')
+              .select('name, avatar_url')
+              .eq('id', newMsg.sender_id)
+              .single();
+
+            setMessages(prev => [...prev, { ...newMsg, sender: sender || undefined }]);
+            scrollToBottom();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [conversationId, user]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const fetchConversation = async () => {
+    if (!conversationId || !user) return;
+
+    const { data, error } = await supabase
+      .from('conversations')
+      .select('*')
+      .eq('id', conversationId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching conversation:', error);
+      navigate('/chat');
+      return;
+    }
+
+    setConversation({
+      ...data,
+      type: data.type as 'direct' | 'team' | 'team_to_team'
+    });
+
+    // Get conversation info based on type
+    if (data.type === 'direct') {
+      const { data: participants } = await supabase
+        .from('conversation_participants')
+        .select('user_id')
+        .eq('conversation_id', conversationId)
+        .neq('user_id', user.id);
+
+      if (participants && participants[0]) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('name, avatar_url')
+          .eq('id', participants[0].user_id)
+          .single();
+
+        setConversationInfo({
+          title: profile?.name || '사용자',
+          subtitle: '1:1 채팅',
+          avatar: profile?.avatar_url || undefined,
+          type: 'direct'
+        });
+      }
+    } else if (data.type === 'team' && data.team_id) {
+      const { data: team } = await supabase
+        .from('teams')
+        .select('name, emblem_url')
+        .eq('id', data.team_id)
+        .single();
+
+      // Get member count
+      const { count } = await supabase
+        .from('team_memberships')
+        .select('*', { count: 'exact', head: true })
+        .eq('team_id', data.team_id);
+
+      setConversationInfo({
+        title: team?.name || '팀',
+        subtitle: `팀 채팅 · ${(count || 0) + 1}명`,
+        avatar: team?.emblem_url || undefined,
+        type: 'team'
+      });
+    } else if (data.type === 'team_to_team') {
+      setConversationInfo({
+        title: data.name || '팀 간 채팅',
+        subtitle: '팀 간 채팅',
+        type: 'team_to_team'
+      });
+    }
+  };
+
+  const fetchMessages = async () => {
+    if (!conversationId) return;
+
+    const { data, error } = await supabase
+      .from('messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('created_at', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching messages:', error);
+      return;
+    }
+
+    // Enrich with sender info and reply info
+    const enrichedMessages = await Promise.all(
+      (data || []).map(async (msg) => {
+        const { data: sender } = await supabase
+          .from('profiles')
+          .select('name, avatar_url')
+          .eq('id', msg.sender_id)
+          .single();
+
+        let reply_to = undefined;
+        if (msg.reply_to_id) {
+          const { data: replyMsg } = await supabase
+            .from('messages')
+            .select('content, sender_id')
+            .eq('id', msg.reply_to_id)
+            .single();
+
+          if (replyMsg) {
+            const { data: replySender } = await supabase
+              .from('profiles')
+              .select('name')
+              .eq('id', replyMsg.sender_id)
+              .single();
+
+            reply_to = {
+              content: replyMsg.content,
+              sender_name: replySender?.name || '사용자'
+            };
+          }
+        }
+
+        return {
+          ...msg,
+          sender: sender || undefined,
+          reply_to
+        };
+      })
+    );
+
+    setMessages(enrichedMessages);
+    setLoading(false);
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !conversationId || !user || sending) return;
+
+    setSending(true);
+    const content = newMessage.trim();
+    setNewMessage('');
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .insert({
+          conversation_id: conversationId,
+          sender_id: user.id,
+          content,
+          reply_to_id: replyTo?.id || null
+        });
+
+      if (error) throw error;
+      setReplyTo(null);
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setNewMessage(content);
+    } finally {
+      setSending(false);
+      inputRef.current?.focus();
+    }
+  };
+
+  const formatDateDivider = (date: Date) => {
+    if (isToday(date)) return '오늘';
+    if (isYesterday(date)) return '어제';
+    return format(date, 'yyyy년 M월 d일 EEEE', { locale: ko });
+  };
+
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'direct':
+        return <MessageCircle className="h-4 w-4" />;
+      case 'team':
+        return <Users className="h-4 w-4" />;
+      case 'team_to_team':
+        return <UsersRound className="h-4 w-4" />;
+      default:
+        return null;
+    }
+  };
+
+  const renderMessages = () => {
+    let lastDate: Date | null = null;
+
+    return messages.map((msg, index) => {
+      const msgDate = new Date(msg.created_at);
+      const showDateDivider = !lastDate || !isSameDay(lastDate, msgDate);
+      lastDate = msgDate;
+
+      const isOwn = msg.sender_id === user?.id;
+      const showAvatar = !isOwn && (
+        index === 0 || 
+        messages[index - 1].sender_id !== msg.sender_id ||
+        !isSameDay(new Date(messages[index - 1].created_at), msgDate)
+      );
+
+      return (
+        <div key={msg.id}>
+          {showDateDivider && (
+            <div className="flex justify-center my-4">
+              <Badge variant="secondary" className="text-xs font-normal">
+                {formatDateDivider(msgDate)}
+              </Badge>
+            </div>
+          )}
+
+          <div className={`flex gap-2 mb-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
+            {!isOwn && (
+              <div className="w-8 shrink-0">
+                {showAvatar && (
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src={msg.sender?.avatar_url || undefined} />
+                    <AvatarFallback className="text-xs bg-primary/10">
+                      {msg.sender?.name?.charAt(0) || '?'}
+                    </AvatarFallback>
+                  </Avatar>
+                )}
+              </div>
+            )}
+
+            <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[70%]`}>
+              {!isOwn && showAvatar && (
+                <span className="text-xs text-muted-foreground mb-1 ml-1">
+                  {msg.sender?.name}
+                </span>
+              )}
+
+              <div className="flex items-end gap-1">
+                {isOwn && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(msgDate, 'a h:mm', { locale: ko })}
+                  </span>
+                )}
+
+                <div className="group relative">
+                  {msg.reply_to && (
+                    <div className={`text-xs p-2 mb-1 rounded-lg ${
+                      isOwn ? 'bg-primary/20' : 'bg-muted'
+                    }`}>
+                      <span className="font-medium">{msg.reply_to.sender_name}</span>
+                      <p className="text-muted-foreground truncate max-w-[200px]">
+                        {msg.reply_to.content}
+                      </p>
+                    </div>
+                  )}
+
+                  <div className={`px-3 py-2 rounded-2xl ${
+                    isOwn 
+                      ? 'bg-primary text-primary-foreground rounded-tr-sm' 
+                      : 'bg-muted rounded-tl-sm'
+                  }`}>
+                    <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                  </div>
+
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className={`absolute top-0 opacity-0 group-hover:opacity-100 h-6 w-6 ${
+                          isOwn ? '-left-7' : '-right-7'
+                        }`}
+                      >
+                        <MoreVertical className="h-3 w-3" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      <DropdownMenuItem onClick={() => setReplyTo(msg)}>
+                        <Reply className="h-4 w-4 mr-2" />
+                        답장
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                {!isOwn && (
+                  <span className="text-[10px] text-muted-foreground">
+                    {format(msgDate, 'a h:mm', { locale: ko })}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-pulse">로딩중...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-[calc(100vh-4rem)]">
+      {/* Header */}
+      <div className="flex items-center gap-3 p-4 border-b bg-background">
+        <Button variant="ghost" size="icon" onClick={() => navigate('/chat')}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+
+        <Avatar className="h-10 w-10">
+          <AvatarImage src={conversationInfo?.avatar} />
+          <AvatarFallback className="bg-primary/10">
+            {conversationInfo?.title?.charAt(0) || '?'}
+          </AvatarFallback>
+        </Avatar>
+
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold">{conversationInfo?.title}</h2>
+            {conversationInfo?.type && (
+              <Badge variant="secondary" className="text-xs">
+                {getTypeIcon(conversationInfo.type)}
+              </Badge>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">{conversationInfo?.subtitle}</p>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <ScrollArea className="flex-1 p-4">
+        {renderMessages()}
+        <div ref={scrollRef} />
+      </ScrollArea>
+
+      {/* Reply Preview */}
+      {replyTo && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-t">
+          <Reply className="h-4 w-4 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium">{replyTo.sender?.name}에게 답장</p>
+            <p className="text-xs text-muted-foreground truncate">{replyTo.content}</p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={() => setReplyTo(null)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="flex items-center gap-2 p-4 border-t bg-background">
+        <Input
+          ref={inputRef}
+          placeholder="메시지를 입력하세요..."
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleSendMessage();
+            }
+          }}
+          disabled={sending}
+          className="flex-1"
+        />
+        <Button 
+          size="icon" 
+          onClick={handleSendMessage} 
+          disabled={!newMessage.trim() || sending}
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
