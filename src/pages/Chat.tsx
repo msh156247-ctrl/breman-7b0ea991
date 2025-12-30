@@ -100,17 +100,22 @@ export default function Chat() {
         ...(leaderTeams?.map(t => t.id) || [])
       ];
 
-      const { data: teamConvos, error: teamError } = await supabase
-        .from('conversations')
-        .select('*')
-        .eq('type', 'team')
-        .in('team_id', teamIds)
-        .order('last_message_at', { ascending: false });
+      // Fetch team-based conversations only if user has teams
+      let teamConvos: any[] = [];
+      if (teamIds.length > 0) {
+        const { data, error: teamError } = await supabase
+          .from('conversations')
+          .select('*')
+          .eq('type', 'team')
+          .in('team_id', teamIds)
+          .order('last_message_at', { ascending: false });
 
-      if (teamError) throw teamError;
+        if (teamError) throw teamError;
+        teamConvos = data || [];
+      }
 
       // Combine and enrich conversations
-      const allConvos = [...(directConvos || []), ...(teamConvos || [])];
+      const allConvos = [...(directConvos || []), ...teamConvos];
       const uniqueConvos = Array.from(new Map(allConvos.map(c => [c.id, c])).values());
 
       // Enrich with additional data

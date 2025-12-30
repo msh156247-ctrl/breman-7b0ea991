@@ -14,6 +14,7 @@ import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
 import ChatRoom from "./pages/ChatRoom";
 import Teams from "./pages/Teams";
+import TeamCreate from "./pages/TeamCreate";
 import TeamDetail from "./pages/TeamDetail";
 import Projects from "./pages/Projects";
 import ProjectDetail from "./pages/ProjectDetail";
@@ -77,6 +78,7 @@ function AppRoutes() {
         <Route path="chat" element={<Chat />} />
         <Route path="chat/:conversationId" element={<ChatRoom />} />
         <Route path="teams" element={<Teams />} />
+        <Route path="teams/create" element={<TeamCreate />} />
         <Route path="teams/:teamId" element={<TeamDetail />} />
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:projectId" element={<ProjectDetail />} />
