@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Plus, Users, Star, ArrowRight } from 'lucide-react';
+import { Search, Plus, Users, Star, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,98 +16,109 @@ import {
 } from '@/components/ui/select';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { supabase } from '@/integrations/supabase/client';
 
-// Sample data
-const teamsData = [
-  {
-    id: '1',
-    name: '스타트업 드림팀',
-    slogan: '혁신으로 세상을 바꾸다',
-    emblem: '🚀',
-    avgLevel: 4.2,
-    rating: 4.8,
-    status: 'recruiting',
-    roles: [
-      { role: 'horse' as UserRole, filled: true },
-      { role: 'dog' as UserRole, filled: true },
-      { role: 'cat' as UserRole, filled: false },
-      { role: 'rooster' as UserRole, filled: true },
-    ],
-    skills: ['React', 'Node.js', 'AWS'],
-    members: 3,
-    openPositions: 1,
-  },
-  {
-    id: '2',
-    name: '웹개발 마스터즈',
-    slogan: '최고의 웹 경험을 만듭니다',
-    emblem: '💻',
-    avgLevel: 5.1,
-    rating: 4.9,
-    status: 'active',
-    roles: [
-      { role: 'horse' as UserRole, filled: true },
-      { role: 'dog' as UserRole, filled: true },
-      { role: 'cat' as UserRole, filled: true },
-      { role: 'rooster' as UserRole, filled: true },
-    ],
-    skills: ['Vue.js', 'Python', 'PostgreSQL'],
-    members: 4,
-    openPositions: 0,
-  },
-  {
-    id: '3',
-    name: '디자인 팩토리',
-    slogan: '아름다움은 기능이다',
-    emblem: '🎨',
-    avgLevel: 3.8,
-    rating: 4.6,
-    status: 'recruiting',
-    roles: [
-      { role: 'horse' as UserRole, filled: true },
-      { role: 'cat' as UserRole, filled: true },
-      { role: 'rooster' as UserRole, filled: false },
-    ],
-    skills: ['Figma', 'React', 'Tailwind'],
-    members: 2,
-    openPositions: 1,
-  },
-  {
-    id: '4',
-    name: '시큐어 코드',
-    slogan: '안전한 코드가 좋은 코드',
-    emblem: '🔒',
-    avgLevel: 6.0,
-    rating: 4.95,
-    status: 'recruiting',
-    roles: [
-      { role: 'horse' as UserRole, filled: true },
-      { role: 'dog' as UserRole, filled: true },
-      { role: 'dog' as UserRole, filled: false },
-      { role: 'rooster' as UserRole, filled: true },
-    ],
-    skills: ['Security', 'Penetration Testing', 'Go'],
-    members: 3,
-    openPositions: 1,
-  },
-];
+interface TeamWithSlots {
+  id: string;
+  name: string;
+  slogan: string | null;
+  description: string | null;
+  emblem_url: string | null;
+  avg_level: number | null;
+  rating_avg: number | null;
+  status: 'active' | 'inactive' | 'recruiting' | null;
+  recruitment_method: 'public' | 'invite' | 'auto' | null;
+  memberCount: number;
+  openSlots: { role: UserRole; filled: boolean }[];
+}
 
 export default function Teams() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [teams, setTeams] = useState<TeamWithSlots[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const filteredTeams = teamsData.filter((team) => {
+  useEffect(() => {
+    fetchTeams();
+  }, []);
+
+  const fetchTeams = async () => {
+    try {
+      // Fetch teams
+      const { data: teamsData, error: teamsError } = await supabase
+        .from('teams')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (teamsError) throw teamsError;
+
+      // Fetch role slots and memberships for each team
+      const enrichedTeams = await Promise.all(
+        (teamsData || []).map(async (team) => {
+          // Get member count
+          const { count: memberCount } = await supabase
+            .from('team_memberships')
+            .select('*', { count: 'exact', head: true })
+            .eq('team_id', team.id);
+
+          // Get role slots
+          const { data: slots } = await supabase
+            .from('team_role_slots')
+            .select('role, is_open')
+            .eq('team_id', team.id);
+
+          // Get filled memberships by role
+          const { data: memberships } = await supabase
+            .from('team_memberships')
+            .select('role')
+            .eq('team_id', team.id);
+
+          const filledRoles = memberships?.map(m => m.role) || [];
+          
+          const openSlots = (slots || []).map(slot => ({
+            role: slot.role as UserRole,
+            filled: !slot.is_open || filledRoles.includes(slot.role),
+          }));
+
+          return {
+            ...team,
+            status: team.status as 'active' | 'inactive' | 'recruiting' | null,
+            recruitment_method: team.recruitment_method as 'public' | 'invite' | 'auto' | null,
+            memberCount: (memberCount || 0) + 1, // +1 for leader
+            openSlots,
+          };
+        })
+      );
+
+      setTeams(enrichedTeams);
+    } catch (error) {
+      console.error('Error fetching teams:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filteredTeams = teams.filter((team) => {
     const matchesSearch = team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      team.skills.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
+      team.slogan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      team.description?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesRole = roleFilter === 'all' || 
-      team.roles.some(r => r.role === roleFilter && !r.filled);
+      team.openSlots.some(r => r.role === roleFilter && !r.filled);
     
     const matchesStatus = statusFilter === 'all' || team.status === statusFilter;
     
     return matchesSearch && matchesRole && matchesStatus;
   });
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -133,7 +144,7 @@ export default function Teams() {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="팀 이름 또는 기술 스택 검색..."
+              placeholder="팀 이름 또는 설명 검색..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -175,7 +186,7 @@ export default function Teams() {
                   {/* Header */}
                   <div className="flex items-start gap-4 mb-4">
                     <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-3xl flex-shrink-0">
-                      {team.emblem}
+                      {team.emblem_url || '🎯'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -184,58 +195,45 @@ export default function Teams() {
                           <StatusBadge status="모집중" variant="success" size="sm" />
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-1">{team.slogan}</p>
+                      <p className="text-sm text-muted-foreground line-clamp-1">
+                        {team.slogan || '슬로건 없음'}
+                      </p>
                     </div>
                   </div>
 
                   {/* Roles */}
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {team.roles.map((r, i) => (
-                      <div 
-                        key={i}
-                        className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${
-                          r.filled 
-                            ? 'bg-muted' 
-                            : 'bg-primary/10 border-2 border-dashed border-primary/30'
-                        }`}
-                        title={`${ROLES[r.role].name} ${r.filled ? '(충원됨)' : '(모집중)'}`}
-                      >
-                        {ROLES[r.role].icon}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Skills */}
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {team.skills.slice(0, 3).map((skill) => (
-                      <span 
-                        key={skill}
-                        className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                    {team.skills.length > 3 && (
-                      <span className="text-xs px-2 py-1 text-muted-foreground">
-                        +{team.skills.length - 3}
-                      </span>
-                    )}
-                  </div>
+                  {team.openSlots.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-4">
+                      {team.openSlots.map((r, i) => (
+                        <div 
+                          key={i}
+                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${
+                            r.filled 
+                              ? 'bg-muted' 
+                              : 'bg-primary/10 border-2 border-dashed border-primary/30'
+                          }`}
+                          title={`${ROLES[r.role].name} ${r.filled ? '(충원됨)' : '(모집중)'}`}
+                        >
+                          {ROLES[r.role].icon}
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
                   {/* Stats */}
                   <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-4">
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Users className="w-4 h-4" />
-                        <span>{team.members}명</span>
+                        <span>{team.memberCount}명</span>
                       </div>
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Star className="w-4 h-4 text-secondary" />
-                        <span>{team.rating}</span>
+                        <span>{team.rating_avg || 0}</span>
                       </div>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      평균 Lv.{team.avgLevel}
+                      평균 Lv.{team.avg_level || 1}
                     </span>
                   </div>
                 </CardContent>
@@ -245,11 +243,15 @@ export default function Teams() {
         ))}
       </div>
 
-      {filteredTeams.length === 0 && (
+      {filteredTeams.length === 0 && !loading && (
         <div className="text-center py-16">
           <Users className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
-          <h3 className="text-lg font-medium mb-2">검색 결과가 없습니다</h3>
-          <p className="text-muted-foreground mb-4">다른 조건으로 검색해보세요</p>
+          <h3 className="text-lg font-medium mb-2">
+            {teams.length === 0 ? '아직 팀이 없습니다' : '검색 결과가 없습니다'}
+          </h3>
+          <p className="text-muted-foreground mb-4">
+            {teams.length === 0 ? '첫 번째 팀을 만들어보세요!' : '다른 조건으로 검색해보세요'}
+          </p>
           <Link to="/teams/create">
             <Button>새 팀 만들기</Button>
           </Link>
