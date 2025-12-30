@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TeamChatBoard } from '@/components/team/TeamChatBoard';
+import { TeamAnnouncementBoard } from '@/components/team/TeamAnnouncementBoard';
 
 // Sample team data
 const teamData = {
@@ -378,27 +378,23 @@ export default function TeamDetail() {
           </div>
         </TabsContent>
 
-        {/* Chat/Board Tab */}
+        {/* Announcements Tab */}
         <TabsContent value="board" className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-primary" />
-              팀 게시판
+              팀 공지사항
             </h2>
             <Button 
               variant="outline" 
               size="sm"
-              onClick={() => {
-                // Navigate to the dedicated chat page
-                // First check if conversation exists, if not create one
-                handleNavigateToChat();
-              }}
+              onClick={handleNavigateToChat}
             >
               <ExternalLink className="w-4 h-4 mr-2" />
-              채팅 페이지로 이동
+              팀 채팅
             </Button>
           </div>
-          <TeamChatBoard teamId={team.id} isLeader={isLeader} isMember={isMember} />
+          <TeamAnnouncementBoard teamId={team.id} isLeader={isLeader} isMember={isMember} />
         </TabsContent>
 
         {/* Open Positions Tab */}
