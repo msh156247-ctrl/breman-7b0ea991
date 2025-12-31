@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Clock, DollarSign, Calendar, Users, Star,
   CheckCircle2, Circle, AlertCircle, FileText, Send,
-  MessageSquare, Paperclip, Building, Shield
+  MessageSquare, Paperclip, Building, Shield, AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +15,7 @@ import { BackToTop } from '@/components/ui/BackToTop';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { PROJECT_STATUS, ROLES, type UserRole } from '@/lib/constants';
+import { PROJECT_STATUS, ROLES, MILESTONE_STATUS, type UserRole } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -29,6 +29,13 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 // Sample project data
 const projectsData = {
@@ -159,6 +166,12 @@ export default function ProjectDetail() {
   const [proposedTimeline, setProposedTimeline] = useState('');
   const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
   const [questionText, setQuestionText] = useState('');
+  
+  // PRD: Dispute functionality
+  const [disputeDialogOpen, setDisputeDialogOpen] = useState(false);
+  const [disputeReason, setDisputeReason] = useState('');
+  const [disputeDetails, setDisputeDetails] = useState('');
+  const [selectedMilestone, setSelectedMilestone] = useState('');
 
   const project = projectsData[projectId as keyof typeof projectsData];
 
@@ -214,6 +227,26 @@ export default function ProjectDetail() {
     });
     setQuestionDialogOpen(false);
     setQuestionText('');
+  };
+
+  // PRD: Dispute request handler
+  const handleSubmitDispute = () => {
+    if (!disputeReason || !disputeDetails) {
+      toast({
+        title: '입력 필요',
+        description: '분쟁 사유와 상세 내용을 입력해주세요.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    toast({
+      title: '분쟁 요청 접수됨',
+      description: '관리자가 검토 후 연락드립니다. 평균 처리 시간: 2-3 영업일',
+    });
+    setDisputeDialogOpen(false);
+    setDisputeReason('');
+    setDisputeDetails('');
+    setSelectedMilestone('');
   };
 
   return (

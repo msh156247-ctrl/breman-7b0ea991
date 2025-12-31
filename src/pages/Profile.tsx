@@ -116,7 +116,7 @@ export default function Profile() {
                 <h1 className="text-2xl font-display font-bold">{profile?.name || '사용자'}</h1>
                 <RoleBadge role={role} level={level} />
                 {profile?.verified && (
-                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success">
+                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success border border-success/20">
                     ✓ 인증됨
                   </span>
                 )}
@@ -145,8 +145,21 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* XP Bar */}
-              <XPBar current={xp} max={maxXP} level={level} />
+              {/* PRD: Enhanced XP Bar with skill breakdown */}
+              <div className="space-y-4">
+                <XPBar current={xp} max={maxXP} level={level} />
+                
+                {/* Skill XP Summary */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {userSkills.slice(0, 4).map((skill) => (
+                    <div key={skill.name} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-primary to-accent" />
+                      <span className="text-xs font-medium truncate">{skill.name}</span>
+                      <span className="text-xs text-muted-foreground ml-auto">Lv.{skill.level}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>

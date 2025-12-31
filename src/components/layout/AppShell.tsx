@@ -13,7 +13,8 @@ import {
   LogOut,
   User,
   ChevronDown,
-  MessageSquare
+  MessageSquare,
+  Bell
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -31,13 +32,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 
+// PRD: Main navigation items - Siege, Ranking, Notifications as core nav
 const NAV_ITEMS = [
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
-  { href: '/chat', label: '채팅', icon: MessageSquare },
   { href: '/teams', label: '팀', icon: Users },
   { href: '/projects', label: '프로젝트', icon: Briefcase },
+  { href: '/chat', label: '채팅', icon: MessageSquare },
   { href: '/siege', label: 'Siege', icon: Swords },
   { href: '/rankings', label: '랭킹', icon: Trophy },
+  { href: '/notifications', label: '알림', icon: Bell },
 ];
 
 export function AppShell() {
@@ -123,23 +126,6 @@ export function AppShell() {
                 </Link>
               );
             })}
-            
-            {/* Admin link in sidebar for admins */}
-            {isAdmin && (
-              <Link
-                to="/admin"
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all mt-4 border-t border-sidebar-border pt-4',
-                  location.pathname.startsWith('/admin')
-                    ? 'bg-sidebar-primary text-sidebar-primary-foreground shadow-sm'
-                    : 'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-                )}
-              >
-                <Shield className="w-5 h-5" />
-                관리자
-              </Link>
-            )}
           </nav>
 
           {/* User section */}
