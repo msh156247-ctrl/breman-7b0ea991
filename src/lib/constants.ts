@@ -127,13 +127,52 @@ export const SIEGE_STATUS = {
   results: { name: '결과발표', color: 'primary' },
 } as const;
 
+// PRD: Main navigation with Siege, Ranking, Notifications as core items
 export const NAV_ITEMS = [
   { href: '/dashboard', label: '대시보드', icon: 'LayoutDashboard' },
   { href: '/teams', label: '팀', icon: 'Users' },
   { href: '/projects', label: '프로젝트', icon: 'Briefcase' },
+  { href: '/chat', label: '채팅', icon: 'MessageSquare' },
   { href: '/siege', label: 'Siege', icon: 'Swords' },
   { href: '/rankings', label: '랭킹', icon: 'Trophy' },
+  { href: '/notifications', label: '알림', icon: 'Bell' },
 ] as const;
+
+// PRD: Contract status for project management
+export const CONTRACT_STATUS = {
+  draft: { name: '초안', color: 'muted' },
+  active: { name: '진행중', color: 'success' },
+  completed: { name: '완료', color: 'primary' },
+  disputed: { name: '분쟁중', color: 'destructive' },
+  cancelled: { name: '취소됨', color: 'muted' },
+} as const;
+
+// PRD: Milestone status for project tracking
+export const MILESTONE_STATUS = {
+  pending: { name: '대기', color: 'muted' },
+  in_progress: { name: '진행중', color: 'secondary' },
+  review: { name: '검토중', color: 'primary' },
+  approved: { name: '승인', color: 'success' },
+  rejected: { name: '거절', color: 'destructive' },
+  dispute: { name: '분쟁', color: 'destructive' },
+} as const;
+
+// PRD: Escrow status for payment management
+export const ESCROW_STATUS = {
+  not_funded: { name: '미입금', color: 'muted' },
+  funded: { name: '입금완료', color: 'success' },
+  on_hold: { name: '보류', color: 'secondary' },
+  released: { name: '지급완료', color: 'primary' },
+  refunded: { name: '환불', color: 'destructive' },
+} as const;
+
+// PRD: Dispute status for conflict resolution
+export const DISPUTE_STATUS = {
+  open: { name: '접수', color: 'destructive' },
+  investigating: { name: '조사중', color: 'secondary' },
+  resolved: { name: '해결', color: 'success' },
+  closed: { name: '종료', color: 'muted' },
+} as const;
 
 export type UserRole = keyof typeof ROLES;
 export type SkillTier = keyof typeof SKILL_TIERS;
