@@ -1,5 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +14,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { RoleBadge } from '@/components/ui/RoleBadge';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   ArrowLeft, CheckCircle2, Clock, AlertTriangle, XCircle, 
   Upload, FileText, MessageSquare, Shield, DollarSign,
@@ -18,109 +22,31 @@ import {
   Lock, Unlock, RefreshCw, Flag, ChevronRight
 } from 'lucide-react';
 import { toast } from 'sonner';
+import type { Database } from '@/integrations/supabase/types';
 
-type MilestoneStatus = 'pending' | 'in_progress' | 'review' | 'approved' | 'rejected' | 'dispute';
-type EscrowStatus = 'not_funded' | 'funded' | 'on_hold' | 'released' | 'refunded';
+type MilestoneStatus = Database['public']['Enums']['milestone_status'];
+type EscrowStatus = Database['public']['Enums']['escrow_status'];
+type ContractStatus = Database['public']['Enums']['contract_status'];
 
 interface Milestone {
   id: string;
   name: string;
-  description: string;
-  amount: number;
-  dueDate: string;
-  status: MilestoneStatus;
-  submissions: Submission[];
+  description: string | null;
+  amount: number | null;
+  due_date: string | null;
+  status: MilestoneStatus | null;
+  order_index: number | null;
 }
 
 interface Submission {
   id: string;
-  submittedBy: string;
-  submittedAt: string;
-  note: string;
-  files: string[];
+  milestone_id: string | null;
+  submitted_by: string | null;
+  submitted_at: string | null;
+  note: string | null;
+  files: string[] | null;
+  submitter?: { name: string };
 }
-
-// Mock data
-const contractData = {
-  id: '1',
-  projectTitle: 'E-커머스 플랫폼 리뉴얼',
-  projectId: 'proj-1',
-  status: 'active' as const,
-  escrowStatus: 'funded' as EscrowStatus,
-  totalAmount: 15000000,
-  feeRate: 10,
-  createdAt: '2024-01-15',
-  team: {
-    id: 'team-1',
-    name: '브래맨 올스타즈',
-    leaderName: '김팀장',
-    members: [
-      { name: '김팀장', role: 'horse' as const, level: 5 },
-      { name: '이보안', role: 'dog' as const, level: 4 },
-      { name: '박디자인', role: 'cat' as const, level: 4 },
-      { name: '최프론트', role: 'rooster' as const, level: 5 },
-    ]
-  },
-  client: {
-    name: '테크스타트업',
-    contact: 'client@tech.com',
-    avatar: null
-  },
-  milestones: [
-    {
-      id: 'm1',
-      name: '기획 및 와이어프레임',
-      description: '전체 서비스 기획서 및 와이어프레임 작성',
-      amount: 3000000,
-      dueDate: '2024-02-01',
-      status: 'approved' as MilestoneStatus,
-      submissions: [
-        {
-          id: 's1',
-          submittedBy: '김팀장',
-          submittedAt: '2024-01-28',
-          note: '기획서 및 와이어프레임 초안입니다.',
-          files: ['기획서_v1.pdf', '와이어프레임.fig']
-        }
-      ]
-    },
-    {
-      id: 'm2',
-      name: 'UI/UX 디자인',
-      description: '전체 페이지 UI/UX 디자인 및 디자인 시스템 구축',
-      amount: 4000000,
-      dueDate: '2024-02-15',
-      status: 'review' as MilestoneStatus,
-      submissions: [
-        {
-          id: 's2',
-          submittedBy: '박디자인',
-          submittedAt: '2024-02-13',
-          note: '디자인 시스템 및 주요 페이지 디자인 완료',
-          files: ['디자인시스템.fig', '메인페이지.fig', '상품페이지.fig']
-        }
-      ]
-    },
-    {
-      id: 'm3',
-      name: '프론트엔드 개발',
-      description: 'React 기반 프론트엔드 개발',
-      amount: 5000000,
-      dueDate: '2024-03-15',
-      status: 'in_progress' as MilestoneStatus,
-      submissions: []
-    },
-    {
-      id: 'm4',
-      name: '백엔드 연동 및 QA',
-      description: 'API 연동 및 전체 QA 진행',
-      amount: 3000000,
-      dueDate: '2024-03-30',
-      status: 'pending' as MilestoneStatus,
-      submissions: []
-    }
-  ] as Milestone[]
-};
 
 const MILESTONE_STATUS_CONFIG: Record<MilestoneStatus, { label: string; color: string; icon: React.ReactNode }> = {
   pending: { label: '대기', color: 'muted', icon: <Clock className="h-4 w-4" /> },
@@ -139,8 +65,15 @@ const ESCROW_STATUS_CONFIG: Record<EscrowStatus, { label: string; color: string;
   refunded: { label: '환불됨', color: 'destructive', icon: <RefreshCw className="h-4 w-4" /> },
 };
 
+const formatCurrency = (amount: number) => {
+  return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(amount);
+};
+
 export default function ContractManagement() {
   const { contractId } = useParams();
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  
   const [selectedMilestone, setSelectedMilestone] = useState<Milestone | null>(null);
   const [submitDialogOpen, setSubmitDialogOpen] = useState(false);
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
@@ -150,20 +83,102 @@ export default function ContractManagement() {
   const [disputeReason, setDisputeReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const contract = contractData;
-  const escrowConfig = ESCROW_STATUS_CONFIG[contract.escrowStatus];
-  
-  const completedMilestones = contract.milestones.filter(m => m.status === 'approved').length;
-  const totalMilestones = contract.milestones.length;
-  const progressPercentage = (completedMilestones / totalMilestones) * 100;
-  
-  const releasedAmount = contract.milestones
-    .filter(m => m.status === 'approved')
-    .reduce((sum, m) => sum + m.amount, 0);
+  // Fetch contract data
+  const { data: contract, isLoading: contractLoading } = useQuery({
+    queryKey: ['contract', contractId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('contracts')
+        .select(`
+          *,
+          project:projects(id, title, client_id, client:profiles!projects_client_id_fkey(id, name, email, avatar_url)),
+          team:teams(id, name, leader_id, leader:profiles!teams_leader_id_fkey(id, name, avatar_url))
+        `)
+        .eq('id', contractId!)
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!contractId,
+  });
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('ko-KR', { style: 'currency', currency: 'KRW' }).format(amount);
-  };
+  // Fetch milestones
+  const { data: milestones = [], isLoading: milestonesLoading } = useQuery({
+    queryKey: ['milestones', contractId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('milestones')
+        .select('*')
+        .eq('contract_id', contractId!)
+        .order('order_index', { ascending: true });
+      
+      if (error) throw error;
+      return data as Milestone[];
+    },
+    enabled: !!contractId,
+  });
+
+  // Fetch submissions for each milestone
+  const { data: submissions = [] } = useQuery({
+    queryKey: ['milestone_submissions', contractId],
+    queryFn: async () => {
+      const milestoneIds = milestones.map(m => m.id);
+      if (milestoneIds.length === 0) return [];
+      
+      const { data, error } = await supabase
+        .from('milestone_submissions')
+        .select(`
+          *,
+          submitter:profiles!milestone_submissions_submitted_by_fkey(name)
+        `)
+        .in('milestone_id', milestoneIds)
+        .order('submitted_at', { ascending: false });
+      
+      if (error) throw error;
+      return data as Submission[];
+    },
+    enabled: milestones.length > 0,
+  });
+
+  // Fetch team members
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ['team_members', contract?.team_id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('team_memberships')
+        .select(`
+          *,
+          user:profiles!team_memberships_user_id_fkey(id, name, avatar_url, level, primary_role)
+        `)
+        .eq('team_id', contract!.team_id!);
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!contract?.team_id,
+  });
+
+  const isLoading = contractLoading || milestonesLoading;
+  
+  const escrowConfig = contract?.escrow_status 
+    ? ESCROW_STATUS_CONFIG[contract.escrow_status]
+    : ESCROW_STATUS_CONFIG.not_funded;
+  
+  const completedMilestones = milestones.filter(m => m.status === 'approved').length;
+  const totalMilestones = milestones.length;
+  const progressPercentage = totalMilestones > 0 ? (completedMilestones / totalMilestones) * 100 : 0;
+  
+  const releasedAmount = milestones
+    .filter(m => m.status === 'approved')
+    .reduce((sum, m) => sum + (m.amount || 0), 0);
+
+  const totalAmount = contract?.total_amount || 0;
+  
+  // Determine user role in this contract
+  const isClient = contract?.project?.client_id === user?.id;
+  const isTeamLeader = contract?.team?.leader_id === user?.id;
+  const isTeamMember = teamMembers.some(m => m.user_id === user?.id) || isTeamLeader;
 
   const handleSubmission = async () => {
     if (!submitNote.trim()) {
@@ -200,6 +215,35 @@ export default function ContractManagement() {
     toast.success('분쟁이 접수되었습니다. 관리자가 검토 후 연락드립니다.');
   };
 
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-64" />
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1,2,3,4].map(i => <Skeleton key={i} className="h-24" />)}
+        </div>
+        <Skeleton className="h-16" />
+        <Skeleton className="h-[400px]" />
+      </div>
+    );
+  }
+
+  if (!contract) {
+    return (
+      <div className="text-center py-16">
+        <h2 className="text-2xl font-bold mb-4">계약을 찾을 수 없습니다</h2>
+        <Link to="/projects">
+          <Button>프로젝트 목록으로 돌아가기</Button>
+        </Link>
+      </div>
+    );
+  }
+
+  // Get submissions for a specific milestone
+  const getMilestoneSubmissions = (milestoneId: string) => {
+    return submissions.filter(s => s.milestone_id === milestoneId);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -212,10 +256,10 @@ export default function ContractManagement() {
         <div className="flex-1">
           <div className="flex items-center gap-3 mb-1">
             <h1 className="text-2xl font-bold">계약 관리</h1>
-            <StatusBadge status="진행중" variant="primary" />
+            <StatusBadge status={contract.status === 'active' ? '진행중' : contract.status} variant="primary" />
           </div>
-          <Link to={`/projects/${contract.projectId}`} className="text-muted-foreground hover:text-primary flex items-center gap-1">
-            {contract.projectTitle}
+          <Link to={`/projects/${contract.project_id}`} className="text-muted-foreground hover:text-primary flex items-center gap-1">
+            {contract.project?.title || '프로젝트'}
             <ExternalLink className="h-3 w-3" />
           </Link>
         </div>
@@ -231,7 +275,7 @@ export default function ContractManagement() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">총 계약금</p>
-                <p className="font-bold">{formatCurrency(contract.totalAmount)}</p>
+                <p className="font-bold">{formatCurrency(totalAmount)}</p>
               </div>
             </div>
           </CardContent>
@@ -301,9 +345,10 @@ export default function ContractManagement() {
           <div className="relative">
             <div className="absolute left-6 top-0 bottom-0 w-0.5 bg-border" />
             <div className="space-y-4">
-              {contract.milestones.map((milestone, index) => {
-                const statusConfig = MILESTONE_STATUS_CONFIG[milestone.status];
+              {milestones.map((milestone, index) => {
+                const statusConfig = milestone.status ? MILESTONE_STATUS_CONFIG[milestone.status] : MILESTONE_STATUS_CONFIG.pending;
                 const isActive = milestone.status === 'in_progress' || milestone.status === 'review';
+                const milestoneSubmissions = getMilestoneSubmissions(milestone.id);
                 
                 return (
                   <Card 
@@ -340,11 +385,11 @@ export default function ContractManagement() {
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
                             <span className="flex items-center gap-1">
                               <Calendar className="h-3 w-3" />
-                              마감: {new Date(milestone.dueDate).toLocaleDateString('ko-KR')}
+                              마감: {milestone.due_date ? new Date(milestone.due_date).toLocaleDateString('ko-KR') : '미정'}
                             </span>
                             <span className="flex items-center gap-1">
                               <DollarSign className="h-3 w-3" />
-                              {formatCurrency(milestone.amount)}
+                              {formatCurrency(milestone.amount || 0)}
                             </span>
                           </div>
                         </div>
@@ -424,14 +469,14 @@ export default function ContractManagement() {
                                   </DialogDescription>
                                 </DialogHeader>
                                 <div className="space-y-4 py-4">
-                                  {milestone.submissions.length > 0 && (
+                                  {milestoneSubmissions.length > 0 && (
                                     <div className="bg-muted/30 rounded-lg p-4 space-y-2">
                                       <p className="text-sm font-medium">최근 제출</p>
                                       <p className="text-sm text-muted-foreground">
-                                        {milestone.submissions[0].note}
+                                        {milestoneSubmissions[0].note}
                                       </p>
                                       <div className="flex flex-wrap gap-2 mt-2">
-                                        {milestone.submissions[0].files.map((file) => (
+                                        {(milestoneSubmissions[0].files || []).map((file) => (
                                           <Badge key={file} variant="outline" className="gap-1">
                                             <FileText className="h-3 w-3" />
                                             {file}
@@ -470,28 +515,30 @@ export default function ContractManagement() {
                           )}
 
                           {/* View submissions */}
-                          {milestone.submissions.length > 0 && (
+                          {milestoneSubmissions.length > 0 && (
                             <Button size="sm" variant="ghost" className="gap-1 text-xs">
                               <FileText className="h-3 w-3" />
-                              {milestone.submissions.length}개 제출
+                              {milestoneSubmissions.length}개 제출
                             </Button>
                           )}
                         </div>
                       </div>
 
                       {/* Submission History */}
-                      {milestone.submissions.length > 0 && milestone.status !== 'pending' && (
+                      {milestoneSubmissions.length > 0 && milestone.status !== 'pending' && (
                         <div className="mt-4 pt-4 border-t border-border/50">
                           <p className="text-xs font-medium text-muted-foreground mb-2">제출 내역</p>
-                          {milestone.submissions.map((sub) => (
+                          {milestoneSubmissions.map((sub) => (
                             <div key={sub.id} className="bg-muted/30 rounded-lg p-3 text-sm">
                               <div className="flex items-center justify-between mb-1">
-                                <span className="font-medium">{sub.submittedBy}</span>
-                                <span className="text-xs text-muted-foreground">{sub.submittedAt}</span>
+                                <span className="font-medium">{sub.submitter?.name || '알 수 없음'}</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {sub.submitted_at ? new Date(sub.submitted_at).toLocaleDateString('ko-KR') : ''}
+                                </span>
                               </div>
                               <p className="text-muted-foreground mb-2">{sub.note}</p>
                               <div className="flex flex-wrap gap-1">
-                                {sub.files.map((file) => (
+                                {(sub.files || []).map((file) => (
                                   <Badge key={file} variant="outline" className="gap-1 text-xs">
                                     <FileText className="h-3 w-3" />
                                     {file}
@@ -522,32 +569,38 @@ export default function ContractManagement() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center text-2xl">
-                    🎵
-                  </div>
-                  <div>
-                    <p className="font-bold">{contract.team.name}</p>
-                    <p className="text-sm text-muted-foreground">리더: {contract.team.leaderName}</p>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-muted-foreground">팀 구성</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    {contract.team.members.map((member) => (
-                      <div key={member.name} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
-                        <RoleBadge role={member.role} level={member.level} size="sm" />
-                        <span className="text-sm">{member.name}</span>
+                {contract.team ? (
+                  <>
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center text-2xl">
+                        🎵
                       </div>
-                    ))}
-                  </div>
-                </div>
-                <Button variant="outline" className="w-full gap-2" asChild>
-                  <Link to={`/teams/${contract.team.id}`}>
-                    팀 상세보기
-                    <ChevronRight className="h-4 w-4" />
-                  </Link>
-                </Button>
+                      <div>
+                        <p className="font-bold">{contract.team.name}</p>
+                        <p className="text-sm text-muted-foreground">리더: {contract.team.leader?.name || '알 수 없음'}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-muted-foreground">팀 구성</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {teamMembers.map((member) => (
+                          <div key={member.id} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
+                            <RoleBadge role={member.role} level={member.user?.level || 1} size="sm" />
+                            <span className="text-sm">{member.user?.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <Button variant="outline" className="w-full gap-2" asChild>
+                      <Link to={`/teams/${contract.team.id}`}>
+                        팀 상세보기
+                        <ChevronRight className="h-4 w-4" />
+                      </Link>
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground">팀 정보가 없습니다.</p>
+                )}
               </CardContent>
             </Card>
 
@@ -565,8 +618,8 @@ export default function ContractManagement() {
                     <User className="h-6 w-6 text-muted-foreground" />
                   </div>
                   <div>
-                    <p className="font-bold">{contract.client.name}</p>
-                    <p className="text-sm text-muted-foreground">{contract.client.contact}</p>
+                    <p className="font-bold">{contract.project?.client?.name || '알 수 없음'}</p>
+                    <p className="text-sm text-muted-foreground">{contract.project?.client?.email || ''}</p>
                   </div>
                 </div>
                 <Button variant="outline" className="w-full gap-2">
@@ -592,7 +645,7 @@ export default function ContractManagement() {
               <div className="grid md:grid-cols-4 gap-4">
                 <div className="p-4 bg-muted/30 rounded-lg text-center">
                   <p className="text-xs text-muted-foreground mb-1">총 계약금</p>
-                  <p className="font-bold text-lg">{formatCurrency(contract.totalAmount)}</p>
+                  <p className="font-bold text-lg">{formatCurrency(totalAmount)}</p>
                 </div>
                 <div className="p-4 bg-success/10 rounded-lg text-center">
                   <p className="text-xs text-muted-foreground mb-1">지급 완료</p>
@@ -601,12 +654,12 @@ export default function ContractManagement() {
                 <div className="p-4 bg-primary/10 rounded-lg text-center">
                   <p className="text-xs text-muted-foreground mb-1">보관 중</p>
                   <p className="font-bold text-lg text-primary">
-                    {formatCurrency(contract.totalAmount - releasedAmount)}
+                    {formatCurrency(totalAmount - releasedAmount)}
                   </p>
                 </div>
                 <div className="p-4 bg-secondary/10 rounded-lg text-center">
                   <p className="text-xs text-muted-foreground mb-1">플랫폼 수수료</p>
-                  <p className="font-bold text-lg text-secondary">{contract.feeRate}%</p>
+                  <p className="font-bold text-lg text-secondary">{contract.fee_rate || 10}%</p>
                 </div>
               </div>
             </CardContent>
