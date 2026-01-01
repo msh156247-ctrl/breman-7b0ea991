@@ -175,16 +175,24 @@ export default function TeamDetail() {
   const isLeader = user?.id === team?.leader_id;
   const isMember = isLeader || members.some(m => m.id === user?.id);
 
-  const inviteLink = team ? `${window.location.origin}/teams/${team.id}/join` : '';
+  const inviteLink = team ? `${window.location.origin}/teams/join/${team.id}` : '';
 
-  const copyInviteLink = () => {
-    navigator.clipboard.writeText(inviteLink);
-    setCopied(true);
-    toast({
-      title: '초대 링크 복사됨',
-      description: '링크가 클립보드에 복사되었습니다.',
-    });
-    setTimeout(() => setCopied(false), 2000);
+  const copyInviteLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+      toast({
+        title: '초대 링크 복사됨',
+        description: '링크가 클립보드에 복사되었습니다.',
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      toast({
+        title: '복사 실패',
+        description: '클립보드 접근이 거부되었습니다.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleApply = async () => {
@@ -227,16 +235,25 @@ export default function TeamDetail() {
   };
 
   const handleNavigateToChat = async () => {
-    if (!team) return;
+    if (!team || !user) {
+      toast({
+        title: '오류',
+        description: '로그인이 필요합니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
     
     try {
       // Check if team conversation exists
-      const { data: existingConvo } = await supabase
+      const { data: existingConvo, error: fetchError } = await supabase
         .from('conversations')
         .select('id')
         .eq('type', 'team')
         .eq('team_id', team.id)
-        .single();
+        .maybeSingle();
+
+      if (fetchError) throw fetchError;
 
       if (existingConvo) {
         navigate(`/chat/${existingConvo.id}`);
@@ -244,7 +261,7 @@ export default function TeamDetail() {
       }
 
       // Create new team conversation
-      const { data: newConvo, error } = await supabase
+      const { data: newConvo, error: createError } = await supabase
         .from('conversations')
         .insert({ 
           type: 'team',
@@ -254,14 +271,14 @@ export default function TeamDetail() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (createError) throw createError;
 
       navigate(`/chat/${newConvo.id}`);
     } catch (error) {
       console.error('Error navigating to chat:', error);
       toast({
-        title: '오류',
-        description: '채팅 페이지로 이동할 수 없습니다.',
+        title: '채팅 오류',
+        description: '채팅 페이지로 이동할 수 없습니다. 잠시 후 다시 시도해주세요.',
         variant: 'destructive',
       });
     }
