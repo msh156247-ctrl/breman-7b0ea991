@@ -180,26 +180,111 @@ export default function ContractManagement() {
   const isTeamLeader = contract?.team?.leader_id === user?.id;
   const isTeamMember = teamMembers.some(m => m.user_id === user?.id) || isTeamLeader;
 
+  // Submit milestone deliverable
+  const submitMilestone = useMutation({
+    mutationFn: async () => {
+      if (!selectedMilestone || !user) throw new Error('Invalid state');
+      
+      const { error } = await supabase
+        .from('milestone_submissions')
+        .insert({
+          milestone_id: selectedMilestone.id,
+          submitted_by: user.id,
+          note: submitNote,
+          files: [], // TODO: file upload integration
+        });
+      
+      if (error) throw error;
+      
+      // Update milestone status to review
+      const { error: updateError } = await supabase
+        .from('milestones')
+        .update({ status: 'review' })
+        .eq('id', selectedMilestone.id);
+      
+      if (updateError) throw updateError;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['milestones', contractId] });
+      queryClient.invalidateQueries({ queryKey: ['milestone_submissions', contractId] });
+      setSubmitDialogOpen(false);
+      setSubmitNote('');
+      setSelectedMilestone(null);
+      toast.success('마일스톤 결과물이 제출되었습니다.');
+    },
+    onError: (error) => {
+      console.error('Error submitting milestone:', error);
+      toast.error('제출에 실패했습니다.');
+    },
+  });
+
+  // Review milestone
+  const reviewMilestone = useMutation({
+    mutationFn: async (approved: boolean) => {
+      if (!selectedMilestone) throw new Error('No milestone selected');
+      
+      const { error } = await supabase
+        .from('milestones')
+        .update({ status: approved ? 'approved' : 'rejected' })
+        .eq('id', selectedMilestone.id);
+      
+      if (error) throw error;
+    },
+    onSuccess: (_, approved) => {
+      queryClient.invalidateQueries({ queryKey: ['milestones', contractId] });
+      setReviewDialogOpen(false);
+      setReviewNote('');
+      setSelectedMilestone(null);
+      toast.success(approved ? '마일스톤이 승인되었습니다.' : '마일스톤이 반려되었습니다.');
+    },
+    onError: (error) => {
+      console.error('Error reviewing milestone:', error);
+      toast.error('검토 처리에 실패했습니다.');
+    },
+  });
+
+  // Create dispute
+  const createDispute = useMutation({
+    mutationFn: async () => {
+      if (!user || !contractId) throw new Error('Invalid state');
+      
+      const { error } = await supabase
+        .from('disputes')
+        .insert({
+          contract_id: contractId,
+          milestone_id: selectedMilestone?.id || null,
+          opened_by: user.id,
+          reason: disputeReason,
+          status: 'open',
+        });
+      
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setDisputeDialogOpen(false);
+      setDisputeReason('');
+      toast.success('분쟁이 접수되었습니다. 관리자가 검토 후 연락드립니다.');
+    },
+    onError: (error) => {
+      console.error('Error creating dispute:', error);
+      toast.error('분쟁 접수에 실패했습니다.');
+    },
+  });
+
   const handleSubmission = async () => {
     if (!submitNote.trim()) {
       toast.error('제출 내용을 입력해주세요.');
       return;
     }
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await submitMilestone.mutateAsync();
     setIsSubmitting(false);
-    setSubmitDialogOpen(false);
-    setSubmitNote('');
-    toast.success('마일스톤 결과물이 제출되었습니다.');
   };
 
   const handleReview = async (approved: boolean) => {
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await reviewMilestone.mutateAsync(approved);
     setIsSubmitting(false);
-    setReviewDialogOpen(false);
-    setReviewNote('');
-    toast.success(approved ? '마일스톤이 승인되었습니다.' : '마일스톤이 반려되었습니다.');
   };
 
   const handleDispute = async () => {
@@ -208,11 +293,8 @@ export default function ContractManagement() {
       return;
     }
     setIsSubmitting(true);
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    await createDispute.mutateAsync();
     setIsSubmitting(false);
-    setDisputeDialogOpen(false);
-    setDisputeReason('');
-    toast.success('분쟁이 접수되었습니다. 관리자가 검토 후 연락드립니다.');
   };
 
   if (isLoading) {

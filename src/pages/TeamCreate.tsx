@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Plus, X, Image } from 'lucide-react';
+import { ArrowLeft, Plus, X, Image, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,14 +35,15 @@ export default function TeamCreate() {
     recruitment_method: 'public' as 'public' | 'invite' | 'auto',
   });
 
-  const [openSlots, setOpenSlots] = useState<{ role: UserRole; minLevel: number }[]>([]);
+  const [openSlots, setOpenSlots] = useState<{ role: UserRole; minLevel: number; order: number }[]>([]);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   const addSlot = () => {
-    setOpenSlots(prev => [...prev, { role: 'horse', minLevel: 1 }]);
+    const newOrder = openSlots.length > 0 ? Math.max(...openSlots.map(s => s.order)) + 1 : 0;
+    setOpenSlots(prev => [...prev, { role: 'horse', minLevel: 1, order: newOrder }]);
   };
 
   const removeSlot = (index: number) => {
@@ -53,6 +54,18 @@ export default function TeamCreate() {
     setOpenSlots(prev => prev.map((slot, i) => 
       i === index ? { ...slot, [field]: value } : slot
     ));
+  };
+
+  const moveSlot = (index: number, direction: 'up' | 'down') => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === openSlots.length - 1) return;
+    
+    const newSlots = [...openSlots];
+    const targetIndex = direction === 'up' ? index - 1 : index + 1;
+    [newSlots[index], newSlots[targetIndex]] = [newSlots[targetIndex], newSlots[index]];
+    // Update order values
+    newSlots.forEach((slot, i) => slot.order = i);
+    setOpenSlots(newSlots);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -233,6 +246,34 @@ export default function TeamCreate() {
 
                 {openSlots.map((slot, index) => (
                   <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                    {/* Order controls */}
+                    <div className="flex flex-col gap-0.5">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={() => moveSlot(index, 'up')}
+                        disabled={index === 0}
+                      >
+                        <ChevronUp className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-5 w-5"
+                        onClick={() => moveSlot(index, 'down')}
+                        disabled={index === openSlots.length - 1}
+                      >
+                        <ChevronDown className="w-3 h-3" />
+                      </Button>
+                    </div>
+                    
+                    <span className="text-sm text-muted-foreground font-medium w-6">
+                      {index + 1}
+                    </span>
+
                     <Select
                       value={slot.role}
                       onValueChange={(value) => updateSlot(index, 'role', value as UserRole)}
@@ -266,7 +307,7 @@ export default function TeamCreate() {
                       variant="ghost"
                       size="icon"
                       onClick={() => removeSlot(index)}
-                      className="ml-auto"
+                      className="ml-auto text-destructive hover:text-destructive"
                     >
                       <X className="w-4 h-4" />
                     </Button>

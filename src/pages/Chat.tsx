@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
@@ -41,14 +40,13 @@ export default function Chat() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('all');
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
 
   useEffect(() => {
     if (user) {
       fetchConversations();
       
-      // Realtime subscription
+      // Realtime subscription for new messages
       const channel = supabase
         .channel('conversations-list')
         .on(
@@ -219,14 +217,12 @@ export default function Chat() {
   };
 
   const filteredConversations = conversations.filter(convo => {
-    const matchesTab = activeTab === 'all' || convo.type === activeTab;
     const searchLower = searchQuery.toLowerCase();
-    const matchesSearch = !searchQuery || 
+    return !searchQuery || 
       convo.participant_name?.toLowerCase().includes(searchLower) ||
       convo.team_name?.toLowerCase().includes(searchLower) ||
       convo.name?.toLowerCase().includes(searchLower) ||
       convo.last_message?.toLowerCase().includes(searchLower);
-    return matchesTab && matchesSearch;
   });
 
   const handleConversationClick = (convo: Conversation) => {
@@ -254,18 +250,8 @@ export default function Chat() {
         />
       </div>
 
-      {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="mb-4">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="all">전체</TabsTrigger>
-          <TabsTrigger value="direct">1:1</TabsTrigger>
-          <TabsTrigger value="team">팀</TabsTrigger>
-          <TabsTrigger value="team_to_team">팀간</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {/* Conversation List */}
-      <ScrollArea className="h-[calc(100vh-280px)]">
+      {/* Conversation List - KakaoTalk style without tabs */}
+      <ScrollArea className="h-[calc(100vh-220px)]">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-pulse text-muted-foreground">로딩중...</div>
@@ -287,7 +273,7 @@ export default function Chat() {
             {filteredConversations.map((convo) => (
               <Card
                 key={convo.id}
-                className="p-3 cursor-pointer hover:bg-muted/50 transition-colors"
+                className="p-3 cursor-pointer hover:bg-muted/50 transition-colors border-0 shadow-none rounded-none border-b border-border/50"
                 onClick={() => handleConversationClick(convo)}
               >
                 <div className="flex items-center gap-3">
@@ -295,10 +281,12 @@ export default function Chat() {
                     <AvatarImage 
                       src={convo.type === 'direct' ? convo.participant_avatar : convo.team_emblem} 
                     />
-                    <AvatarFallback className="bg-primary/10">
+                    <AvatarFallback className="bg-primary/10 text-lg">
                       {convo.type === 'direct' 
                         ? convo.participant_name?.charAt(0) 
-                        : convo.team_name?.charAt(0) || '팀'}
+                        : convo.type === 'team'
+                          ? convo.team_emblem || convo.team_name?.charAt(0)
+                          : '팀'}
                     </AvatarFallback>
                   </Avatar>
 
@@ -311,9 +299,8 @@ export default function Chat() {
                             ? convo.team_name 
                             : convo.name}
                       </span>
-                      <Badge variant="secondary" className="text-xs shrink-0">
-                        {getConversationIcon(convo.type)}
-                        <span className="ml-1">{getConversationLabel(convo.type)}</span>
+                      <Badge variant="secondary" className="text-xs shrink-0 px-1.5 py-0">
+                        {getConversationLabel(convo.type)}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground truncate">
@@ -330,7 +317,6 @@ export default function Chat() {
                         {convo.unread_count}
                       </Badge>
                     )}
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
               </Card>
