@@ -14,7 +14,9 @@ import {
   X,
   Users,
   MessageCircle,
-  UsersRound
+  UsersRound,
+  Check,
+  CheckCheck
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -43,6 +45,7 @@ interface Message {
     content: string;
     sender_name: string;
   };
+  read_by_count?: number;
 }
 
 interface Conversation {
@@ -71,16 +74,29 @@ export default function ChatRoom() {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [participantCount, setParticipantCount] = useState(0);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Mark messages as read when entering the chat room
+  const markAsRead = async () => {
+    if (!conversationId || !user) return;
+
+    await supabase
+      .from('conversation_participants')
+      .update({ last_read_at: new Date().toISOString() })
+      .eq('conversation_id', conversationId)
+      .eq('user_id', user.id);
+  };
 
   useEffect(() => {
     if (conversationId && user) {
       fetchConversation();
       fetchMessages();
+      markAsRead();
 
-      // Realtime subscription
+      // Realtime subscription for new messages
       const channel = supabase
         .channel(`chat-${conversationId}`)
         .on(
@@ -100,8 +116,23 @@ export default function ChatRoom() {
               .eq('id', newMsg.sender_id)
               .single();
 
-            setMessages(prev => [...prev, { ...newMsg, sender: sender || undefined }]);
+            setMessages(prev => [...prev, { ...newMsg, sender: sender || undefined, read_by_count: 0 }]);
             scrollToBottom();
+            // Mark as read immediately when receiving new messages
+            markAsRead();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'conversation_participants',
+            filter: `conversation_id=eq.${conversationId}`
+          },
+          () => {
+            // Refresh read counts when participants update their last_read_at
+            fetchReadCounts();
           }
         )
         .subscribe();
@@ -120,6 +151,30 @@ export default function ChatRoom() {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
+  };
+
+  // Fetch read counts for all messages
+  const fetchReadCounts = async () => {
+    if (!conversationId || !user) return;
+
+    const { data: participants } = await supabase
+      .from('conversation_participants')
+      .select('user_id, last_read_at')
+      .eq('conversation_id', conversationId);
+
+    if (!participants) return;
+
+    setParticipantCount(participants.length);
+
+    setMessages(prev => prev.map(msg => {
+      const readCount = participants.filter(p => 
+        p.user_id !== msg.sender_id && 
+        p.last_read_at && 
+        new Date(p.last_read_at) >= new Date(msg.created_at)
+      ).length;
+
+      return { ...msg, read_by_count: readCount };
+    }));
   };
 
   const fetchConversation = async () => {
@@ -193,7 +248,7 @@ export default function ChatRoom() {
   };
 
   const fetchMessages = async () => {
-    if (!conversationId) return;
+    if (!conversationId || !user) return;
 
     const { data, error } = await supabase
       .from('messages')
@@ -205,6 +260,14 @@ export default function ChatRoom() {
       console.error('Error fetching messages:', error);
       return;
     }
+
+    // Get participants for read counts
+    const { data: participants } = await supabase
+      .from('conversation_participants')
+      .select('user_id, last_read_at')
+      .eq('conversation_id', conversationId);
+
+    setParticipantCount(participants?.length || 0);
 
     // Enrich with sender info and reply info
     const enrichedMessages = await Promise.all(
@@ -237,10 +300,18 @@ export default function ChatRoom() {
           }
         }
 
+        // Calculate read count (participants who read this message, excluding sender)
+        const readCount = (participants || []).filter(p => 
+          p.user_id !== msg.sender_id && 
+          p.last_read_at && 
+          new Date(p.last_read_at) >= new Date(msg.created_at)
+        ).length;
+
         return {
           ...msg,
           sender: sender || undefined,
-          reply_to
+          reply_to,
+          read_by_count: readCount
         };
       })
     );
@@ -344,9 +415,32 @@ export default function ChatRoom() {
 
               <div className="flex items-end gap-1">
                 {isOwn && (
-                  <span className="text-[10px] text-muted-foreground">
-                    {format(msgDate, 'a h:mm', { locale: ko })}
-                  </span>
+                  <div className="flex flex-col items-end gap-0.5">
+                    {/* Read receipt */}
+                    {(() => {
+                      const otherParticipants = participantCount - 1;
+                      const readByCount = msg.read_by_count || 0;
+                      const allRead = otherParticipants > 0 && readByCount >= otherParticipants;
+                      const unreadCount = otherParticipants - readByCount;
+                      
+                      return (
+                        <span className={`text-[10px] flex items-center gap-0.5 ${
+                          allRead ? 'text-primary' : 'text-muted-foreground'
+                        }`}>
+                          {allRead ? (
+                            <CheckCheck className="h-3 w-3" />
+                          ) : unreadCount > 0 ? (
+                            <span className="text-amber-500">{unreadCount}</span>
+                          ) : (
+                            <Check className="h-3 w-3" />
+                          )}
+                        </span>
+                      );
+                    })()}
+                    <span className="text-[10px] text-muted-foreground">
+                      {format(msgDate, 'a h:mm', { locale: ko })}
+                    </span>
+                  </div>
                 )}
 
                 <div className="group relative">
