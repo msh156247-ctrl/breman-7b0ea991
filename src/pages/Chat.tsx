@@ -76,7 +76,7 @@ export default function Chat() {
         .from('conversations')
         .select(`
           *,
-          conversation_participants!inner(user_id, team_id)
+          conversation_participants!inner(user_id, team_id, last_read_at)
         `)
         .order('last_message_at', { ascending: false });
 
@@ -134,6 +134,37 @@ export default function Chat() {
             .single();
 
           enriched.last_message = lastMsg?.content;
+
+          // Get user's last_read_at for this conversation
+          const { data: participantData } = await supabase
+            .from('conversation_participants')
+            .select('last_read_at')
+            .eq('conversation_id', convo.id)
+            .eq('user_id', user.id)
+            .single();
+
+          const lastReadAt = participantData?.last_read_at;
+
+          // Count unread messages (messages after last_read_at)
+          if (lastReadAt) {
+            const { count } = await supabase
+              .from('messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('conversation_id', convo.id)
+              .gt('created_at', lastReadAt)
+              .neq('sender_id', user.id);
+
+            enriched.unread_count = count || 0;
+          } else {
+            // If no last_read_at, count all messages not from user
+            const { count } = await supabase
+              .from('messages')
+              .select('*', { count: 'exact', head: true })
+              .eq('conversation_id', convo.id)
+              .neq('sender_id', user.id);
+
+            enriched.unread_count = count || 0;
+          }
 
           if (convo.type === 'direct') {
             // Get the other participant
