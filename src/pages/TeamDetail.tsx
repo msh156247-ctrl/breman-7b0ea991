@@ -235,7 +235,16 @@ export default function TeamDetail() {
   };
 
   const handleNavigateToChat = async () => {
-    if (!team || !user) {
+    if (!team) {
+      toast({
+        title: '오류',
+        description: '팀 정보를 찾을 수 없습니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!user) {
       toast({
         title: '오류',
         description: '로그인이 필요합니다.',
@@ -246,17 +255,16 @@ export default function TeamDetail() {
     
     try {
       // Check if team conversation exists
-      const { data: existingConvo, error: fetchError } = await supabase
+      const { data: existingConvos, error: fetchError } = await supabase
         .from('conversations')
         .select('id')
         .eq('type', 'team')
-        .eq('team_id', team.id)
-        .maybeSingle();
+        .eq('team_id', team.id);
 
       if (fetchError) throw fetchError;
 
-      if (existingConvo) {
-        navigate(`/chat/${existingConvo.id}`);
+      if (existingConvos && existingConvos.length > 0) {
+        navigate(`/chat/${existingConvos[0].id}`);
         return;
       }
 
@@ -264,14 +272,21 @@ export default function TeamDetail() {
       const { data: newConvo, error: createError } = await supabase
         .from('conversations')
         .insert({ 
-          type: 'team',
+          type: 'team' as const,
           team_id: team.id,
           name: team.name
         })
-        .select()
+        .select('id')
         .single();
 
-      if (createError) throw createError;
+      if (createError) {
+        console.error('Create conversation error:', createError);
+        throw createError;
+      }
+
+      if (!newConvo) {
+        throw new Error('Failed to create conversation');
+      }
 
       navigate(`/chat/${newConvo.id}`);
     } catch (error) {
