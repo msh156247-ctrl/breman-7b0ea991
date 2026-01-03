@@ -19,6 +19,31 @@ interface DigestRequest {
   test_user_id?: string; // Optional: for testing a specific user immediately
 }
 
+// Validate that the request comes from an authorized source (cron or service role)
+function validateInternalRequest(req: Request): boolean {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    console.log("No authorization header provided");
+    return false;
+  }
+
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceRoleKey) {
+    console.error("Service role key not configured");
+    return false;
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  // Accept service role key for internal/cron calls
+  if (token === serviceRoleKey) {
+    return true;
+  }
+
+  console.log("Invalid authorization token");
+  return false;
+}
+
 // Timezone offset map (in hours, negative for behind UTC)
 const timezoneOffsets: Record<string, number> = {
   'Pacific/Auckland': 12,
@@ -55,11 +80,47 @@ function getLocalTime(timezone: string): { hour: number; dayOfWeek: number } {
   };
 }
 
+// Generate secure unsubscribe token using HMAC
+const HMAC_SECRET = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "fallback-secret-key";
+
+async function generateSecureToken(userId: string, type?: string): Promise<string> {
+  const expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+  const data = type ? `${userId}:${type}:${expiresAt}` : `${userId}::${expiresAt}`;
+  
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(HMAC_SECRET);
+  const messageData = encoder.encode(data);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  const hmac = Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  
+  return btoa(`${data}:${hmac}`);
+}
+
 const handler = async (req: Request): Promise<Response> => {
   console.log("Digest email function called");
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Validate authorization
+  if (!validateInternalRequest(req)) {
+    console.log("Unauthorized request rejected");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
   }
 
   try {
@@ -169,27 +230,50 @@ const handler = async (req: Request): Promise<Response> => {
 
         console.log(`Found ${pendingNotifications.length} pending notifications for user ${userPref.user_id}`);
 
-        // Build digest email content
-        const notifications = pendingNotifications
-          .map(pn => pn.notifications)
-          .filter(n => n !== null);
+        // Build digest email content - notifications comes from the join
+        interface NotificationData {
+          id: string;
+          title: string;
+          message: string | null;
+          type: string | null;
+          link: string | null;
+          created_at: string | null;
+        }
+        
+        const rawNotifications: NotificationData[] = [];
+        for (const pn of pendingNotifications) {
+          const notif = pn.notifications as unknown as NotificationData | null;
+          if (notif) {
+            rawNotifications.push(notif);
+          }
+        }
 
-        if (notifications.length === 0) {
+        if (rawNotifications.length === 0) {
           continue;
         }
 
         const digestTitle = digest_type === 'daily' ? '일일 알림 요약' : '주간 알림 요약';
 
-        // Generate unsubscribe links
-        const unsubscribeToken = btoa(userPref.user_id);
+        // Generate secure unsubscribe links with HMAC
+        const unsubscribeToken = await generateSecureToken(userPref.user_id);
         const unsubscribeAllUrl = `${supabaseUrl}/functions/v1/email-unsubscribe?token=${unsubscribeToken}`;
         const viewAllUrl = `https://kazkjbkldqxjdnzgiaqp.lovableproject.com/notifications`;
+
+        // Map notifications to expected format
+        const formattedNotifications = rawNotifications.map(n => ({
+          id: n.id,
+          title: n.title,
+          message: n.message || '',
+          type: n.type || 'system',
+          link: n.link || null,
+          created_at: n.created_at || new Date().toISOString(),
+        }));
 
         const emailHtml = renderDigestEmail({
           branding,
           userName: profile.name,
           digestType: digest_type,
-          notifications: notifications as any[],
+          notifications: formattedNotifications,
           unsubscribeAllUrl,
           viewAllUrl,
         });
@@ -198,7 +282,7 @@ const handler = async (req: Request): Promise<Response> => {
         const emailResponse = await resend.emails.send({
           from: `${branding.brand_name} <onboarding@resend.dev>`,
           to: [profile.email],
-          subject: `[${digestTitle}] ${notifications.length}개의 새 알림`,
+          subject: `[${digestTitle}] ${rawNotifications.length}개의 새 알림`,
           html: emailHtml,
           headers: {
             "List-Unsubscribe": `<${unsubscribeAllUrl}>`,
@@ -228,16 +312,16 @@ const handler = async (req: Request): Promise<Response> => {
         results.push({
           user_id: userPref.user_id,
           email: profile.email,
-          notifications_count: notifications.length,
+          notifications_count: rawNotifications.length,
           status: "sent",
         });
 
-      } catch (userError: any) {
+      } catch (userError) {
         console.error(`Error processing user ${userPref.user_id}:`, userError);
         results.push({
           user_id: userPref.user_id,
           status: "error",
-          error: userError.message,
+          error: (userError as Error).message,
         });
       }
     }
@@ -250,10 +334,10 @@ const handler = async (req: Request): Promise<Response> => {
       }
     );
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error in send-digest-email function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },

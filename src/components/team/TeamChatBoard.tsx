@@ -156,7 +156,7 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
   const uploadFiles = async (): Promise<string[]> => {
     if (selectedFiles.length === 0 || !user) return [];
 
-    const uploadedUrls: string[] = [];
+    const uploadedPaths: string[] = [];
     setIsUploading(true);
 
     try {
@@ -170,11 +170,8 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
 
         if (uploadError) throw uploadError;
 
-        const { data: urlData } = supabase.storage
-          .from('team-attachments')
-          .getPublicUrl(fileName);
-
-        uploadedUrls.push(urlData.publicUrl);
+        // Store the file path instead of public URL (bucket is now private)
+        uploadedPaths.push(fileName);
       }
     } catch (error) {
       console.error('Error uploading files:', error);
@@ -187,7 +184,22 @@ export function TeamChatBoard({ teamId, isLeader, isMember }: TeamChatBoardProps
       setIsUploading(false);
     }
 
-    return uploadedUrls;
+    return uploadedPaths;
+  };
+
+  // Helper function to get signed URL for private bucket files
+  const getSignedUrl = async (filePath: string): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('team-attachments')
+        .createSignedUrl(filePath, 3600); // 1 hour expiry
+      
+      if (error) throw error;
+      return data.signedUrl;
+    } catch (error) {
+      console.error('Error getting signed URL:', error);
+      return null;
+    }
   };
 
   const handleSendMessage = async () => {
@@ -577,8 +589,8 @@ function getFileIcon(url: string) {
   return <FileIcon className="w-4 h-4" />;
 }
 
-function getFileName(url: string) {
-  const parts = url.split('/');
+function getFileName(path: string) {
+  const parts = path.split('/');
   const fullName = parts[parts.length - 1];
   const nameParts = fullName.split('_');
   if (nameParts.length > 2) {
@@ -587,9 +599,87 @@ function getFileName(url: string) {
   return fullName;
 }
 
-function isImageFile(url: string) {
-  const ext = url.split('.').pop()?.toLowerCase() || '';
+function isImageFile(path: string) {
+  const ext = path.split('.').pop()?.toLowerCase() || '';
   return ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+}
+
+// Component to display attachments with signed URLs
+function AttachmentDisplay({ filePath, isOwn }: { filePath: string; isOwn: boolean }) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSignedUrl = async () => {
+      // Check if it's already a full URL (legacy data)
+      if (filePath.startsWith('http')) {
+        setSignedUrl(filePath);
+        setLoading(false);
+        return;
+      }
+      
+      try {
+        const { data, error } = await supabase.storage
+          .from('team-attachments')
+          .createSignedUrl(filePath, 3600); // 1 hour expiry
+        
+        if (error) throw error;
+        setSignedUrl(data.signedUrl);
+      } catch (error) {
+        console.error('Error getting signed URL:', error);
+        setSignedUrl(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchSignedUrl();
+  }, [filePath]);
+
+  if (loading) {
+    return <div className="animate-pulse bg-muted h-8 w-24 rounded" />;
+  }
+
+  if (!signedUrl) {
+    return (
+      <div className="text-xs text-muted-foreground">
+        파일을 불러올 수 없습니다
+      </div>
+    );
+  }
+
+  if (isImageFile(filePath)) {
+    return (
+      <a
+        href={signedUrl}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block"
+      >
+        <img
+          src={signedUrl}
+          alt="첨부 이미지"
+          className="max-w-[200px] max-h-[150px] rounded-lg object-cover hover:opacity-90 transition-opacity"
+        />
+      </a>
+    );
+  }
+
+  return (
+    <a
+      href={signedUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={cn(
+        'flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:opacity-80 transition-opacity',
+        isOwn ? 'bg-primary-foreground/20' : 'bg-background/50'
+      )}
+    >
+      {getFileIcon(filePath)}
+      <span className="max-w-[120px] truncate">{getFileName(filePath)}</span>
+      <Download className="w-3 h-3" />
+    </a>
+  );
 }
 
 function MessageBubble({ message, isOwn, showAvatar, isLeader, replyMessage, onTogglePin, onDelete, onReply }: MessageBubbleProps) {
@@ -667,36 +757,8 @@ function MessageBubble({ message, isOwn, showAvatar, isLeader, replyMessage, onT
             {/* Attachments */}
             {message.attachments && message.attachments.length > 0 && (
               <div className="mt-2 space-y-2">
-                {message.attachments.filter(isImageFile).map((url, index) => (
-                  <a
-                    key={index}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block"
-                  >
-                    <img
-                      src={url}
-                      alt="첨부 이미지"
-                      className="max-w-[200px] max-h-[150px] rounded-lg object-cover hover:opacity-90 transition-opacity"
-                    />
-                  </a>
-                ))}
-                {message.attachments.filter((url) => !isImageFile(url)).map((url, index) => (
-                  <a
-                    key={index}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={cn(
-                      'flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs hover:opacity-80 transition-opacity',
-                      isOwn ? 'bg-primary-foreground/20' : 'bg-background/50'
-                    )}
-                  >
-                    {getFileIcon(url)}
-                    <span className="max-w-[120px] truncate">{getFileName(url)}</span>
-                    <Download className="w-3 h-3" />
-                  </a>
+                {message.attachments.map((filePath, index) => (
+                  <AttachmentDisplay key={index} filePath={filePath} isOwn={isOwn} />
                 ))}
               </div>
             )}
