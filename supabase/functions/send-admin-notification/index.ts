@@ -46,6 +46,55 @@ const actionIcons: Record<string, string> = {
   moderator_role_assigned: '🛡️',
 };
 
+// Validate that the request comes from an authorized source
+async function validateInternalRequest(req: Request): Promise<boolean> {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    console.log("No authorization header provided");
+    return false;
+  }
+
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceRoleKey) {
+    console.error("Service role key not configured");
+    return false;
+  }
+
+  // Check if the request contains a valid service role key or JWT
+  const token = authHeader.replace('Bearer ', '');
+  
+  // Accept service role key for internal calls
+  if (token === serviceRoleKey) {
+    return true;
+  }
+
+  // Validate JWT for authenticated user calls
+  try {
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+    const supabase = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY") ?? "");
+    
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) {
+      console.log("Invalid JWT token");
+      return false;
+    }
+
+    // Verify user is an admin
+    const adminSupabase = createClient(supabaseUrl, serviceRoleKey);
+    const { data: isAdmin } = await adminSupabase.rpc('is_admin', { _user_id: user.id });
+    
+    if (!isAdmin) {
+      console.log("User is not an admin");
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error("Error validating request:", error);
+    return false;
+  }
+}
+
 function getBaseStyles(branding: EmailBranding) {
   return `
     body {
@@ -242,6 +291,16 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  // Validate that request comes from authorized source
+  const isAuthorized = await validateInternalRequest(req);
+  if (!isAuthorized) {
+    console.log("Unauthorized request rejected");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized" }),
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
+  }
+
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabase = createClient(
@@ -363,10 +422,10 @@ const handler = async (req: Request): Promise<Response> => {
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error in send-admin-notification function:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: (error as Error).message }),
       { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
   }

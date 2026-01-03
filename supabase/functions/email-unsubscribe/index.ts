@@ -8,19 +8,93 @@ const corsHeaders = {
 
 interface UnsubscribeRequest {
   token: string;
-  type?: string; // Optional: specific notification type to unsubscribe from
+  type?: string;
 }
 
-// Simple token encoding/decoding using base64
-function decodeToken(token: string): { userId: string; type?: string } | null {
+// HMAC-based secure token generation and verification
+const HMAC_SECRET = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "fallback-secret-key";
+
+async function generateHmac(data: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(HMAC_SECRET);
+  const messageData = encoder.encode(data);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  return Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function verifyHmac(data: string, providedHmac: string): Promise<boolean> {
+  const expectedHmac = await generateHmac(data);
+  // Timing-safe comparison
+  if (expectedHmac.length !== providedHmac.length) return false;
+  let result = 0;
+  for (let i = 0; i < expectedHmac.length; i++) {
+    result |= expectedHmac.charCodeAt(i) ^ providedHmac.charCodeAt(i);
+  }
+  return result === 0;
+}
+
+// Secure token format: base64(userId:type:expiresAt:hmac)
+// Token expires after 7 days
+async function generateSecureToken(userId: string, type?: string): Promise<string> {
+  const expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+  const data = type ? `${userId}:${type}:${expiresAt}` : `${userId}::${expiresAt}`;
+  const hmac = await generateHmac(data);
+  return btoa(`${data}:${hmac}`);
+}
+
+async function decodeSecureToken(token: string): Promise<{ userId: string; type?: string } | null> {
   try {
     const decoded = atob(token);
-    const [userId, type] = decoded.split(':');
-    return { userId, type };
-  } catch {
+    const parts = decoded.split(':');
+    
+    if (parts.length !== 4) {
+      // Try legacy format for backward compatibility (userId:type)
+      if (parts.length === 2) {
+        // Legacy tokens are no longer valid - security upgrade
+        console.log("Legacy token format rejected for security reasons");
+        return null;
+      }
+      return null;
+    }
+    
+    const [userId, type, expiresAtStr, hmac] = parts;
+    const expiresAt = parseInt(expiresAtStr, 10);
+    
+    // Check expiration
+    if (Date.now() > expiresAt) {
+      console.log("Token expired");
+      return null;
+    }
+    
+    // Verify HMAC signature
+    const data = type ? `${userId}:${type}:${expiresAtStr}` : `${userId}::${expiresAtStr}`;
+    const isValid = await verifyHmac(data, hmac);
+    
+    if (!isValid) {
+      console.log("Invalid token signature");
+      return null;
+    }
+    
+    return { userId, type: type || undefined };
+  } catch (error) {
+    console.error("Token decode error:", error);
     return null;
   }
 }
+
+// Export for use by other functions (email templates)
+export { generateSecureToken };
 
 const handler = async (req: Request): Promise<Response> => {
   console.log("email-unsubscribe function called");
@@ -47,9 +121,9 @@ const handler = async (req: Request): Promise<Response> => {
       });
     }
 
-    const decoded = decodeToken(token);
+    const decoded = await decodeSecureToken(token);
     if (!decoded) {
-      return new Response(getHtmlResponse("오류", "유효하지 않은 링크입니다.", false), {
+      return new Response(getHtmlResponse("오류", "유효하지 않거나 만료된 링크입니다. 새로운 이메일의 수신 거부 링크를 사용해주세요.", false), {
         status: 400,
         headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders },
       });
@@ -71,9 +145,10 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
-      // Update preferences based on type
-      const updateField = type ? `email_${type}` : null;
-      let updateData: Record<string, any> = {};
+      // Update preferences based on type from token or URL param
+      const unsubType = type || decoded.type;
+      const updateField = unsubType ? `email_${unsubType}` : null;
+      let updateData: Record<string, boolean> = {};
 
       if (updateField && ['email_contract', 'email_project', 'email_team', 'email_payment', 
           'email_dispute', 'email_review', 'email_siege', 'email_badge', 'email_system'].includes(updateField)) {
@@ -117,7 +192,7 @@ const handler = async (req: Request): Promise<Response> => {
         }
       }
 
-      const typeLabel = type ? getTypeLabel(type) : "모든";
+      const typeLabel = unsubType ? getTypeLabel(unsubType) : "모든";
       console.log(`User ${decoded.userId} unsubscribed from ${typeLabel} notifications`);
 
       return new Response(
@@ -131,7 +206,7 @@ const handler = async (req: Request): Promise<Response> => {
           headers: { "Content-Type": "text/html; charset=utf-8", ...corsHeaders },
         }
       );
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error processing unsubscribe:", error);
       return new Response(getHtmlResponse("오류", "처리 중 오류가 발생했습니다.", false), {
         status: 500,
@@ -152,16 +227,16 @@ const handler = async (req: Request): Promise<Response> => {
         });
       }
 
-      const decoded = decodeToken(token);
+      const decoded = await decodeSecureToken(token);
       if (!decoded) {
-        return new Response(JSON.stringify({ error: "Invalid token" }), {
+        return new Response(JSON.stringify({ error: "Invalid or expired token" }), {
           status: 400,
           headers: { "Content-Type": "application/json", ...corsHeaders },
         });
       }
 
       const updateField = type ? `email_${type}` : null;
-      let updateData: Record<string, any> = {};
+      let updateData: Record<string, boolean> = {};
 
       if (updateField) {
         updateData[updateField] = false;
@@ -198,9 +273,9 @@ const handler = async (req: Request): Promise<Response> => {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error in unsubscribe POST:", error);
-      return new Response(JSON.stringify({ error: error.message }), {
+      return new Response(JSON.stringify({ error: (error as Error).message }), {
         status: 500,
         headers: { "Content-Type": "application/json", ...corsHeaders },
       });
