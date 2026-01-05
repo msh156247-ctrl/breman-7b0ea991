@@ -15,9 +15,12 @@ import Chat from "./pages/Chat";
 import ChatRoom from "./pages/ChatRoom";
 import Teams from "./pages/Teams";
 import TeamCreate from "./pages/TeamCreate";
+import TeamEdit from "./pages/TeamEdit";
 import TeamJoin from "./pages/TeamJoin";
 import TeamDetail from "./pages/TeamDetail";
 import Projects from "./pages/Projects";
+import ProjectCreate from "./pages/ProjectCreate";
+import ProjectEdit from "./pages/ProjectEdit";
 import ProjectDetail from "./pages/ProjectDetail";
 import ContractManagement from "./pages/ContractManagement";
 import Siege from "./pages/Siege";
@@ -82,8 +85,11 @@ function AppRoutes() {
         <Route path="teams/create" element={<TeamCreate />} />
         <Route path="teams/join/:teamId" element={<TeamJoin />} />
         <Route path="teams/:teamId" element={<TeamDetail />} />
+        <Route path="teams/:teamId/edit" element={<TeamEdit />} />
         <Route path="projects" element={<Projects />} />
+        <Route path="projects/create" element={<ProjectCreate />} />
         <Route path="projects/:projectId" element={<ProjectDetail />} />
+        <Route path="projects/:projectId/edit" element={<ProjectEdit />} />
         <Route path="contracts/:contractId" element={<ContractManagement />} />
         <Route path="siege" element={<Siege />} />
         <Route path="siege/:siegeId" element={<SiegeDetail />} />
