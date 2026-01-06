@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Users, Star, Trophy, Calendar, Settings, 
-  UserPlus, Copy, Check, Briefcase, Crown, MessageSquare, ExternalLink, Loader2
+  UserPlus, Copy, Check, Briefcase, Crown, MessageSquare, ExternalLink, Loader2, UserCog
 } from 'lucide-react';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { TeamAnnouncementBoard } from '@/components/team/TeamAnnouncementBoard';
+import { TeamMemberManagement } from '@/components/team/TeamMemberManagement';
 
 interface Team {
   id: string;
@@ -475,6 +476,7 @@ export default function TeamDetail() {
         <Tabs defaultValue="members" className="space-y-6">
           <TabsList className="bg-muted/50">
             <TabsTrigger value="members">멤버</TabsTrigger>
+            {isLeader && <TabsTrigger value="manage">멤버 관리</TabsTrigger>}
             <TabsTrigger value="board">공지사항</TabsTrigger>
             <TabsTrigger value="openings">모집 포지션</TabsTrigger>
           </TabsList>
@@ -521,6 +523,22 @@ export default function TeamDetail() {
               </Card>
             )}
           </TabsContent>
+
+          {/* Member Management Tab (Leader only) */}
+          {isLeader && team.leader_id && (
+            <TabsContent value="manage" className="space-y-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <UserCog className="w-5 h-5 text-primary" />
+                멤버 관리
+              </h2>
+              <TeamMemberManagement
+                teamId={team.id}
+                leaderId={team.leader_id}
+                members={members}
+                onMemberUpdated={fetchTeamData}
+              />
+            </TabsContent>
+          )}
 
           {/* Announcements Tab */}
           <TabsContent value="board" className="space-y-4">
