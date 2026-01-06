@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Clock, DollarSign, Calendar, Users, Star,
   CheckCircle2, Circle, AlertCircle, FileText, Send,
-  MessageSquare, Paperclip, Building, Shield, Settings, Loader2
+  MessageSquare, Paperclip, Building, Shield, Settings, Loader2, Inbox
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,6 +31,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { ProjectProposalManagement } from '@/components/project/ProjectProposalManagement';
 
 interface Project {
   id: string;
@@ -499,29 +500,60 @@ export default function ProjectDetail() {
 
       {/* Content */}
       <ScrollReveal animation="fade-up" delay={150}>
-        <Card>
-          <CardContent className="p-6">
-            <h2 className="text-lg font-semibold mb-4">프로젝트 설명</h2>
-            {project.description ? (
-              <div className="prose prose-sm max-w-none">
-                {project.description.split('\n').map((paragraph, i) => {
-                  if (paragraph.startsWith('## ')) {
-                    return <h3 key={i} className="text-md font-semibold mt-4 mb-2 first:mt-0">{paragraph.replace('## ', '')}</h3>;
-                  }
-                  if (paragraph.startsWith('- ')) {
-                    return <li key={i} className="text-foreground/80 ml-4">{paragraph.replace('- ', '')}</li>;
-                  }
-                  if (paragraph.trim() === '') {
-                    return null;
-                  }
-                  return <p key={i} className="text-foreground/80 mb-2">{paragraph}</p>;
-                })}
-              </div>
-            ) : (
-              <p className="text-muted-foreground">설명이 없습니다.</p>
+        <Tabs defaultValue="description" className="space-y-4">
+          <TabsList className="bg-muted/50">
+            <TabsTrigger value="description">프로젝트 설명</TabsTrigger>
+            {isOwner && (
+              <TabsTrigger value="proposals" className="flex items-center gap-2">
+                <Inbox className="w-4 h-4" />
+                제안서 ({proposalCount}건)
+              </TabsTrigger>
             )}
-          </CardContent>
-        </Card>
+          </TabsList>
+
+          <TabsContent value="description">
+            <Card>
+              <CardContent className="p-6">
+                <h2 className="text-lg font-semibold mb-4">프로젝트 설명</h2>
+                {project.description ? (
+                  <div className="prose prose-sm max-w-none">
+                    {project.description.split('\n').map((paragraph, i) => {
+                      if (paragraph.startsWith('## ')) {
+                        return <h3 key={i} className="text-md font-semibold mt-4 mb-2 first:mt-0">{paragraph.replace('## ', '')}</h3>;
+                      }
+                      if (paragraph.startsWith('- ')) {
+                        return <li key={i} className="text-foreground/80 ml-4">{paragraph.replace('- ', '')}</li>;
+                      }
+                      if (paragraph.trim() === '') {
+                        return null;
+                      }
+                      return <p key={i} className="text-foreground/80 mb-2">{paragraph}</p>;
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground">설명이 없습니다.</p>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {isOwner && (
+            <TabsContent value="proposals">
+              <Card>
+                <CardContent className="p-6">
+                  <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                    <Inbox className="w-5 h-5 text-primary" />
+                    들어온 제안서
+                  </h2>
+                  <ProjectProposalManagement 
+                    projectId={project.id}
+                    onProposalAccepted={fetchProjectData}
+                  />
+                </CardContent>
+              </Card>
+            </TabsContent>
+          )}
+        </Tabs>
       </ScrollReveal>
 
       {/* Back to Top */}
