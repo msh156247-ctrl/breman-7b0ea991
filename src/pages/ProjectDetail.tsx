@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Clock, DollarSign, Calendar, Users, Star,
   CheckCircle2, Circle, AlertCircle, FileText, Send,
-  MessageSquare, Paperclip, Building, Shield, Settings, Loader2, Inbox
+  MessageSquare, Paperclip, Building, Shield, Settings, Loader2, Inbox,
+  XCircle, CheckCircle, Ban
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,6 +29,17 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -100,6 +112,7 @@ export default function ProjectDetail() {
   const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
   const [questionText, setQuestionText] = useState('');
   const [hasApplied, setHasApplied] = useState(false);
+  const [statusUpdating, setStatusUpdating] = useState(false);
 
   useEffect(() => {
     if (projectId) {
@@ -262,6 +275,37 @@ export default function ProjectDetail() {
     setQuestionText('');
   };
 
+  const handleStatusChange = async (newStatus: 'completed' | 'cancelled') => {
+    if (!project) return;
+    
+    setStatusUpdating(true);
+    try {
+      const { error } = await supabase
+        .from('projects')
+        .update({ status: newStatus })
+        .eq('id', project.id);
+
+      if (error) throw error;
+
+      setProject({ ...project, status: newStatus });
+      toast({
+        title: newStatus === 'completed' ? '프로젝트 완료' : '프로젝트 취소됨',
+        description: newStatus === 'completed' 
+          ? '프로젝트가 성공적으로 완료되었습니다.' 
+          : '프로젝트가 취소되었습니다.',
+      });
+    } catch (error) {
+      console.error('Error updating project status:', error);
+      toast({
+        title: '상태 변경 실패',
+        description: '프로젝트 상태를 변경할 수 없습니다.',
+        variant: 'destructive',
+      });
+    } finally {
+      setStatusUpdating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -388,12 +432,113 @@ export default function ProjectDetail() {
 
                 {/* Actions */}
                 {isOwner ? (
-                  <Link to={`/projects/${project.id}/edit`}>
-                    <Button className="w-full" variant="outline">
-                      <Settings className="w-4 h-4 mr-2" />
-                      프로젝트 관리
-                    </Button>
-                  </Link>
+                  <div className="space-y-2">
+                    <Link to={`/projects/${project.id}/edit`}>
+                      <Button className="w-full" variant="outline">
+                        <Settings className="w-4 h-4 mr-2" />
+                        프로젝트 관리
+                      </Button>
+                    </Link>
+                    
+                    {/* Status Change Actions - Only for active projects */}
+                    {(project.status === 'open' || project.status === 'matched' || project.status === 'in_progress') && (
+                      <div className="flex gap-2">
+                        {/* Complete Project */}
+                        {project.status === 'in_progress' && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                className="flex-1" 
+                                variant="default"
+                                disabled={statusUpdating}
+                              >
+                                <CheckCircle className="w-4 h-4 mr-2" />
+                                완료 처리
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>프로젝트 완료 처리</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  프로젝트를 완료 처리하시겠습니까? 완료 후에는 더 이상 변경할 수 없습니다.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>취소</AlertDialogCancel>
+                                <AlertDialogAction 
+                                  onClick={() => handleStatusChange('completed')}
+                                  disabled={statusUpdating}
+                                >
+                                  {statusUpdating ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <CheckCircle className="w-4 h-4 mr-2" />
+                                  )}
+                                  완료 처리
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+
+                        {/* Cancel Project */}
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button 
+                              className="flex-1" 
+                              variant="destructive"
+                              disabled={statusUpdating}
+                            >
+                              <Ban className="w-4 h-4 mr-2" />
+                              프로젝트 취소
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>프로젝트 취소</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                정말로 프로젝트를 취소하시겠습니까? 취소 후에는 복구할 수 없습니다.
+                                {project.status !== 'open' && (
+                                  <span className="block mt-2 text-destructive font-medium">
+                                    ⚠️ 이미 진행 중인 프로젝트입니다. 관련 계약 및 제안에 영향을 줄 수 있습니다.
+                                  </span>
+                                )}
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>돌아가기</AlertDialogCancel>
+                              <AlertDialogAction 
+                                onClick={() => handleStatusChange('cancelled')}
+                                disabled={statusUpdating}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                {statusUpdating ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <Ban className="w-4 h-4 mr-2" />
+                                )}
+                                취소 확인
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    )}
+
+                    {/* Status indicator for finished projects */}
+                    {project.status === 'completed' && (
+                      <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-success/10 text-success border border-success/20">
+                        <CheckCircle className="w-5 h-5" />
+                        <span className="font-medium">완료된 프로젝트</span>
+                      </div>
+                    )}
+                    {project.status === 'cancelled' && (
+                      <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-destructive/10 text-destructive border border-destructive/20">
+                        <XCircle className="w-5 h-5" />
+                        <span className="font-medium">취소된 프로젝트</span>
+                      </div>
+                    )}
+                  </div>
                 ) : project.status === 'open' && isTeamLeader && (
                   <div className="space-y-2">
                     {hasApplied ? (
