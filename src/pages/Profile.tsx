@@ -1,31 +1,22 @@
-import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  Edit, MapPin, Calendar, Star, Users, Briefcase, Award, 
-  Settings, ChevronRight, Trophy, Code, Mail
+  Edit, Calendar, Star, Users, Briefcase, Award, 
+  ChevronRight, Trophy, Code, Mail
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RoleBadge } from '@/components/ui/RoleBadge';
-import { SkillBadge } from '@/components/ui/SkillBadge';
 import { XPBar } from '@/components/ui/XPBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
-import { ROLES, type SkillTier } from '@/lib/constants';
+import { ROLES } from '@/lib/constants';
 import { NotificationPreferences } from '@/components/notifications/NotificationPreferences';
+import { SkillManagement } from '@/components/profile/SkillManagement';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
-
-// Sample data
-const userSkills = [
-  { name: 'React', level: 8, tier: 'gold' as SkillTier },
-  { name: 'TypeScript', level: 7, tier: 'gold' as SkillTier },
-  { name: 'Node.js', level: 6, tier: 'silver' as SkillTier },
-  { name: 'Python', level: 5, tier: 'silver' as SkillTier },
-  { name: 'AWS', level: 4, tier: 'bronze' as SkillTier },
-  { name: 'Docker', level: 3, tier: 'bronze' as SkillTier },
-];
 
 const userTeams = [
   { id: '1', name: '스타트업 드림팀', emblem: '🚀', role: 'horse' as const, members: 4 },
@@ -77,11 +68,26 @@ const userReviews = [
 ];
 
 export default function Profile() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const role = profile?.primary_role || 'horse';
   const level = profile?.level || 1;
   const xp = profile?.xp || 0;
   const maxXP = level * 1000;
+
+  // Fetch user skills for stats
+  const { data: userSkills = [] } = useQuery({
+    queryKey: ['user-skills', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('user_skills')
+        .select('id, skill_id, level, tier, skill:skills(id, name, category)')
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   return (
     <div className="space-y-6">
@@ -152,9 +158,9 @@ export default function Profile() {
                 {/* Skill XP Summary */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {userSkills.slice(0, 4).map((skill) => (
-                    <div key={skill.name} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
+                    <div key={skill.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
                       <div className="w-2 h-2 rounded-full bg-gradient-to-r from-primary to-accent" />
-                      <span className="text-xs font-medium truncate">{skill.name}</span>
+                      <span className="text-xs font-medium truncate">{skill.skill?.name || 'Unknown'}</span>
                       <span className="text-xs text-muted-foreground ml-auto">Lv.{skill.level}</span>
                     </div>
                   ))}
@@ -216,34 +222,7 @@ export default function Profile() {
 
         {/* Skills Tab */}
         <TabsContent value="skills" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-display">스킬</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {userSkills.map((skill) => (
-                  <div 
-                    key={skill.name}
-                    className="p-4 rounded-lg border border-border hover:border-primary/30 transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <SkillBadge name={skill.name} tier={skill.tier} />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-primary to-accent"
-                          style={{ width: `${(skill.level / 10) * 100}%` }}
-                        />
-                      </div>
-                      <span className="text-sm font-medium">Lv.{skill.level}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+          <SkillManagement />
         </TabsContent>
 
         {/* Teams Tab */}
