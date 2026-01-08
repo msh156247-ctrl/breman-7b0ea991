@@ -163,18 +163,6 @@ export default function Landing() {
                   </div>
                 </div>
 
-                {/* Responsibilities */}
-                <div className="mb-4">
-                  <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">담당 업무</h4>
-                  <ul className="grid grid-cols-2 gap-1.5">
-                    {role.responsibilities.map((resp, i) => (
-                      <li key={i} className="text-sm text-foreground/80 flex items-center gap-1.5">
-                        <span className="w-1 h-1 rounded-full bg-primary" />
-                        {resp}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
 
                 {/* Keywords */}
                 <div className="mb-4">
