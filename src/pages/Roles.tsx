@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowLeft, ArrowRight, TrendingUp, Target, Sparkles, CheckCircle2, Info } from 'lucide-react';
+import { ArrowLeft, ArrowRight, TrendingUp, Sparkles, Info, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { BackToTop } from '@/components/ui/BackToTop';
@@ -87,24 +87,49 @@ export default function Roles() {
         <div className="container mx-auto max-w-4xl text-center">
           <ScrollReveal>
             <h1 className="text-4xl md:text-5xl font-display font-bold mb-4">
-              브래맨 <span className="gradient-text">역할 체계</span>
+              브래맨 <span className="gradient-text">성향 체계</span>
             </h1>
           </ScrollReveal>
           <ScrollReveal delay={0.1}>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-6">
-              브레멘 음악대의 동물들처럼, 각자의 특기를 살려 팀에 기여하세요.
-              <br />
-              역할별 스킬 요구사항과 커리어 패스를 확인해보세요.
+              브레멘 음악대의 동물들처럼, 각자의 협업 스타일로 팀에 기여하세요.
             </p>
           </ScrollReveal>
           <ScrollReveal delay={0.2}>
             <Link to="/role-quiz">
               <Button variant="outline" size="lg" className="gap-2 border-primary/30 hover:bg-primary/10">
                 <Sparkles className="w-4 h-4" />
-                어떤 역할이 나에게 맞을까? 퀴즈 풀기
+                어떤 성향이 나에게 맞을까? 퀴즈 풀기
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
+          </ScrollReveal>
+        </div>
+      </section>
+
+      {/* Persona vs Skill Explanation */}
+      <section className="py-12 px-4">
+        <div className="container mx-auto max-w-3xl">
+          <ScrollReveal>
+            <div className="p-6 rounded-2xl bg-muted/50 border border-border">
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <Lightbulb className="w-5 h-5 text-secondary" />
+                <h2 className="text-xl font-display font-bold">성향 vs 기술</h2>
+              </div>
+              <div className="text-center space-y-3">
+                <p className="text-foreground">
+                  <span className="font-semibold text-primary">성향(Persona)</span>은 협업 스타일이며 <span className="underline decoration-primary/50 underline-offset-2">1개만 선택</span> 가능합니다.
+                </p>
+                <p className="text-foreground">
+                  <span className="font-semibold text-secondary">기술(Skill)</span>은 전문 분야이며 <span className="underline decoration-secondary/50 underline-offset-2">여러 개를 레벨과 함께 등록</span>할 수 있습니다.
+                </p>
+                <div className="pt-3 border-t border-border mt-4">
+                  <p className="text-sm text-muted-foreground">
+                    예: 🐱 고양이 성향 + Frontend 3레벨 + Design 2레벨
+                  </p>
+                </div>
+              </div>
+            </div>
           </ScrollReveal>
         </div>
       </section>
@@ -115,10 +140,10 @@ export default function Roles() {
           <ScrollReveal>
             <div className="text-center mb-10">
               <h2 className="text-2xl md:text-3xl font-display font-bold mb-3">
-                역할 <span className="gradient-text">비교표</span>
+                성향 <span className="gradient-text">비교표</span>
               </h2>
               <p className="text-muted-foreground">
-                한눈에 비교하고 나에게 맞는 역할을 찾아보세요.
+                한눈에 비교하고 나에게 맞는 성향을 찾아보세요.
               </p>
             </div>
           </ScrollReveal>
@@ -142,7 +167,7 @@ export default function Roles() {
               <tbody>
                 {/* Title */}
                 <tr className="border-b border-border/50">
-                  <td className="p-4 text-sm font-medium text-muted-foreground">역할</td>
+                  <td className="p-4 text-sm font-medium text-muted-foreground">특성</td>
                   {(Object.entries(ROLES) as [UserRole, typeof ROLES[UserRole]][]).map(([key, role]) => (
                     <td key={key} className="p-4 text-center text-sm font-semibold">{role.title}</td>
                   ))}
@@ -166,22 +191,6 @@ export default function Roles() {
                           </span>
                         ))}
                       </div>
-                    </td>
-                  ))}
-                </tr>
-                {/* Responsibilities */}
-                <tr className="border-b border-border/50 bg-muted/20">
-                  <td className="p-4 text-sm font-medium text-muted-foreground align-top">담당 업무</td>
-                  {(Object.entries(ROLES) as [UserRole, typeof ROLES[UserRole]][]).map(([key, role]) => (
-                    <td key={key} className="p-4 text-left">
-                      <ul className="space-y-1">
-                        {role.responsibilities.map((resp, i) => (
-                          <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                            <span className="w-1 h-1 rounded-full bg-primary mt-1.5 flex-shrink-0" />
-                            {resp}
-                          </li>
-                        ))}
-                      </ul>
                     </td>
                   ))}
                 </tr>
@@ -260,21 +269,6 @@ export default function Roles() {
                     </div>
                   </div>
 
-                  {/* Responsibilities */}
-                  <div className="mb-6">
-                    <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground mb-3">
-                      <Target className="w-4 h-4 text-primary" />
-                      담당 업무
-                    </h3>
-                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {role.responsibilities.map((resp, i) => (
-                        <li key={i} className="flex items-center gap-2 text-sm">
-                          <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
-                          {resp}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
 
                   {/* Keywords */}
                   <div className="mb-6">
@@ -398,12 +392,12 @@ export default function Roles() {
         <div className="container mx-auto max-w-3xl text-center">
           <ScrollReveal>
             <h2 className="text-3xl font-display font-bold mb-4">
-              나에게 맞는 역할을 찾으셨나요?
+              나에게 맞는 성향을 찾으셨나요?
             </h2>
           </ScrollReveal>
           <ScrollReveal delay={0.1}>
             <p className="text-primary-foreground/80 mb-8">
-              지금 바로 가입하고 온보딩 과정에서 역할을 선택하세요.
+              지금 바로 가입하고 온보딩 과정에서 성향을 선택하세요.
             </p>
           </ScrollReveal>
           <ScrollReveal delay={0.2}>

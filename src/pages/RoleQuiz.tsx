@@ -229,15 +229,17 @@ export default function RoleQuiz() {
                 </p>
 
                 <div className="space-y-4 mb-8">
-                  <h3 className="font-display font-bold text-lg">주요 역할</h3>
-                  <ul className="space-y-2">
-                    {roleInfo.responsibilities.map((resp, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
-                        <span>{resp}</span>
-                      </li>
+                  <h3 className="font-display font-bold text-lg">핵심 키워드</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {roleInfo.keywords.map((keyword) => (
+                      <span 
+                        key={keyword}
+                        className={`px-4 py-2 rounded-full bg-gradient-to-r ${roleInfo.gradient} text-primary-foreground text-sm font-medium`}
+                      >
+                        {keyword}
+                      </span>
                     ))}
-                  </ul>
+                  </div>
                 </div>
 
                 <div className="space-y-4 mb-8">

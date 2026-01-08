@@ -33,20 +33,15 @@ export const METRIC_DESCRIPTIONS: Record<string, { calculation: string; tracking
   }
 };
 
+// 성향(Persona) - 협업 스타일, 1개만 선택 가능
 export const ROLES = {
   horse: { 
     name: '말', 
     nameEn: 'Horse',
     icon: '🐴', 
-    title: 'Leader / Backend',
-    description: '팀의 방향과 기반을 책임지는 리더',
-    responsibilities: [
-      '팀 목표 설정 및 일정 관리',
-      '시스템 아키텍처 설계',
-      '백엔드 개발, API·DB 관리',
-      '의사결정 및 최종 책임'
-    ],
-    keywords: ['리더십', '안정성', '구조 설계'],
+    title: '리드 / 추진',
+    description: '팀을 이끌고 목표를 향해 달리는 리더형. 결단력과 추진력이 강점입니다.',
+    keywords: ['리더십', '추진력', '결단력'],
     metrics: ['프로젝트 성공률', '팀 완주율'],
     color: 'role-horse',
     gradient: 'from-primary to-accent'
@@ -55,14 +50,8 @@ export const ROLES = {
     name: '개', 
     nameEn: 'Dog',
     icon: '🐕', 
-    title: 'QA / Security',
-    description: '품질과 신뢰를 지키는 수호자',
-    responsibilities: [
-      '기능 테스트 및 버그 검증',
-      '보안 점검, 취약점 리포트',
-      '릴리즈 전 품질 체크',
-      '안정성 기준 수립'
-    ],
+    title: '품질 / 리스크',
+    description: '세부사항을 놓치지 않는 신뢰형. 품질 관리와 리스크 예방의 전문가입니다.',
     keywords: ['신뢰', '책임감', '디테일'],
     metrics: ['버그 감소율', '무사고 릴리즈'],
     color: 'role-dog',
@@ -72,15 +61,9 @@ export const ROLES = {
     name: '고양이', 
     nameEn: 'Cat',
     icon: '🐱', 
-    title: 'Design / UX',
-    description: '사용자 경험과 감성을 만드는 설계자',
-    responsibilities: [
-      'UI·UX 디자인',
-      '사용자 플로우 설계',
-      '브랜드·비주얼 아이덴티티',
-      '프로토타입 제작'
-    ],
-    keywords: ['창의성', '직관', '감성'],
+    title: '설계 / 창의',
+    description: '독창적인 아이디어로 문제를 해결하는 창의형. 설계와 혁신의 핵심입니다.',
+    keywords: ['창의성', '직관', '혁신'],
     metrics: ['사용성 점수', '사용자 만족도'],
     color: 'role-cat',
     gradient: 'from-pink-500 to-rose-400'
@@ -89,19 +72,25 @@ export const ROLES = {
     name: '닭', 
     nameEn: 'Rooster',
     icon: '🐓', 
-    title: 'Frontend',
-    description: '사용자와 만나는 최전선',
-    responsibilities: [
-      '프론트엔드 개발',
-      '인터랙션·애니메이션 구현',
-      '성능 최적화',
-      '디자인을 코드로 구현'
-    ],
-    keywords: ['표현력', '속도', '완성도'],
+    title: '실행 / 속도',
+    description: '빠른 실행력으로 결과를 만들어내는 실행형. 속도와 효율성의 달인입니다.',
+    keywords: ['실행력', '속도', '효율성'],
     metrics: ['UI 완성도', '퍼포먼스 지표'],
     color: 'role-rooster',
     gradient: 'from-secondary to-amber-400'
   },
+} as const;
+
+// 기술(Skill) 카테고리 - 전문 분야, 여러 개 등록 가능 (레벨과 함께)
+export const SKILL_CATEGORIES = {
+  frontend: { name: '프론트엔드', icon: '🎨', color: 'from-blue-500 to-cyan-400' },
+  backend: { name: '백엔드', icon: '⚙️', color: 'from-green-500 to-emerald-400' },
+  design: { name: '디자인', icon: '✨', color: 'from-pink-500 to-rose-400' },
+  devops: { name: 'DevOps', icon: '🔧', color: 'from-orange-500 to-amber-400' },
+  qa: { name: 'QA/테스트', icon: '🔍', color: 'from-purple-500 to-violet-400' },
+  security: { name: '보안', icon: '🛡️', color: 'from-red-500 to-rose-400' },
+  data: { name: '데이터', icon: '📊', color: 'from-indigo-500 to-blue-400' },
+  mobile: { name: '모바일', icon: '📱', color: 'from-teal-500 to-cyan-400' },
 } as const;
 
 export const SKILL_TIERS = {
