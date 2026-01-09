@@ -689,45 +689,54 @@ export type Database = {
       }
       profiles: {
         Row: {
+          animal_skin: Database["public"]["Enums"]["animal_skin"] | null
           avatar_url: string | null
           bio: string | null
           created_at: string | null
           email: string
           id: string
           level: number | null
+          main_role_type: Database["public"]["Enums"]["role_type"] | null
           name: string
           primary_role: Database["public"]["Enums"]["user_role"] | null
           rating_avg: number | null
+          sub_role_types: Database["public"]["Enums"]["role_type"][] | null
           updated_at: string | null
           user_type: Database["public"]["Enums"]["user_type"] | null
           verified: boolean | null
           xp: number | null
         }
         Insert: {
+          animal_skin?: Database["public"]["Enums"]["animal_skin"] | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string | null
           email: string
           id: string
           level?: number | null
+          main_role_type?: Database["public"]["Enums"]["role_type"] | null
           name: string
           primary_role?: Database["public"]["Enums"]["user_role"] | null
           rating_avg?: number | null
+          sub_role_types?: Database["public"]["Enums"]["role_type"][] | null
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type"] | null
           verified?: boolean | null
           xp?: number | null
         }
         Update: {
+          animal_skin?: Database["public"]["Enums"]["animal_skin"] | null
           avatar_url?: string | null
           bio?: string | null
           created_at?: string | null
           email?: string
           id?: string
           level?: number | null
+          main_role_type?: Database["public"]["Enums"]["role_type"] | null
           name?: string
           primary_role?: Database["public"]["Enums"]["user_role"] | null
           rating_avg?: number | null
+          sub_role_types?: Database["public"]["Enums"]["role_type"][] | null
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type"] | null
           verified?: boolean | null
@@ -1090,6 +1099,58 @@ export type Database = {
         }
         Relationships: []
       }
+      skill_experiences: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          skill_id: string | null
+          title: string
+          user_id: string | null
+          xp_earned: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          skill_id?: string | null
+          title: string
+          user_id?: string | null
+          xp_earned?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          skill_id?: string | null
+          title?: string
+          user_id?: string | null
+          xp_earned?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_experiences_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_experiences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_experiences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skills: {
         Row: {
           category: string | null
@@ -1119,6 +1180,7 @@ export type Database = {
           desired_role: Database["public"]["Enums"]["user_role"]
           id: string
           intro: string | null
+          role_type: Database["public"]["Enums"]["role_type"] | null
           status: Database["public"]["Enums"]["application_status"] | null
           team_id: string | null
           user_id: string | null
@@ -1130,6 +1192,7 @@ export type Database = {
           desired_role: Database["public"]["Enums"]["user_role"]
           id?: string
           intro?: string | null
+          role_type?: Database["public"]["Enums"]["role_type"] | null
           status?: Database["public"]["Enums"]["application_status"] | null
           team_id?: string | null
           user_id?: string | null
@@ -1141,6 +1204,7 @@ export type Database = {
           desired_role?: Database["public"]["Enums"]["user_role"]
           id?: string
           intro?: string | null
+          role_type?: Database["public"]["Enums"]["role_type"] | null
           status?: Database["public"]["Enums"]["application_status"] | null
           team_id?: string | null
           user_id?: string | null
@@ -1286,8 +1350,10 @@ export type Database = {
           id: string
           is_open: boolean | null
           min_level: number | null
+          required_skill_levels: Json | null
           required_skills: string[] | null
           role: Database["public"]["Enums"]["user_role"]
+          role_type: Database["public"]["Enums"]["role_type"] | null
           team_id: string | null
         }
         Insert: {
@@ -1295,8 +1361,10 @@ export type Database = {
           id?: string
           is_open?: boolean | null
           min_level?: number | null
+          required_skill_levels?: Json | null
           required_skills?: string[] | null
           role: Database["public"]["Enums"]["user_role"]
+          role_type?: Database["public"]["Enums"]["role_type"] | null
           team_id?: string | null
         }
         Update: {
@@ -1304,8 +1372,10 @@ export type Database = {
           id?: string
           is_open?: boolean | null
           min_level?: number | null
+          required_skill_levels?: Json | null
           required_skills?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]
+          role_type?: Database["public"]["Enums"]["role_type"] | null
           team_id?: string | null
         }
         Relationships: [
@@ -1556,6 +1626,7 @@ export type Database = {
       is_admin: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
+      animal_skin: "horse" | "dog" | "cat" | "rooster"
       app_role: "admin" | "moderator" | "user"
       application_status: "pending" | "accepted" | "rejected" | "withdrawn"
       contract_status:
@@ -1594,6 +1665,17 @@ export type Database = {
         | "cancelled"
       proposal_status: "pending" | "accepted" | "rejected" | "withdrawn"
       recruitment_method: "public" | "invite" | "auto"
+      role_type:
+        | "backend"
+        | "frontend"
+        | "design"
+        | "pm"
+        | "data"
+        | "qa"
+        | "devops"
+        | "marketing"
+        | "mobile"
+        | "security"
       siege_status: "registering" | "ongoing" | "ended" | "results"
       skill_tier: "bronze" | "silver" | "gold" | "platinum" | "diamond"
       submission_kind: "test" | "final"
@@ -1727,6 +1809,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      animal_skin: ["horse", "dog", "cat", "rooster"],
       app_role: ["admin", "moderator", "user"],
       application_status: ["pending", "accepted", "rejected", "withdrawn"],
       contract_status: [
@@ -1770,6 +1853,18 @@ export const Constants = {
       ],
       proposal_status: ["pending", "accepted", "rejected", "withdrawn"],
       recruitment_method: ["public", "invite", "auto"],
+      role_type: [
+        "backend",
+        "frontend",
+        "design",
+        "pm",
+        "data",
+        "qa",
+        "devops",
+        "marketing",
+        "mobile",
+        "security",
+      ],
       siege_status: ["registering", "ongoing", "ended", "results"],
       skill_tier: ["bronze", "silver", "gold", "platinum", "diamond"],
       submission_kind: ["test", "final"],

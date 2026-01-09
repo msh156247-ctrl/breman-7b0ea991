@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Users, Star, Trophy, Calendar, Settings, 
-  UserPlus, Copy, Check, Briefcase, Crown, MessageSquare, ExternalLink, Loader2, UserCog
+  UserPlus, Copy, Check, Briefcase, Crown, MessageSquare, ExternalLink, Loader2, UserCog, ClipboardList
 } from 'lucide-react';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ROLES, type UserRole } from '@/lib/constants';
+import { ROLES, ROLE_TYPES, type UserRole, type RoleType } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -34,6 +34,7 @@ import {
 } from '@/components/ui/select';
 import { TeamAnnouncementBoard } from '@/components/team/TeamAnnouncementBoard';
 import { TeamMemberManagement } from '@/components/team/TeamMemberManagement';
+import { TeamApplicationManagement } from '@/components/team/TeamApplicationManagement';
 
 interface Team {
   id: string;
@@ -60,8 +61,10 @@ interface Member {
 interface OpenSlot {
   id: string;
   role: UserRole;
+  role_type: RoleType | null;
   min_level: number;
   required_skills: string[] | null;
+  required_skill_levels: { skillName: string; minLevel: number }[] | null;
 }
 
 export default function TeamDetail() {
@@ -162,8 +165,10 @@ export default function TeamDetail() {
       setOpenSlots((slotsData || []).map(slot => ({
         id: slot.id,
         role: slot.role as UserRole,
+        role_type: slot.role_type as RoleType | null,
         min_level: slot.min_level || 1,
         required_skills: slot.required_skills,
+        required_skill_levels: slot.required_skill_levels as { skillName: string; minLevel: number }[] | null,
       })));
 
     } catch (error) {
@@ -476,6 +481,7 @@ export default function TeamDetail() {
         <Tabs defaultValue="members" className="space-y-6">
           <TabsList className="bg-muted/50">
             <TabsTrigger value="members">멤버</TabsTrigger>
+            {isLeader && <TabsTrigger value="applications">지원 관리</TabsTrigger>}
             {isLeader && <TabsTrigger value="manage">멤버 관리</TabsTrigger>}
             <TabsTrigger value="board">공지사항</TabsTrigger>
             <TabsTrigger value="openings">모집 포지션</TabsTrigger>
@@ -524,6 +530,20 @@ export default function TeamDetail() {
             )}
           </TabsContent>
 
+          {/* Application Management Tab (Leader only) */}
+          {isLeader && (
+            <TabsContent value="applications" className="space-y-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-primary" />
+                지원서 관리
+              </h2>
+              <TeamApplicationManagement 
+                teamId={team.id} 
+                onApplicationHandled={fetchTeamData}
+              />
+            </TabsContent>
+          )}
+
           {/* Member Management Tab (Leader only) */}
           {isLeader && team.leader_id && (
             <TabsContent value="manage" className="space-y-4">
@@ -567,35 +587,58 @@ export default function TeamDetail() {
             </h2>
             {openSlots.length > 0 ? (
               <div className="grid md:grid-cols-2 gap-4">
-                {openSlots.map((slot) => (
-                  <Card key={slot.id} className="border-dashed border-primary/30 bg-primary/5">
-                    <CardContent className="p-5">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl">
-                            {ROLES[slot.role].icon}
+                {openSlots.map((slot) => {
+                  const roleTypeInfo = slot.role_type ? ROLE_TYPES[slot.role_type] : null;
+                  const animalInfo = ROLES[slot.role];
+                  
+                  return (
+                    <Card key={slot.id} className="border-dashed border-primary/30 bg-primary/5">
+                      <CardContent className="p-5">
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl">
+                              {roleTypeInfo?.icon || animalInfo?.icon || '👤'}
+                            </div>
+                            <div>
+                              <h3 className="font-semibold">
+                                {roleTypeInfo?.name || animalInfo?.name || '포지션'}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {roleTypeInfo?.description || animalInfo?.description || ''}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-semibold">{ROLES[slot.role].name}</h3>
-                            <p className="text-sm text-muted-foreground">{ROLES[slot.role].description}</p>
+                          <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                            최소 Lv.{slot.min_level}
+                          </span>
+                        </div>
+                        
+                        {/* Required Skill Levels (new format) */}
+                        {slot.required_skill_levels && slot.required_skill_levels.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-3">
+                            {slot.required_skill_levels.map((skill, idx) => (
+                              <span key={idx} className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">
+                                {skill.skillName} Lv.{skill.minLevel}+
+                              </span>
+                            ))}
                           </div>
-                        </div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
-                          최소 Lv.{slot.min_level}
-                        </span>
-                      </div>
-                      {slot.required_skills && slot.required_skills.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-3">
-                          {slot.required_skills.map((skill) => (
-                            <span key={skill} className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">
-                              {skill}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                        )}
+                        
+                        {/* Legacy required_skills */}
+                        {(!slot.required_skill_levels || slot.required_skill_levels.length === 0) && 
+                         slot.required_skills && slot.required_skills.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 mt-3">
+                            {slot.required_skills.map((skill) => (
+                              <span key={skill} className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">
+                                {skill}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <Card className="bg-muted/30">
