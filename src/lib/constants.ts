@@ -33,8 +33,8 @@ export const METRIC_DESCRIPTIONS: Record<string, { calculation: string; tracking
   }
 };
 
-// 성향(Persona) - 협업 스타일, 1개만 선택 가능
-export const ROLES = {
+// 동물 스킨 (Animal Skins) - 성향/아이덴티티 표현, 추후 추가 가능
+export const ANIMAL_SKINS = {
   horse: { 
     name: '말', 
     nameEn: 'Horse',
@@ -78,6 +78,83 @@ export const ROLES = {
     metrics: ['UI 완성도', '퍼포먼스 지표'],
     color: 'role-rooster',
     gradient: 'from-secondary to-amber-400'
+  },
+} as const;
+
+// 기존 ROLES는 ANIMAL_SKINS의 별칭으로 유지 (하위 호환성)
+export const ROLES = ANIMAL_SKINS;
+
+// 직무 타입 (Role Types) - 전문 직무, 메인 1개 + 서브 여러 개 선택 가능
+export const ROLE_TYPES = {
+  backend: { 
+    name: '백엔드', 
+    nameEn: 'Backend',
+    icon: '⚙️', 
+    description: 'API, 서버, 데이터베이스 설계 및 개발',
+    color: 'from-green-500 to-emerald-400'
+  },
+  frontend: { 
+    name: '프론트엔드', 
+    nameEn: 'Frontend',
+    icon: '🎨', 
+    description: 'UI 개발 및 사용자 인터페이스 구현',
+    color: 'from-blue-500 to-cyan-400'
+  },
+  design: { 
+    name: '디자인', 
+    nameEn: 'Design',
+    icon: '✨', 
+    description: 'UI/UX 디자인, 브랜딩, 시각 디자인',
+    color: 'from-pink-500 to-rose-400'
+  },
+  pm: { 
+    name: 'PM', 
+    nameEn: 'PM',
+    icon: '📋', 
+    description: '프로젝트 관리 및 일정/리소스 조율',
+    color: 'from-purple-500 to-violet-400'
+  },
+  data: { 
+    name: '데이터', 
+    nameEn: 'Data',
+    icon: '📊', 
+    description: '데이터 분석, AI/ML, 데이터 엔지니어링',
+    color: 'from-indigo-500 to-blue-400'
+  },
+  qa: { 
+    name: 'QA', 
+    nameEn: 'QA',
+    icon: '🔍', 
+    description: '품질 관리 및 테스트 자동화',
+    color: 'from-orange-500 to-amber-400'
+  },
+  devops: { 
+    name: 'DevOps', 
+    nameEn: 'DevOps',
+    icon: '🔧', 
+    description: 'CI/CD, 인프라, 클라우드 관리',
+    color: 'from-teal-500 to-cyan-400'
+  },
+  marketing: { 
+    name: '마케팅', 
+    nameEn: 'Marketing',
+    icon: '📢', 
+    description: '그로스 해킹, 콘텐츠 마케팅, 브랜드 전략',
+    color: 'from-red-500 to-rose-400'
+  },
+  mobile: { 
+    name: '모바일', 
+    nameEn: 'Mobile',
+    icon: '📱', 
+    description: 'iOS, Android, React Native 앱 개발',
+    color: 'from-cyan-500 to-blue-400'
+  },
+  security: { 
+    name: '보안', 
+    nameEn: 'Security',
+    icon: '🛡️', 
+    description: '보안 설계, 취약점 분석, 인증/인가',
+    color: 'from-slate-500 to-gray-400'
   },
 } as const;
 
@@ -163,5 +240,17 @@ export const DISPUTE_STATUS = {
   closed: { name: '종료', color: 'muted' },
 } as const;
 
+// 지원 상태
+export const APPLICATION_STATUS = {
+  pending: { name: '검토중', color: 'secondary' },
+  accepted: { name: '수락됨', color: 'success' },
+  rejected: { name: '거절됨', color: 'destructive' },
+  withdrawn: { name: '취소됨', color: 'muted' },
+} as const;
+
+// Types
 export type UserRole = keyof typeof ROLES;
+export type AnimalSkin = keyof typeof ANIMAL_SKINS;
+export type RoleType = keyof typeof ROLE_TYPES;
 export type SkillTier = keyof typeof SKILL_TIERS;
+export type SkillCategory = keyof typeof SKILL_CATEGORIES;
