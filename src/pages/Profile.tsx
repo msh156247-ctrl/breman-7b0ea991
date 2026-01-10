@@ -15,6 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { ROLES } from '@/lib/constants';
 import { NotificationPreferences } from '@/components/notifications/NotificationPreferences';
 import { SkillManagement } from '@/components/profile/SkillManagement';
+import { RoleTypeManagement } from '@/components/profile/RoleTypeManagement';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
 
@@ -207,8 +208,9 @@ export default function Profile() {
 
       {/* Tabs */}
       <ScrollReveal animation="fade-up" delay={200}>
-        <Tabs defaultValue="skills" className="w-full">
+        <Tabs defaultValue="roles" className="w-full">
           <TabsList className="w-full md:w-auto flex-wrap">
+            <TabsTrigger value="roles">직무</TabsTrigger>
             <TabsTrigger value="skills">스킬</TabsTrigger>
             <TabsTrigger value="teams">팀</TabsTrigger>
             <TabsTrigger value="badges">배지</TabsTrigger>
@@ -219,6 +221,11 @@ export default function Profile() {
               알림 설정
             </TabsTrigger>
           </TabsList>
+
+        {/* Roles Tab */}
+        <TabsContent value="roles" className="mt-6">
+          <RoleTypeManagement />
+        </TabsContent>
 
         {/* Skills Tab */}
         <TabsContent value="skills" className="mt-6">
