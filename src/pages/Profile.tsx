@@ -138,6 +138,25 @@ export default function Profile() {
                     {ROLE_TYPES[profile.main_role_type as RoleType].name}
                   </Badge>
                 )}
+                {/* Sub Role Type Badges */}
+                {profile?.sub_role_types && profile.sub_role_types.length > 0 && (
+                  <>
+                    {profile.sub_role_types.map((subRole) => {
+                      const roleData = ROLE_TYPES[subRole as RoleType];
+                      if (!roleData) return null;
+                      return (
+                        <Badge 
+                          key={subRole}
+                          variant="secondary" 
+                          className="gap-1 text-xs opacity-80"
+                        >
+                          {roleData.icon}
+                          {roleData.name}
+                        </Badge>
+                      );
+                    })}
+                  </>
+                )}
                 {profile?.verified && (
                   <span className="px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success border border-success/20">
                     ✓ 인증됨
