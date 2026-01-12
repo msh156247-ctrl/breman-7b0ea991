@@ -8,11 +8,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { XPBar } from '@/components/ui/XPBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
-import { ROLES } from '@/lib/constants';
+import { ROLES, ROLE_TYPES, type RoleType } from '@/lib/constants';
 import { NotificationPreferences } from '@/components/notifications/NotificationPreferences';
 import { SkillManagement } from '@/components/profile/SkillManagement';
 import { RoleTypeManagement } from '@/components/profile/RoleTypeManagement';
@@ -122,6 +123,21 @@ export default function Profile() {
               <div className="flex flex-wrap items-center gap-3 mb-2">
                 <h1 className="text-2xl font-display font-bold">{profile?.name || '사용자'}</h1>
                 <RoleBadge role={role} level={level} />
+                {/* Main Role Type Badge */}
+                {profile?.main_role_type && ROLE_TYPES[profile.main_role_type as RoleType] && (
+                  <Badge 
+                    variant="outline" 
+                    className="gap-1 font-medium"
+                    style={{ 
+                      borderColor: ROLE_TYPES[profile.main_role_type as RoleType].color,
+                      color: ROLE_TYPES[profile.main_role_type as RoleType].color,
+                      backgroundColor: `${ROLE_TYPES[profile.main_role_type as RoleType].color}15`
+                    }}
+                  >
+                    {ROLE_TYPES[profile.main_role_type as RoleType].icon}
+                    {ROLE_TYPES[profile.main_role_type as RoleType].name}
+                  </Badge>
+                )}
                 {profile?.verified && (
                   <span className="px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success border border-success/20">
                     ✓ 인증됨

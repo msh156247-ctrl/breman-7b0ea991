@@ -16,6 +16,9 @@ interface Profile {
   bio: string | null;
   rating_avg: number;
   verified: boolean;
+  main_role_type: string | null;
+  sub_role_types: string[] | null;
+  animal_skin: string | null;
 }
 
 interface AuthContextType {
