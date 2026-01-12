@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Plus, X, Image, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ROLES, type UserRole } from '@/lib/constants';
+import { TeamPositionSlotEditor, type PositionSlot } from '@/components/team/TeamPositionSlotEditor';
 
 const EMOJIS = ['🚀', '💻', '🎨', '🔒', '⚡', '🌟', '🎯', '💡', '🔥', '🏆', '💪', '🎮'];
 
@@ -35,37 +35,10 @@ export default function TeamCreate() {
     recruitment_method: 'public' as 'public' | 'invite' | 'auto',
   });
 
-  const [openSlots, setOpenSlots] = useState<{ role: UserRole; minLevel: number; order: number }[]>([]);
+  const [positionSlots, setPositionSlots] = useState<PositionSlot[]>([]);
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const addSlot = () => {
-    const newOrder = openSlots.length > 0 ? Math.max(...openSlots.map(s => s.order)) + 1 : 0;
-    setOpenSlots(prev => [...prev, { role: 'horse', minLevel: 1, order: newOrder }]);
-  };
-
-  const removeSlot = (index: number) => {
-    setOpenSlots(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateSlot = (index: number, field: 'role' | 'minLevel', value: string | number) => {
-    setOpenSlots(prev => prev.map((slot, i) => 
-      i === index ? { ...slot, [field]: value } : slot
-    ));
-  };
-
-  const moveSlot = (index: number, direction: 'up' | 'down') => {
-    if (direction === 'up' && index === 0) return;
-    if (direction === 'down' && index === openSlots.length - 1) return;
-    
-    const newSlots = [...openSlots];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    [newSlots[index], newSlots[targetIndex]] = [newSlots[targetIndex], newSlots[index]];
-    // Update order values
-    newSlots.forEach((slot, i) => slot.order = i);
-    setOpenSlots(newSlots);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -110,14 +83,17 @@ export default function TeamCreate() {
       if (teamError) throw teamError;
 
       // Create role slots
-      if (openSlots.length > 0) {
+      const slotsToInsert = positionSlots.filter(s => !s._toDelete && s.role_type);
+      if (slotsToInsert.length > 0) {
         const { error: slotsError } = await supabase
           .from('team_role_slots')
           .insert(
-            openSlots.map(slot => ({
+            slotsToInsert.map(slot => ({
               team_id: team.id,
-              role: slot.role,
-              min_level: slot.minLevel,
+              role: 'horse' as const, // Default animal role for compatibility
+              role_type: slot.role_type,
+              min_level: slot.min_level,
+              required_skill_levels: JSON.parse(JSON.stringify(slot.required_skill_levels)),
               is_open: true,
             }))
           );
@@ -235,91 +211,10 @@ export default function TeamCreate() {
               </div>
 
               {/* Open Positions */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>모집 포지션</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addSlot}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    추가
-                  </Button>
-                </div>
-
-                {openSlots.map((slot, index) => (
-                  <div key={index} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                    {/* Order controls */}
-                    <div className="flex flex-col gap-0.5">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5"
-                        onClick={() => moveSlot(index, 'up')}
-                        disabled={index === 0}
-                      >
-                        <ChevronUp className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5"
-                        onClick={() => moveSlot(index, 'down')}
-                        disabled={index === openSlots.length - 1}
-                      >
-                        <ChevronDown className="w-3 h-3" />
-                      </Button>
-                    </div>
-                    
-                    <span className="text-sm text-muted-foreground font-medium w-6">
-                      {index + 1}
-                    </span>
-
-                    <Select
-                      value={slot.role}
-                      onValueChange={(value) => updateSlot(index, 'role', value as UserRole)}
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(ROLES).map(([key, role]) => (
-                          <SelectItem key={key} value={key}>
-                            {role.icon} {role.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">최소 레벨:</span>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={slot.minLevel}
-                        onChange={(e) => updateSlot(index, 'minLevel', parseInt(e.target.value) || 1)}
-                        className="w-20"
-                      />
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeSlot(index)}
-                      className="ml-auto text-destructive hover:text-destructive"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-
-                {openSlots.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    모집할 포지션을 추가해주세요
-                  </p>
-                )}
-              </div>
+              <TeamPositionSlotEditor 
+                slots={positionSlots} 
+                onChange={setPositionSlots} 
+              />
 
               {/* Submit */}
               <div className="flex gap-3 pt-4">

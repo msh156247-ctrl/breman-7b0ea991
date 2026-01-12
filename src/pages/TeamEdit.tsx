@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Plus, X, ChevronUp, ChevronDown, Loader2, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,9 +28,15 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { ROLES, type UserRole } from '@/lib/constants';
+import { TeamPositionSlotEditor, type PositionSlot } from '@/components/team/TeamPositionSlotEditor';
+import type { RoleType } from '@/lib/constants';
 
 const EMOJIS = ['🚀', '💻', '🎨', '🔒', '⚡', '🌟', '🎯', '💡', '🔥', '🏆', '💪', '🎮'];
+
+interface RequiredSkillLevel {
+  skillName: string;
+  minLevel: number;
+}
 
 export default function TeamEdit() {
   const { teamId } = useParams();
@@ -50,8 +56,7 @@ export default function TeamEdit() {
     status: 'recruiting' as 'active' | 'inactive' | 'recruiting',
   });
 
-  const [openSlots, setOpenSlots] = useState<{ id?: string; role: UserRole; minLevel: number; order: number }[]>([]);
-  const [deletedSlotIds, setDeletedSlotIds] = useState<string[]>([]);
+  const [positionSlots, setPositionSlots] = useState<PositionSlot[]>([]);
 
   useEffect(() => {
     if (teamId) {
@@ -95,12 +100,19 @@ export default function TeamEdit() {
         .order('created_at', { ascending: true });
 
       if (slots) {
-        setOpenSlots(slots.map((slot, index) => ({
-          id: slot.id,
-          role: slot.role as UserRole,
-          minLevel: slot.min_level || 1,
-          order: index,
-        })));
+        setPositionSlots(slots.map(slot => {
+          let requiredSkillLevels: RequiredSkillLevel[] = [];
+          if (Array.isArray(slot.required_skill_levels)) {
+            requiredSkillLevels = slot.required_skill_levels as unknown as RequiredSkillLevel[];
+          }
+          return {
+            id: slot.id,
+            role_type: slot.role_type as RoleType | null,
+            min_level: slot.min_level || 1,
+            required_skill_levels: requiredSkillLevels,
+            is_open: slot.is_open ?? true,
+          };
+        }));
       }
     } catch (error) {
       console.error('Error fetching team:', error);
@@ -117,36 +129,6 @@ export default function TeamEdit() {
 
   const handleChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  };
-
-  const addSlot = () => {
-    const newOrder = openSlots.length > 0 ? Math.max(...openSlots.map(s => s.order)) + 1 : 0;
-    setOpenSlots(prev => [...prev, { role: 'horse', minLevel: 1, order: newOrder }]);
-  };
-
-  const removeSlot = (index: number) => {
-    const slot = openSlots[index];
-    if (slot.id) {
-      setDeletedSlotIds(prev => [...prev, slot.id!]);
-    }
-    setOpenSlots(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const updateSlot = (index: number, field: 'role' | 'minLevel', value: string | number) => {
-    setOpenSlots(prev => prev.map((slot, i) => 
-      i === index ? { ...slot, [field]: value } : slot
-    ));
-  };
-
-  const moveSlot = (index: number, direction: 'up' | 'down') => {
-    if (direction === 'up' && index === 0) return;
-    if (direction === 'down' && index === openSlots.length - 1) return;
-    
-    const newSlots = [...openSlots];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-    [newSlots[index], newSlots[targetIndex]] = [newSlots[targetIndex], newSlots[index]];
-    newSlots.forEach((slot, i) => slot.order = i);
-    setOpenSlots(newSlots);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -179,42 +161,51 @@ export default function TeamEdit() {
 
       if (teamError) throw teamError;
 
-      // Delete removed slots
-      if (deletedSlotIds.length > 0) {
+      // Handle slots: delete, update, insert
+      const slotsToDelete = positionSlots.filter(s => s._toDelete && s.id);
+      const slotsToUpdate = positionSlots.filter(s => !s._toDelete && !s._isNew && s.id);
+      const slotsToInsert = positionSlots.filter(s => !s._toDelete && s._isNew && s.role_type);
+
+      // Delete marked slots
+      if (slotsToDelete.length > 0) {
         const { error: deleteError } = await supabase
           .from('team_role_slots')
           .delete()
-          .in('id', deletedSlotIds);
+          .in('id', slotsToDelete.map(s => s.id!));
 
         if (deleteError) throw deleteError;
       }
 
-      // Update/Insert slots
-      for (const slot of openSlots) {
-        if (slot.id) {
-          // Update existing slot
-          const { error } = await supabase
-            .from('team_role_slots')
-            .update({
-              role: slot.role,
-              min_level: slot.minLevel,
-            })
-            .eq('id', slot.id);
+      // Update existing slots
+      for (const slot of slotsToUpdate) {
+        const { error } = await supabase
+          .from('team_role_slots')
+          .update({
+            role_type: slot.role_type,
+            min_level: slot.min_level,
+            required_skill_levels: JSON.parse(JSON.stringify(slot.required_skill_levels)),
+          })
+          .eq('id', slot.id!);
 
-          if (error) throw error;
-        } else {
-          // Insert new slot
-          const { error } = await supabase
-            .from('team_role_slots')
-            .insert({
+        if (error) throw error;
+      }
+
+      // Insert new slots
+      if (slotsToInsert.length > 0) {
+        const { error: insertError } = await supabase
+          .from('team_role_slots')
+          .insert(
+            slotsToInsert.map(slot => ({
               team_id: teamId,
-              role: slot.role,
-              min_level: slot.minLevel,
+              role: 'horse' as const,
+              role_type: slot.role_type,
+              min_level: slot.min_level,
+              required_skill_levels: JSON.parse(JSON.stringify(slot.required_skill_levels)),
               is_open: true,
-            });
+            }))
+          );
 
-          if (error) throw error;
-        }
+        if (insertError) throw insertError;
       }
 
       toast({
@@ -421,90 +412,10 @@ export default function TeamEdit() {
               </div>
 
               {/* Open Positions */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label>모집 포지션</Label>
-                  <Button type="button" variant="outline" size="sm" onClick={addSlot}>
-                    <Plus className="w-4 h-4 mr-1" />
-                    추가
-                  </Button>
-                </div>
-
-                {openSlots.map((slot, index) => (
-                  <div key={slot.id || `new-${index}`} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                    <div className="flex flex-col gap-0.5">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5"
-                        onClick={() => moveSlot(index, 'up')}
-                        disabled={index === 0}
-                      >
-                        <ChevronUp className="w-3 h-3" />
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="h-5 w-5"
-                        onClick={() => moveSlot(index, 'down')}
-                        disabled={index === openSlots.length - 1}
-                      >
-                        <ChevronDown className="w-3 h-3" />
-                      </Button>
-                    </div>
-                    
-                    <span className="text-sm text-muted-foreground font-medium w-6">
-                      {index + 1}
-                    </span>
-
-                    <Select
-                      value={slot.role}
-                      onValueChange={(value) => updateSlot(index, 'role', value as UserRole)}
-                    >
-                      <SelectTrigger className="w-40">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(ROLES).map(([key, role]) => (
-                          <SelectItem key={key} value={key}>
-                            {role.icon} {role.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground">최소 레벨:</span>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={slot.minLevel}
-                        onChange={(e) => updateSlot(index, 'minLevel', parseInt(e.target.value) || 1)}
-                        className="w-20"
-                      />
-                    </div>
-
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeSlot(index)}
-                      className="ml-auto text-destructive hover:text-destructive"
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
-                  </div>
-                ))}
-
-                {openSlots.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    모집할 포지션을 추가해주세요
-                  </p>
-                )}
-              </div>
+              <TeamPositionSlotEditor 
+                slots={positionSlots} 
+                onChange={setPositionSlots} 
+              />
 
               {/* Submit */}
               <div className="flex gap-3 pt-4">
