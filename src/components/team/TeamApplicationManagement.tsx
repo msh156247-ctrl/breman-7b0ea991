@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Check, X, Loader2, User, Calendar } from 'lucide-react';
+import { Check, X, Loader2, User, Calendar, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ROLE_TYPES, APPLICATION_STATUS, type RoleType } from '@/lib/constants';
 import { toast } from 'sonner';
@@ -18,6 +20,76 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+
+interface RequiredSkillLevel {
+  skillName: string;
+  minLevel: number;
+}
+
+interface RoleSlot {
+  id: string;
+  role_type: RoleType | null;
+  min_level: number;
+  required_skill_levels: RequiredSkillLevel[];
+}
+
+interface UserSkill {
+  skill_name: string;
+  level: number;
+}
+
+// Calculate fit score for a slot based on user's skills
+function calculateFitScore(
+  slot: RoleSlot | null, 
+  userSkills: UserSkill[], 
+  userLevel: number
+): { score: number; levelMet: boolean; skillsMatched: number; skillsTotal: number; details: { skillName: string; required: number; userLevel: number | null; met: boolean }[] } | null {
+  if (!slot) return null;
+  
+  const levelMet = userLevel >= slot.min_level;
+  
+  if (slot.required_skill_levels.length === 0) {
+    return { 
+      score: levelMet ? 100 : 0, 
+      levelMet, 
+      skillsMatched: 0, 
+      skillsTotal: 0,
+      details: []
+    };
+  }
+
+  const details = slot.required_skill_levels.map(req => {
+    const userSkill = userSkills.find(s => s.skill_name.toLowerCase() === req.skillName.toLowerCase());
+    const userSkillLevel = userSkill?.level ?? null;
+    const met = userSkillLevel !== null && userSkillLevel >= req.minLevel;
+    return {
+      skillName: req.skillName,
+      required: req.minLevel,
+      userLevel: userSkillLevel,
+      met
+    };
+  });
+
+  const skillsMatched = details.filter(d => d.met).length;
+  const skillsTotal = slot.required_skill_levels.length;
+  
+  // Score calculation: 40% for level, 60% for skills
+  const levelScore = levelMet ? 40 : 0;
+  const skillScore = skillsTotal > 0 ? (skillsMatched / skillsTotal) * 60 : 60;
+  
+  return {
+    score: Math.round(levelScore + skillScore),
+    levelMet,
+    skillsMatched,
+    skillsTotal,
+    details
+  };
+}
 
 interface Application {
   id: string;
@@ -33,6 +105,9 @@ interface Application {
     avatar_url: string | null;
     level: number;
   };
+  userSkills?: UserSkill[];
+  matchedSlot?: RoleSlot | null;
+  fitScore?: ReturnType<typeof calculateFitScore>;
 }
 
 interface TeamApplicationManagementProps {
@@ -47,6 +122,7 @@ export function TeamApplicationManagement({ teamId, onApplicationHandled }: Team
   const { data: applications = [], isLoading } = useQuery({
     queryKey: ['team-applications', teamId],
     queryFn: async () => {
+      // Fetch applications
       const { data, error } = await supabase
         .from('team_applications')
         .select(`
@@ -63,7 +139,81 @@ export function TeamApplicationManagement({ teamId, onApplicationHandled }: Team
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      return data as unknown as Application[];
+      
+      const apps = data as unknown as Application[];
+      
+      // Fetch role slots for the team
+      const { data: slotsData } = await supabase
+        .from('team_role_slots')
+        .select('*')
+        .eq('team_id', teamId);
+      
+      const roleSlots: RoleSlot[] = (slotsData || []).map(slot => {
+        let requiredSkillLevels: RequiredSkillLevel[] = [];
+        if (slot.required_skill_levels) {
+          try {
+            const parsed = typeof slot.required_skill_levels === 'string' 
+              ? JSON.parse(slot.required_skill_levels) 
+              : slot.required_skill_levels;
+            if (Array.isArray(parsed)) {
+              requiredSkillLevels = parsed.map((s: any) => ({
+                skillName: s.skillName || s.skill_name || '',
+                minLevel: s.minLevel || s.min_level || 1
+              }));
+            }
+          } catch (e) {
+            console.error('Error parsing required_skill_levels:', e);
+          }
+        }
+        return {
+          id: slot.id,
+          role_type: slot.role_type as RoleType | null,
+          min_level: slot.min_level || 1,
+          required_skill_levels: requiredSkillLevels,
+        };
+      });
+      
+      // Fetch user skills for all applicants
+      const userIds = apps.map(a => a.user_id);
+      const { data: allUserSkills } = await supabase
+        .from('user_skills')
+        .select(`
+          user_id,
+          level,
+          skill:skills!user_skills_skill_id_fkey(name)
+        `)
+        .in('user_id', userIds);
+      
+      // Map skills by user
+      const skillsByUser: Record<string, UserSkill[]> = {};
+      (allUserSkills || []).forEach((us: any) => {
+        if (!us.skill?.name) return;
+        if (!skillsByUser[us.user_id]) {
+          skillsByUser[us.user_id] = [];
+        }
+        skillsByUser[us.user_id].push({
+          skill_name: us.skill.name,
+          level: us.level || 1
+        });
+      });
+      
+      // Enrich applications with fit scores
+      return apps.map(app => {
+        const userSkills = skillsByUser[app.user_id] || [];
+        const matchedSlot = app.role_type 
+          ? roleSlots.find(s => s.role_type === app.role_type) || null
+          : null;
+        const fitScore = matchedSlot 
+          ? calculateFitScore(matchedSlot, userSkills, app.user.level)
+          : null;
+        
+        return {
+          ...app,
+          userSkills,
+          matchedSlot,
+          fitScore
+        };
+      });
     },
   });
 
@@ -174,6 +324,28 @@ export function TeamApplicationManagement({ teamId, onApplicationHandled }: Team
                           <span className="text-xs px-2 py-0.5 rounded-full bg-muted">
                             Lv.{application.user.level}
                           </span>
+                          {/* Fit Score Badge */}
+                          {application.fitScore && (
+                            <Badge 
+                              variant="outline"
+                              className={`text-xs gap-1 ${
+                                application.fitScore.score >= 80 
+                                  ? "bg-green-500/10 text-green-700 border-green-500/30" 
+                                  : application.fitScore.score >= 50 
+                                  ? "bg-yellow-500/10 text-yellow-700 border-yellow-500/30"
+                                  : "bg-red-500/10 text-red-700 border-red-500/30"
+                              }`}
+                            >
+                              {application.fitScore.score >= 80 ? (
+                                <CheckCircle2 className="w-3 h-3" />
+                              ) : application.fitScore.score >= 50 ? (
+                                <AlertCircle className="w-3 h-3" />
+                              ) : (
+                                <XCircle className="w-3 h-3" />
+                              )}
+                              적합도 {application.fitScore.score}%
+                            </Badge>
+                          )}
                         </div>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
                           <span>
@@ -249,6 +421,106 @@ export function TeamApplicationManagement({ teamId, onApplicationHandled }: Team
                     <div className="mt-4 p-3 rounded-lg bg-muted/50 text-sm">
                       {application.intro}
                     </div>
+                  )}
+
+                  {/* Fit Score Details (Collapsible) */}
+                  {application.fitScore && application.matchedSlot && (
+                    <Collapsible className="mt-4">
+                      <CollapsibleTrigger className="w-full">
+                        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium">적합도 상세</span>
+                            <Progress 
+                              value={application.fitScore.score} 
+                              className={`w-24 h-2 ${
+                                application.fitScore.score >= 80 
+                                  ? "[&>div]:bg-green-500" 
+                                  : application.fitScore.score >= 50 
+                                  ? "[&>div]:bg-yellow-500"
+                                  : "[&>div]:bg-red-500"
+                              }`}
+                            />
+                            <span className={`text-sm font-bold ${
+                              application.fitScore.score >= 80 
+                                ? "text-green-600" 
+                                : application.fitScore.score >= 50 
+                                ? "text-yellow-600"
+                                : "text-red-600"
+                            }`}>
+                              {application.fitScore.score}%
+                            </span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">클릭하여 펼치기</span>
+                        </div>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="mt-2">
+                        <div className="p-3 rounded-lg border bg-background space-y-3">
+                          {/* Level Requirement */}
+                          <div className="flex items-center justify-between py-2 border-b">
+                            <span className="text-sm text-muted-foreground">최소 레벨</span>
+                            <div className="flex items-center gap-2">
+                              <Badge variant="secondary" className="text-xs">
+                                요구: Lv.{application.matchedSlot.min_level}
+                              </Badge>
+                              <span className="text-xs">→</span>
+                              <Badge variant="outline" className="text-xs">
+                                지원자: Lv.{application.user.level}
+                              </Badge>
+                              {application.fitScore.levelMet ? (
+                                <CheckCircle2 className="w-4 h-4 text-green-500" />
+                              ) : (
+                                <XCircle className="w-4 h-4 text-red-500" />
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Skill Requirements */}
+                          {application.fitScore.details.length > 0 ? (
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm font-medium">필요 스킬</span>
+                                <span className="text-xs text-muted-foreground">
+                                  {application.fitScore.skillsMatched}/{application.fitScore.skillsTotal} 충족
+                                </span>
+                              </div>
+                              <div className="space-y-1.5">
+                                {application.fitScore.details.map((detail, idx) => (
+                                  <div 
+                                    key={idx} 
+                                    className={`flex items-center justify-between p-2 rounded-lg text-sm ${
+                                      detail.met ? "bg-green-500/10" : "bg-red-500/10"
+                                    }`}
+                                  >
+                                    <span>{detail.skillName}</span>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="secondary" className="text-xs">
+                                        요구: Lv.{detail.required}
+                                      </Badge>
+                                      <span className="text-xs">→</span>
+                                      <Badge 
+                                        variant={detail.userLevel !== null ? "outline" : "destructive"} 
+                                        className="text-xs"
+                                      >
+                                        {detail.userLevel !== null ? `Lv.${detail.userLevel}` : "미보유"}
+                                      </Badge>
+                                      {detail.met ? (
+                                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                      ) : (
+                                        <XCircle className="w-4 h-4 text-red-500" />
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm text-muted-foreground text-center py-2">
+                              이 포지션은 특별한 스킬 요구사항이 없습니다.
+                            </p>
+                          )}
+                        </div>
+                      </CollapsibleContent>
+                    </Collapsible>
                   )}
                 </CardContent>
               </Card>
