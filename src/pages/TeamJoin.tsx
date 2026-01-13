@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,11 +9,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RoleBadge } from '@/components/ui/RoleBadge';
+import { Progress } from '@/components/ui/progress';
 import { 
   Users, Star, Trophy, Calendar, CheckCircle, 
-  UserPlus, LogIn, ArrowLeft, Crown, Briefcase
+  UserPlus, LogIn, ArrowLeft, Crown, Briefcase,
+  CheckCircle2, XCircle, AlertCircle
 } from 'lucide-react';
-import { ROLES, type UserRole } from '@/lib/constants';
+import { ROLES, ROLE_TYPES, type UserRole, type RoleType } from '@/lib/constants';
 import {
   Select,
   SelectContent,
@@ -44,10 +46,68 @@ interface Member {
   isLeader: boolean;
 }
 
+interface RequiredSkillLevel {
+  skillName: string;
+  minLevel: number;
+}
+
 interface OpenSlot {
   id: string;
   role: UserRole;
+  role_type: RoleType | null;
   min_level: number;
+  required_skill_levels: RequiredSkillLevel[];
+}
+
+interface UserSkill {
+  skill_name: string;
+  level: number;
+}
+
+// Calculate fit score for a slot based on user's skills
+function calculateFitScore(
+  slot: OpenSlot, 
+  userSkills: UserSkill[], 
+  userLevel: number
+): { score: number; levelMet: boolean; skillsMatched: number; skillsTotal: number; details: { skillName: string; required: number; userLevel: number | null; met: boolean }[] } {
+  const levelMet = userLevel >= slot.min_level;
+  
+  if (slot.required_skill_levels.length === 0) {
+    return { 
+      score: levelMet ? 100 : 0, 
+      levelMet, 
+      skillsMatched: 0, 
+      skillsTotal: 0,
+      details: []
+    };
+  }
+
+  const details = slot.required_skill_levels.map(req => {
+    const userSkill = userSkills.find(s => s.skill_name.toLowerCase() === req.skillName.toLowerCase());
+    const userSkillLevel = userSkill?.level ?? null;
+    const met = userSkillLevel !== null && userSkillLevel >= req.minLevel;
+    return {
+      skillName: req.skillName,
+      required: req.minLevel,
+      userLevel: userSkillLevel,
+      met
+    };
+  });
+
+  const skillsMatched = details.filter(d => d.met).length;
+  const skillsTotal = slot.required_skill_levels.length;
+  
+  // Score calculation: 40% for level, 60% for skills
+  const levelScore = levelMet ? 40 : 0;
+  const skillScore = skillsTotal > 0 ? (skillsMatched / skillsTotal) * 60 : 60;
+  
+  return {
+    score: Math.round(levelScore + skillScore),
+    levelMet,
+    skillsMatched,
+    skillsTotal,
+    details
+  };
 }
 
 export default function TeamJoin() {
@@ -59,6 +119,7 @@ export default function TeamJoin() {
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [openSlots, setOpenSlots] = useState<OpenSlot[]>([]);
+  const [userSkills, setUserSkills] = useState<UserSkill[]>([]);
   const [loading, setLoading] = useState(true);
   const [joining, setJoining] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>('');
@@ -157,13 +218,54 @@ export default function TeamJoin() {
         .eq('team_id', teamId)
         .eq('is_open', true);
 
-      const slots = (slotsData || []).map(slot => ({
-        id: slot.id,
-        role: slot.role as UserRole,
-        min_level: slot.min_level || 1,
-      }));
+      const slots: OpenSlot[] = (slotsData || []).map(slot => {
+        let requiredSkillLevels: RequiredSkillLevel[] = [];
+        if (slot.required_skill_levels) {
+          try {
+            const parsed = typeof slot.required_skill_levels === 'string' 
+              ? JSON.parse(slot.required_skill_levels) 
+              : slot.required_skill_levels;
+            if (Array.isArray(parsed)) {
+              requiredSkillLevels = parsed.map((s: any) => ({
+                skillName: s.skillName || s.skill_name || '',
+                minLevel: s.minLevel || s.min_level || 1
+              }));
+            }
+          } catch (e) {
+            console.error('Error parsing required_skill_levels:', e);
+          }
+        }
+        return {
+          id: slot.id,
+          role: slot.role as UserRole,
+          role_type: slot.role_type as RoleType | null,
+          min_level: slot.min_level || 1,
+          required_skill_levels: requiredSkillLevels,
+        };
+      });
       
       setOpenSlots(slots);
+      
+      // Fetch user skills if logged in
+      if (user) {
+        const { data: skillsData } = await supabase
+          .from('user_skills')
+          .select(`
+            level,
+            skill:skills!user_skills_skill_id_fkey(name)
+          `)
+          .eq('user_id', user.id);
+        
+        if (skillsData) {
+          const skills: UserSkill[] = skillsData
+            .filter((s: any) => s.skill?.name)
+            .map((s: any) => ({
+              skill_name: s.skill.name,
+              level: s.level || 1
+            }));
+          setUserSkills(skills);
+        }
+      }
       
       // Auto-select first available role
       if (slots.length > 0 && !selectedRole) {
@@ -418,7 +520,12 @@ export default function TeamJoin() {
                   <SelectContent>
                     {openSlots.map((slot) => {
                       const roleInfo = ROLES[slot.role];
+                      const roleTypeInfo = slot.role_type ? ROLE_TYPES[slot.role_type] : null;
+                      const fitResult = profile 
+                        ? calculateFitScore(slot, userSkills, profile.level) 
+                        : null;
                       const meetsLevel = !profile || profile.level >= slot.min_level;
+                      
                       return (
                         <SelectItem 
                           key={slot.id} 
@@ -426,11 +533,25 @@ export default function TeamJoin() {
                           disabled={!meetsLevel}
                         >
                           <div className="flex items-center gap-2">
-                            <span>{roleInfo.icon}</span>
-                            <span>{roleInfo.name}</span>
+                            <span>{roleTypeInfo?.icon || roleInfo.icon}</span>
+                            <span>{roleTypeInfo?.name || roleInfo.name}</span>
                             <Badge variant="secondary" className="text-xs">
                               Lv.{slot.min_level}+
                             </Badge>
+                            {fitResult && (
+                              <Badge 
+                                variant={fitResult.score >= 80 ? "default" : fitResult.score >= 50 ? "secondary" : "outline"}
+                                className={`text-xs ${
+                                  fitResult.score >= 80 
+                                    ? "bg-green-500/20 text-green-700 border-green-500/30" 
+                                    : fitResult.score >= 50 
+                                    ? "bg-yellow-500/20 text-yellow-700 border-yellow-500/30"
+                                    : "bg-red-500/20 text-red-700 border-red-500/30"
+                                }`}
+                              >
+                                적합도 {fitResult.score}%
+                              </Badge>
+                            )}
                             {!meetsLevel && (
                               <span className="text-xs text-destructive">(레벨 부족)</span>
                             )}
@@ -441,6 +562,124 @@ export default function TeamJoin() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Fit Score Details for Selected Slot */}
+              {selectedRole && profile && (() => {
+                const selectedSlot = openSlots.find(s => s.role === selectedRole);
+                if (!selectedSlot) return null;
+                
+                const fitResult = calculateFitScore(selectedSlot, userSkills, profile.level);
+                const roleTypeInfo = selectedSlot.role_type ? ROLE_TYPES[selectedSlot.role_type] : null;
+                
+                return (
+                  <Card className="border-2">
+                    <CardContent className="p-4 space-y-4">
+                      {/* Overall Fit Score */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">{roleTypeInfo?.icon || ROLES[selectedSlot.role].icon}</span>
+                          <span className="font-medium">{roleTypeInfo?.name || ROLES[selectedSlot.role].name} 적합도</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {fitResult.score >= 80 ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-500" />
+                          ) : fitResult.score >= 50 ? (
+                            <AlertCircle className="w-5 h-5 text-yellow-500" />
+                          ) : (
+                            <XCircle className="w-5 h-5 text-red-500" />
+                          )}
+                          <span className={`text-xl font-bold ${
+                            fitResult.score >= 80 
+                              ? "text-green-500" 
+                              : fitResult.score >= 50 
+                              ? "text-yellow-500"
+                              : "text-red-500"
+                          }`}>
+                            {fitResult.score}%
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <Progress 
+                        value={fitResult.score} 
+                        className={`h-2 ${
+                          fitResult.score >= 80 
+                            ? "[&>div]:bg-green-500" 
+                            : fitResult.score >= 50 
+                            ? "[&>div]:bg-yellow-500"
+                            : "[&>div]:bg-red-500"
+                        }`}
+                      />
+
+                      {/* Level Requirement */}
+                      <div className="flex items-center justify-between py-2 border-b">
+                        <span className="text-sm text-muted-foreground">최소 레벨</span>
+                        <div className="flex items-center gap-2">
+                          <Badge variant={fitResult.levelMet ? "default" : "destructive"} className="text-xs">
+                            요구: Lv.{selectedSlot.min_level}
+                          </Badge>
+                          <span className="text-sm">→</span>
+                          <Badge variant="outline" className="text-xs">
+                            내 레벨: Lv.{profile.level}
+                          </Badge>
+                          {fitResult.levelMet ? (
+                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <XCircle className="w-4 h-4 text-red-500" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Skill Requirements */}
+                      {fitResult.details.length > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-medium">필요 스킬</span>
+                            <span className="text-xs text-muted-foreground">
+                              {fitResult.skillsMatched}/{fitResult.skillsTotal} 충족
+                            </span>
+                          </div>
+                          <div className="space-y-1.5">
+                            {fitResult.details.map((detail, idx) => (
+                              <div 
+                                key={idx} 
+                                className={`flex items-center justify-between p-2 rounded-lg text-sm ${
+                                  detail.met ? "bg-green-500/10" : "bg-red-500/10"
+                                }`}
+                              >
+                                <span>{detail.skillName}</span>
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="secondary" className="text-xs">
+                                    요구: Lv.{detail.required}
+                                  </Badge>
+                                  <span className="text-xs">→</span>
+                                  <Badge 
+                                    variant={detail.userLevel !== null ? "outline" : "destructive"} 
+                                    className="text-xs"
+                                  >
+                                    {detail.userLevel !== null ? `내 레벨: Lv.${detail.userLevel}` : "미보유"}
+                                  </Badge>
+                                  {detail.met ? (
+                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4 text-red-500" />
+                                  )}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {fitResult.details.length === 0 && (
+                        <p className="text-sm text-muted-foreground text-center py-2">
+                          이 포지션은 특별한 스킬 요구사항이 없습니다.
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
               {profile && (
                 <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg text-sm">
