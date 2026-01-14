@@ -15,6 +15,8 @@ export interface PositionSlot {
   id?: string;
   role_type: RoleType | null;
   min_level: number;
+  max_count: number;
+  current_count: number;
   required_skill_levels: RequiredSkillLevel[];
   is_open?: boolean;
   _isNew?: boolean;
@@ -31,6 +33,8 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
     onChange([...slots, { 
       role_type: null, 
       min_level: 1, 
+      max_count: 1,
+      current_count: 0,
       required_skill_levels: [],
       is_open: true,
       _isNew: true,
@@ -108,8 +112,8 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                     </div>
                     
                     <div className="flex-1 space-y-4">
-                      {/* Role Type and Level */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Role Type, Level, and Count */}
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-1.5">
                           <label className="text-xs text-muted-foreground">직무</label>
                           <Select 
@@ -142,6 +146,25 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                               {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
                                 <SelectItem key={level} value={String(level)}>
                                   Lv.{level}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs text-muted-foreground">모집 인원</label>
+                          <Select 
+                            value={String(slot.max_count)} 
+                            onValueChange={(v) => updateSlot(slotIndex, { max_count: parseInt(v) })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((count) => (
+                                <SelectItem key={count} value={String(count)}>
+                                  {count}명
                                 </SelectItem>
                               ))}
                             </SelectContent>

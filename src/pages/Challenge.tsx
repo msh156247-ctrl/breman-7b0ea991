@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { SIEGE_STATUS } from '@/lib/constants';
+import { CHALLENGE_STATUS } from '@/lib/constants';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 
@@ -68,7 +68,7 @@ const siegeData = [
   },
 ];
 
-function getStatusVariant(status: keyof typeof SIEGE_STATUS) {
+function getStatusVariant(status: keyof typeof CHALLENGE_STATUS) {
   switch (status) {
     case 'registering': return 'success';
     case 'ongoing': return 'secondary';
@@ -102,11 +102,11 @@ function getTimeRemaining(dateStr: string): string {
   return `${hours}시간 남음`;
 }
 
-export default function Siege() {
+export default function Challenge() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
 
-  const filteredSiege = siegeData.filter((siege) => {
-    return statusFilter === 'all' || siege.status === statusFilter;
+  const filteredChallenges = siegeData.filter((challenge) => {
+    return statusFilter === 'all' || challenge.status === statusFilter;
   });
 
   return (
@@ -117,14 +117,14 @@ export default function Siege() {
           <div>
             <h1 className="text-2xl md:text-3xl font-display font-bold flex items-center gap-2">
               <Swords className="w-8 h-8 text-primary" />
-              Siege
+              챌린지
             </h1>
-            <p className="text-muted-foreground mt-1">팀과 함께 알고리즘 대회에 참가하세요</p>
+            <p className="text-muted-foreground mt-1">팀과 함께 대회에 참가하세요</p>
           </div>
         </div>
       </ScrollReveal>
 
-      {/* Featured Siege */}
+      {/* Featured Challenge */}
       {siegeData.find(s => s.status === 'registering') && (
         <ScrollReveal animation="fade-up" delay={100}>
           <Card className="overflow-hidden border-2 border-primary/20">
@@ -147,7 +147,7 @@ export default function Siege() {
                     {siegeData[0].prizes[0].prize}
                   </div>
                   <p className="text-sm text-primary-foreground/80">총 상금</p>
-                  <Link to={`/siege/${siegeData[0].id}`}>
+                  <Link to={`/challenges/${siegeData[0].id}`}>
                     <Button variant="secondary" size="lg">
                       자세히 보기
                       <ChevronRight className="w-4 h-4 ml-1" />
@@ -198,29 +198,29 @@ export default function Siege() {
         </Tabs>
       </ScrollReveal>
 
-      {/* Siege list */}
+      {/* Challenge list */}
       <div className="grid md:grid-cols-2 gap-6">
-        {filteredSiege.map((siege, index) => (
-          <ScrollReveal key={siege.id} animation="fade-up" delay={200 + index * 50}>
-            <Link to={`/siege/${siege.id}`}>
+        {filteredChallenges.map((challenge, index) => (
+          <ScrollReveal key={challenge.id} animation="fade-up" delay={200 + index * 50}>
+            <Link to={`/challenges/${challenge.id}`}>
               <Card className="h-full hover:shadow-md transition-all hover:border-primary/30 cursor-pointer">
                 <CardHeader>
                   <div className="flex items-start justify-between gap-2">
-                    <CardTitle className="font-display text-lg">{siege.title}</CardTitle>
+                    <CardTitle className="font-display text-lg">{challenge.title}</CardTitle>
                     <StatusBadge 
-                      status={SIEGE_STATUS[siege.status].name}
-                      variant={getStatusVariant(siege.status)}
+                      status={CHALLENGE_STATUS[challenge.status].name}
+                      variant={getStatusVariant(challenge.status)}
                       size="sm"
                     />
                   </div>
                   <p className="text-sm text-muted-foreground line-clamp-2">
-                    {siege.description}
+                    {challenge.description}
                   </p>
                 </CardHeader>
                 <CardContent>
                   {/* Prizes */}
                   <div className="flex gap-3 mb-4">
-                    {siege.prizes.map((prize, i) => (
+                    {challenge.prizes.map((prize, i) => (
                       <div 
                         key={i}
                         className={`flex-1 text-center p-3 rounded-lg ${
@@ -237,10 +237,10 @@ export default function Siege() {
                   </div>
 
                   {/* Results (if available) */}
-                  {siege.status === 'results' && siege.results && (
+                  {challenge.status === 'results' && challenge.results && (
                     <div className="mb-4 p-3 rounded-lg bg-muted/50">
                       <p className="text-xs text-muted-foreground mb-2">최종 순위</p>
-                      {siege.results.slice(0, 3).map((result, i) => (
+                      {challenge.results.slice(0, 3).map((result, i) => (
                         <div key={i} className="flex items-center justify-between text-sm py-1">
                           <span className="font-medium">{result.rank}. {result.team}</span>
                           <span className="text-muted-foreground">{result.score.toLocaleString()}점</span>
@@ -253,11 +253,11 @@ export default function Siege() {
                   <div className="flex items-center justify-between text-sm text-muted-foreground">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-4 h-4" />
-                      <span>{new Date(siege.startAt).toLocaleDateString('ko-KR')}</span>
+                      <span>{new Date(challenge.startAt).toLocaleDateString('ko-KR')}</span>
                     </div>
                     <div className="flex items-center gap-1">
                       <Users className="w-4 h-4" />
-                      <span>{siege.participants}팀</span>
+                      <span>{challenge.participants}팀</span>
                     </div>
                   </div>
 
@@ -265,7 +265,7 @@ export default function Siege() {
                   <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
                     <span className="text-xs text-muted-foreground">스폰서:</span>
                     <div className="flex gap-2">
-                      {siege.sponsors.slice(0, 3).map((sponsor, i) => (
+                      {challenge.sponsors.slice(0, 3).map((sponsor, i) => (
                         <span key={i} className="text-xs px-2 py-1 rounded bg-muted">{sponsor}</span>
                       ))}
                     </div>
@@ -277,7 +277,7 @@ export default function Siege() {
         ))}
       </div>
 
-      {filteredSiege.length === 0 && (
+      {filteredChallenges.length === 0 && (
         <div className="text-center py-16">
           <Swords className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
           <h3 className="text-lg font-medium mb-2">대회가 없습니다</h3>

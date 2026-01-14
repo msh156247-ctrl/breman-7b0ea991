@@ -93,6 +93,8 @@ export default function TeamCreate() {
               role: 'horse' as const, // Default animal role for compatibility
               role_type: slot.role_type,
               min_level: slot.min_level,
+              max_count: slot.max_count,
+              current_count: 0,
               required_skill_levels: JSON.parse(JSON.stringify(slot.required_skill_levels)),
               is_open: true,
             }))
