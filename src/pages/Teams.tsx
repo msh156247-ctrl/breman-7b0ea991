@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Users, Star, Loader2 } from 'lucide-react';
+import { Search, Plus, Users, Star, Loader2, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
-import { ROLES, type UserRole } from '@/lib/constants';
+import { Badge } from '@/components/ui/badge';
+import { ROLES, ROLE_TYPES, type UserRole, type RoleType } from '@/lib/constants';
 import {
   Select,
   SelectContent,
@@ -29,12 +30,13 @@ interface TeamWithSlots {
   status: 'active' | 'inactive' | 'recruiting' | null;
   recruitment_method: 'public' | 'invite' | 'auto' | null;
   memberCount: number;
-  openSlots: { role: UserRole; filled: boolean }[];
+  openSlots: { role: UserRole; roleType: RoleType | null; filled: boolean }[];
 }
 
 export default function Teams() {
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [roleTypeFilter, setRoleTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [teams, setTeams] = useState<TeamWithSlots[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,10 +64,10 @@ export default function Teams() {
             .select('*', { count: 'exact', head: true })
             .eq('team_id', team.id);
 
-          // Get role slots
+          // Get role slots with role_type
           const { data: slots } = await supabase
             .from('team_role_slots')
-            .select('role, is_open')
+            .select('role, role_type, is_open')
             .eq('team_id', team.id);
 
           // Get filled memberships by role
@@ -78,6 +80,7 @@ export default function Teams() {
           
           const openSlots = (slots || []).map(slot => ({
             role: slot.role as UserRole,
+            roleType: slot.role_type as RoleType | null,
             filled: !slot.is_open || filledRoles.includes(slot.role),
           }));
 
@@ -107,9 +110,12 @@ export default function Teams() {
     const matchesRole = roleFilter === 'all' || 
       team.openSlots.some(r => r.role === roleFilter && !r.filled);
     
+    const matchesRoleType = roleTypeFilter === 'all' || 
+      team.openSlots.some(r => r.roleType === roleTypeFilter && !r.filled);
+    
     const matchesStatus = statusFilter === 'all' || team.status === statusFilter;
     
-    return matchesSearch && matchesRole && matchesStatus;
+    return matchesSearch && matchesRole && matchesRoleType && matchesStatus;
   });
 
   if (loading) {
@@ -151,8 +157,8 @@ export default function Teams() {
             />
           </div>
           <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-full sm:w-40">
-              <SelectValue placeholder="필요 역할" />
+            <SelectTrigger className="w-full sm:w-36">
+              <SelectValue placeholder="역할" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">모든 역할</SelectItem>
@@ -163,8 +169,24 @@ export default function Teams() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={roleTypeFilter} onValueChange={setRoleTypeFilter}>
             <SelectTrigger className="w-full sm:w-40">
+              <SelectValue placeholder="직무" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">모든 직무</SelectItem>
+              {Object.entries(ROLE_TYPES).map(([key, roleType]) => (
+                <SelectItem key={key} value={key}>
+                  <span className="flex items-center gap-2">
+                    <Briefcase className="w-3 h-3" style={{ color: roleType.color }} />
+                    {roleType.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-32">
               <SelectValue placeholder="상태" />
             </SelectTrigger>
             <SelectContent>
@@ -207,14 +229,21 @@ export default function Teams() {
                       {team.openSlots.map((r, i) => (
                         <div 
                           key={i}
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center text-lg ${
+                          className={`relative w-8 h-8 rounded-lg flex items-center justify-center text-lg ${
                             r.filled 
                               ? 'bg-muted' 
                               : 'bg-primary/10 border-2 border-dashed border-primary/30'
                           }`}
-                          title={`${ROLES[r.role].name} ${r.filled ? '(충원됨)' : '(모집중)'}`}
+                          title={`${ROLES[r.role].name}${r.roleType ? ` (${ROLE_TYPES[r.roleType]?.name})` : ''} ${r.filled ? '(충원됨)' : '(모집중)'}`}
                         >
                           {ROLES[r.role].icon}
+                          {r.roleType && !r.filled && (
+                            <span 
+                              className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border border-background"
+                              style={{ backgroundColor: ROLE_TYPES[r.roleType]?.color }}
+                              title={ROLE_TYPES[r.roleType]?.name}
+                            />
+                          )}
                         </div>
                       ))}
                     </div>
