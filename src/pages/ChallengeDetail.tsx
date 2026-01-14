@@ -13,7 +13,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
-import { SIEGE_STATUS } from '@/lib/constants';
+import { CHALLENGE_STATUS } from '@/lib/constants';
 import { 
   ArrowLeft, Calendar, Clock, Users, Trophy, Award, 
   FileText, Shield, Play, Send, ExternalLink, Crown,
@@ -97,15 +97,15 @@ const myTeams = [
 ];
 
 export default function SiegeDetail() {
-  const { siegeId } = useParams();
+  const { challengeId } = useParams();
   const [isRegistering, setIsRegistering] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState('');
   const [teamAlias, setTeamAlias] = useState('');
   const [registerDialogOpen, setRegisterDialogOpen] = useState(false);
 
-  const siege = siegeData;
-  const statusInfo = SIEGE_STATUS[siege.status];
-  const registrationProgress = (siege.currentTeams / siege.maxTeams) * 100;
+  const challenge = siegeData;
+  const statusInfo = CHALLENGE_STATUS[challenge.status];
+  const registrationProgress = (challenge.currentTeams / challenge.maxTeams) * 100;
 
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('ko-KR', {
@@ -161,10 +161,10 @@ export default function SiegeDetail() {
           </Button>
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-2xl font-bold">{siege.title}</h1>
+              <h1 className="text-2xl font-bold">{challenge.title}</h1>
               <StatusBadge status={statusInfo.name} variant={statusInfo.color as any} />
             </div>
-            <p className="text-muted-foreground">{siege.description}</p>
+            <p className="text-muted-foreground">{challenge.description}</p>
           </div>
         </div>
       </ScrollReveal>
@@ -179,7 +179,7 @@ export default function SiegeDetail() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">시작일</p>
-              <p className="font-semibold text-sm">{formatDate(siege.startAt)}</p>
+              <p className="font-semibold text-sm">{formatDate(challenge.startAt)}</p>
             </div>
           </CardContent>
         </Card>
@@ -190,7 +190,7 @@ export default function SiegeDetail() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">종료일</p>
-              <p className="font-semibold text-sm">{formatDate(siege.endAt)}</p>
+              <p className="font-semibold text-sm">{formatDate(challenge.endAt)}</p>
             </div>
           </CardContent>
         </Card>
@@ -201,7 +201,7 @@ export default function SiegeDetail() {
             </div>
             <div>
               <p className="text-xs text-muted-foreground">참가 팀</p>
-              <p className="font-semibold text-sm">{siege.currentTeams} / {siege.maxTeams}</p>
+              <p className="font-semibold text-sm">{challenge.currentTeams} / {challenge.maxTeams}</p>
             </div>
           </CardContent>
         </Card>
@@ -220,7 +220,7 @@ export default function SiegeDetail() {
       </ScrollReveal>
 
       {/* Registration Progress */}
-      {siege.status === 'registering' && (
+      {challenge.status === 'registering' && (
         <ScrollReveal animation="fade-up" delay={150}>
         <Card className="border-primary/30 bg-primary/5">
           <CardContent className="p-4">
@@ -230,13 +230,13 @@ export default function SiegeDetail() {
                 <span className="font-medium">등록 마감까지</span>
               </div>
               <span className="text-sm text-muted-foreground">
-                {formatDate(siege.registrationDeadline)}
+                {formatDate(challenge.registrationDeadline)}
               </span>
             </div>
             <Progress value={registrationProgress} className="h-2 mb-2" />
             <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">{siege.currentTeams}팀 등록 완료</span>
-              <span className="text-muted-foreground">{siege.maxTeams - siege.currentTeams}자리 남음</span>
+              <span className="text-muted-foreground">{challenge.currentTeams}팀 등록 완료</span>
+              <span className="text-muted-foreground">{challenge.maxTeams - challenge.currentTeams}자리 남음</span>
             </div>
             </CardContent>
           </Card>
@@ -265,7 +265,7 @@ export default function SiegeDetail() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {siege.prizes.map((prize) => (
+                {challenge.prizes.map((prize) => (
                   <div
                     key={prize.place}
                     className={`flex items-center justify-between p-3 rounded-lg ${
@@ -298,7 +298,7 @@ export default function SiegeDetail() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-3 gap-4">
-                  {siege.sponsors.map((sponsor) => (
+                  {challenge.sponsors.map((sponsor) => (
                     <div
                       key={sponsor}
                       className="aspect-video bg-muted/50 rounded-lg flex items-center justify-center border border-border/50"
@@ -312,7 +312,7 @@ export default function SiegeDetail() {
           </div>
 
           {/* Registration CTA */}
-          {siege.status === 'registering' && (
+          {challenge.status === 'registering' && (
             <Card className="border-border/50 bg-gradient-to-r from-primary/5 to-secondary/5">
               <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-4">
                 <div>
@@ -330,7 +330,7 @@ export default function SiegeDetail() {
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Siege 참가 등록</DialogTitle>
+                      <DialogTitle>챌린지 참가 등록</DialogTitle>
                       <DialogDescription>
                         참가할 팀을 선택하고 대회 중 사용할 별칭을 입력하세요.
                       </DialogDescription>
@@ -380,7 +380,7 @@ export default function SiegeDetail() {
           )}
 
           {/* Participant Actions (when ongoing) */}
-          {siege.status === 'ongoing' && (
+          {challenge.status === 'ongoing' && (
             <Card className="border-border/50">
               <CardHeader>
                 <CardTitle>참가자 영역</CardTitle>
@@ -417,7 +417,7 @@ export default function SiegeDetail() {
               <div className="relative">
                 <div className="absolute left-6 top-0 bottom-0 w-px bg-border" />
                 <div className="space-y-6">
-                  {siege.schedule.map((item, index) => (
+                  {challenge.schedule.map((item, index) => (
                     <div key={index} className="flex gap-4 relative">
                       <div className="w-12 h-12 rounded-full bg-background border-2 border-border flex items-center justify-center z-10">
                         {getScheduleIcon(item.type)}
@@ -539,15 +539,15 @@ export default function SiegeDetail() {
                 </Badge>
               </div>
               <CardDescription>
-                {siege.status === 'ongoing' 
+                {challenge.status === 'ongoing' 
                   ? '대회 진행 중에는 팀 별칭으로 표시됩니다.' 
-                  : siege.status === 'results'
+                  : challenge.status === 'results'
                   ? '최종 결과가 공개되었습니다.'
                   : '대회 시작 후 리더보드가 활성화됩니다.'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {siege.status === 'registering' ? (
+              {challenge.status === 'registering' ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <Trophy className="h-12 w-12 mx-auto mb-4 opacity-30" />
                   <p>대회 시작 후 리더보드가 표시됩니다.</p>
@@ -568,7 +568,7 @@ export default function SiegeDetail() {
                       </div>
                       <div className="flex-1">
                         <p className="font-semibold">
-                          {siege.status === 'results' ? team.teamName : team.alias}
+                          {challenge.status === 'results' ? team.teamName : team.alias}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {team.submissions}회 제출 · 마지막 제출: {team.lastSubmit}

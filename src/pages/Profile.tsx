@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { 
   Edit, Calendar, Star, Users, Briefcase, Award, 
-  ChevronRight, Trophy, Code, Mail
+  ChevronRight, Trophy, Code, Mail, ClipboardList
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +13,7 @@ import { RoleBadge } from '@/components/ui/RoleBadge';
 import { XPBar } from '@/components/ui/XPBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
-import { ROLES, ROLE_TYPES, type RoleType } from '@/lib/constants';
+import { ROLES, ROLE_TYPES, APPLICATION_STATUS, type RoleType } from '@/lib/constants';
 import { NotificationPreferences } from '@/components/notifications/NotificationPreferences';
 import { SkillManagement } from '@/components/profile/SkillManagement';
 import { RoleTypeManagement } from '@/components/profile/RoleTypeManagement';
@@ -85,6 +85,25 @@ export default function Profile() {
         .from('user_skills')
         .select('id, skill_id, level, tier, skill:skills(id, name, category)')
         .eq('user_id', user.id);
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  // Fetch user applications
+  const { data: myApplications = [] } = useQuery({
+    queryKey: ['my-applications', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('team_applications')
+        .select(`
+          id, status, created_at, desired_role, role_type,
+          team:teams(id, name, emblem_url)
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
       if (error) throw error;
       return data;
     },
@@ -247,6 +266,7 @@ export default function Profile() {
           <TabsList className="w-full md:w-auto flex-wrap">
             <TabsTrigger value="roles">직무</TabsTrigger>
             <TabsTrigger value="skills">스킬</TabsTrigger>
+            <TabsTrigger value="applications">지원 현황</TabsTrigger>
             <TabsTrigger value="teams">팀</TabsTrigger>
             <TabsTrigger value="badges">배지</TabsTrigger>
             <TabsTrigger value="experience">경력</TabsTrigger>
@@ -265,6 +285,57 @@ export default function Profile() {
         {/* Skills Tab */}
         <TabsContent value="skills" className="mt-6">
           <SkillManagement />
+        </TabsContent>
+
+        {/* Applications Tab */}
+        <TabsContent value="applications" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-display flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-primary" />
+                팀 지원 현황
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {myApplications.length === 0 ? (
+                <p className="text-muted-foreground text-center py-8">아직 지원한 팀이 없습니다</p>
+              ) : (
+                myApplications.map((app: any) => {
+                  const statusInfo = APPLICATION_STATUS[app.status as keyof typeof APPLICATION_STATUS];
+                  const roleTypeInfo = app.role_type ? ROLE_TYPES[app.role_type as RoleType] : null;
+                  return (
+                    <Link 
+                      key={app.id}
+                      to={`/teams/${app.team?.id}`}
+                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors border"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl">
+                        {app.team?.emblem_url || '🎯'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{app.team?.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          {roleTypeInfo && (
+                            <span className="text-xs px-2 py-0.5 rounded bg-muted">
+                              {roleTypeInfo.icon} {roleTypeInfo.name}
+                            </span>
+                          )}
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(app.created_at).toLocaleDateString('ko-KR')}
+                          </span>
+                        </div>
+                      </div>
+                      <Badge 
+                        variant={app.status === 'accepted' ? 'default' : app.status === 'rejected' ? 'destructive' : 'secondary'}
+                      >
+                        {statusInfo?.name || app.status}
+                      </Badge>
+                    </Link>
+                  );
+                })
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Teams Tab */}

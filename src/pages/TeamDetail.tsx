@@ -35,6 +35,7 @@ import {
 import { TeamAnnouncementBoard } from '@/components/team/TeamAnnouncementBoard';
 import { TeamMemberManagement } from '@/components/team/TeamMemberManagement';
 import { TeamApplicationManagement } from '@/components/team/TeamApplicationManagement';
+import { TeamChatBoard } from '@/components/team/TeamChatBoard';
 
 interface Team {
   id: string;
@@ -481,6 +482,7 @@ export default function TeamDetail() {
         <Tabs defaultValue="members" className="space-y-6">
           <TabsList className="bg-muted/50">
             <TabsTrigger value="members">멤버</TabsTrigger>
+            {isMember && <TabsTrigger value="chat">채팅</TabsTrigger>}
             {isLeader && <TabsTrigger value="applications">지원 관리</TabsTrigger>}
             {isLeader && <TabsTrigger value="manage">멤버 관리</TabsTrigger>}
             <TabsTrigger value="board">공지사항</TabsTrigger>
@@ -529,6 +531,17 @@ export default function TeamDetail() {
               </Card>
             )}
           </TabsContent>
+
+          {/* Chat Tab */}
+          {isMember && (
+            <TabsContent value="chat" className="space-y-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-primary" />
+                팀 채팅
+              </h2>
+              <TeamChatBoard teamId={team.id} isLeader={isLeader} isMember={isMember} />
+            </TabsContent>
+          )}
 
           {/* Application Management Tab (Leader only) */}
           {isLeader && (

@@ -1347,8 +1347,10 @@ export type Database = {
       team_role_slots: {
         Row: {
           created_at: string | null
+          current_count: number
           id: string
           is_open: boolean | null
+          max_count: number
           min_level: number | null
           required_skill_levels: Json | null
           required_skills: string[] | null
@@ -1358,8 +1360,10 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          current_count?: number
           id?: string
           is_open?: boolean | null
+          max_count?: number
           min_level?: number | null
           required_skill_levels?: Json | null
           required_skills?: string[] | null
@@ -1369,8 +1373,10 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          current_count?: number
           id?: string
           is_open?: boolean | null
+          max_count?: number
           min_level?: number | null
           required_skill_levels?: Json | null
           required_skills?: string[] | null

@@ -23,8 +23,8 @@ import ProjectCreate from "./pages/ProjectCreate";
 import ProjectEdit from "./pages/ProjectEdit";
 import ProjectDetail from "./pages/ProjectDetail";
 import ContractManagement from "./pages/ContractManagement";
-import Siege from "./pages/Siege";
-import SiegeDetail from "./pages/SiegeDetail";
+import Challenge from "./pages/Challenge";
+import ChallengeDetail from "./pages/ChallengeDetail";
 import Rankings from "./pages/Rankings";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
@@ -91,8 +91,8 @@ function AppRoutes() {
         <Route path="projects/:projectId" element={<ProjectDetail />} />
         <Route path="projects/:projectId/edit" element={<ProjectEdit />} />
         <Route path="contracts/:contractId" element={<ContractManagement />} />
-        <Route path="siege" element={<Siege />} />
-        <Route path="siege/:siegeId" element={<SiegeDetail />} />
+        <Route path="challenges" element={<Challenge />} />
+        <Route path="challenges/:challengeId" element={<ChallengeDetail />} />
         <Route path="rankings" element={<Rankings />} />
         <Route path="profile" element={<Profile />} />
         <Route path="notifications" element={<Notifications />} />

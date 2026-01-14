@@ -186,20 +186,23 @@ export const PROJECT_STATUS = {
   cancelled: { name: '취소됨', color: 'destructive' },
 } as const;
 
-export const SIEGE_STATUS = {
+export const CHALLENGE_STATUS = {
   registering: { name: '등록중', color: 'success' },
   ongoing: { name: '진행중', color: 'secondary' },
   ended: { name: '종료', color: 'muted' },
   results: { name: '결과발표', color: 'primary' },
 } as const;
 
-// PRD: Main navigation with Siege, Ranking, Notifications as core items
+// Legacy alias for backward compatibility
+export const SIEGE_STATUS = CHALLENGE_STATUS;
+
+// PRD: Main navigation with Challenge, Ranking, Notifications as core items
 export const NAV_ITEMS = [
   { href: '/dashboard', label: '대시보드', icon: 'LayoutDashboard' },
   { href: '/teams', label: '팀', icon: 'Users' },
   { href: '/projects', label: '프로젝트', icon: 'Briefcase' },
   { href: '/chat', label: '채팅', icon: 'MessageSquare' },
-  { href: '/siege', label: 'Siege', icon: 'Swords' },
+  { href: '/challenges', label: '챌린지', icon: 'Swords' },
   { href: '/rankings', label: '랭킹', icon: 'Trophy' },
   { href: '/notifications', label: '알림', icon: 'Bell' },
 ] as const;
