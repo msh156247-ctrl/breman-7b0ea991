@@ -44,6 +44,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ProjectProposalManagement } from '@/components/project/ProjectProposalManagement';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface Project {
   id: string;
@@ -109,10 +116,13 @@ export default function ProjectDetail() {
   const [proposalText, setProposalText] = useState('');
   const [proposedBudget, setProposedBudget] = useState('');
   const [proposedTimeline, setProposedTimeline] = useState('');
+  const [selectedTeamId, setSelectedTeamId] = useState('');
+  const [userTeams, setUserTeams] = useState<{ id: string; name: string; emblem_url: string | null }[]>([]);
   const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
   const [questionText, setQuestionText] = useState('');
   const [hasApplied, setHasApplied] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [assignedTeam, setAssignedTeam] = useState<{ id: string; name: string; emblem_url: string | null; rating_avg: number | null } | null>(null);
 
   useEffect(() => {
     if (projectId) {
@@ -158,15 +168,33 @@ export default function ProjectDetail() {
       
       setProposalCount(count || 0);
 
+      // Check for assigned team (if project is matched/in_progress/completed)
+      if (projectData.status !== 'open' && projectData.status !== 'cancelled') {
+        const { data: contractData } = await supabase
+          .from('contracts')
+          .select(`
+            team:teams!contracts_team_id_fkey(id, name, emblem_url, rating_avg)
+          `)
+          .eq('project_id', projectId)
+          .single();
+
+        if (contractData?.team) {
+          setAssignedTeam(contractData.team as { id: string; name: string; emblem_url: string | null; rating_avg: number | null });
+        }
+      }
+
       // Check if user has already applied (if they lead a team)
       if (user) {
-        const { data: userTeams } = await supabase
+        const { data: leaderTeams } = await supabase
           .from('teams')
-          .select('id')
+          .select('id, name, emblem_url')
           .eq('leader_id', user.id);
 
-        if (userTeams && userTeams.length > 0) {
-          const teamIds = userTeams.map(t => t.id);
+        if (leaderTeams && leaderTeams.length > 0) {
+          setUserTeams(leaderTeams);
+          setSelectedTeamId(leaderTeams[0].id);
+          
+          const teamIds = leaderTeams.map(t => t.id);
           const { data: existingProposals } = await supabase
             .from('project_proposals')
             .select('id')
@@ -189,7 +217,7 @@ export default function ProjectDetail() {
   };
 
   const isOwner = user?.id === project?.client_id;
-  const isTeamLeader = true; // TODO: Check if user leads a team
+  const isTeamLeader = userTeams.length > 0;
 
   const handleSubmitProposal = async () => {
     if (!proposalText || !proposedBudget || !proposedTimeline) {
@@ -210,28 +238,21 @@ export default function ProjectDetail() {
       return;
     }
 
+    if (!selectedTeamId) {
+      toast({
+        title: '팀 선택 필요',
+        description: '제안을 보낼 팀을 선택해주세요.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
-      // Get user's first team
-      const { data: userTeams } = await supabase
-        .from('teams')
-        .select('id')
-        .eq('leader_id', user.id)
-        .limit(1);
-
-      if (!userTeams || userTeams.length === 0) {
-        toast({
-          title: '팀 필요',
-          description: '제안을 보내려면 먼저 팀을 생성해야 합니다.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
       const { error } = await supabase
         .from('project_proposals')
         .insert({
           project_id: projectId,
-          team_id: userTeams[0].id,
+          team_id: selectedTeamId,
           proposal_text: proposalText,
           proposed_budget: parseInt(proposedBudget),
           proposed_timeline_weeks: parseInt(proposedTimeline),
@@ -430,7 +451,35 @@ export default function ProjectDetail() {
                   </Card>
                 )}
 
-                {/* Actions */}
+                {/* Assigned Team Card */}
+                {assignedTeam && (
+                  <Card className="border-success/30 bg-success/5">
+                    <CardContent className="p-4">
+                      <div className="text-xs text-success font-medium mb-2 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        선정된 팀
+                      </div>
+                      <Link to={`/teams/${assignedTeam.id}`} className="block">
+                        <div className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={assignedTeam.emblem_url || undefined} />
+                            <AvatarFallback className="bg-success/10 text-success font-bold text-lg">
+                              {assignedTeam.name[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-semibold">{assignedTeam.name}</div>
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Star className="w-3 h-3 text-secondary fill-secondary" />
+                              <span>{assignedTeam.rating_avg?.toFixed(1) || '0.0'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {isOwner ? (
                   <div className="space-y-2">
                     <Link to={`/projects/${project.id}/edit`}>
@@ -562,6 +611,32 @@ export default function ProjectDetail() {
                             </DialogDescription>
                           </DialogHeader>
                           <div className="space-y-4 mt-4">
+                            {/* Team Selection */}
+                            {userTeams.length > 1 && (
+                              <div>
+                                <Label>제안을 보낼 팀</Label>
+                                <Select value={selectedTeamId} onValueChange={setSelectedTeamId}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="팀 선택" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {userTeams.map((team) => (
+                                      <SelectItem key={team.id} value={team.id}>
+                                        <div className="flex items-center gap-2">
+                                          <Avatar className="h-5 w-5">
+                                            <AvatarImage src={team.emblem_url || undefined} />
+                                            <AvatarFallback className="text-[10px]">
+                                              {team.name[0]}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          {team.name}
+                                        </div>
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            )}
                             <div className="grid grid-cols-2 gap-4">
                               <div>
                                 <Label>제안 예산 (원)</Label>
