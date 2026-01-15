@@ -121,7 +121,10 @@ export default function ProjectDetail() {
   const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
   const [questionText, setQuestionText] = useState('');
   const [hasApplied, setHasApplied] = useState(false);
+  const [userProposalId, setUserProposalId] = useState<string | null>(null);
+  const [userProposalStatus, setUserProposalStatus] = useState<string | null>(null);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
   const [assignedTeam, setAssignedTeam] = useState<{ id: string; name: string; emblem_url: string | null; rating_avg: number | null } | null>(null);
 
   useEffect(() => {
@@ -197,11 +200,20 @@ export default function ProjectDetail() {
           const teamIds = leaderTeams.map(t => t.id);
           const { data: existingProposals } = await supabase
             .from('project_proposals')
-            .select('id')
+            .select('id, status')
             .eq('project_id', projectId)
-            .in('team_id', teamIds);
+            .in('team_id', teamIds)
+            .in('status', ['pending', 'accepted']);
           
-          setHasApplied((existingProposals?.length || 0) > 0);
+          if (existingProposals && existingProposals.length > 0) {
+            setHasApplied(true);
+            setUserProposalId(existingProposals[0].id);
+            setUserProposalStatus(existingProposals[0].status);
+          } else {
+            setHasApplied(false);
+            setUserProposalId(null);
+            setUserProposalStatus(null);
+          }
         }
       }
     } catch (error) {
@@ -270,6 +282,8 @@ export default function ProjectDetail() {
       setProposedTimeline('');
       setHasApplied(true);
       setProposalCount(prev => prev + 1);
+      // Refresh to get the new proposal ID
+      fetchProjectData();
     } catch (error) {
       console.error('Error submitting proposal:', error);
       toast({
@@ -294,6 +308,39 @@ export default function ProjectDetail() {
     });
     setQuestionDialogOpen(false);
     setQuestionText('');
+  };
+
+  const handleWithdrawProposal = async () => {
+    if (!userProposalId) return;
+
+    setWithdrawing(true);
+    try {
+      const { error } = await supabase
+        .from('project_proposals')
+        .update({ status: 'withdrawn' })
+        .eq('id', userProposalId);
+
+      if (error) throw error;
+
+      toast({
+        title: '제안 철회 완료',
+        description: '제안서가 철회되었습니다.',
+      });
+      
+      setHasApplied(false);
+      setUserProposalId(null);
+      setUserProposalStatus(null);
+      setProposalCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('Error withdrawing proposal:', error);
+      toast({
+        title: '철회 실패',
+        description: '제안서를 철회할 수 없습니다.',
+        variant: 'destructive',
+      });
+    } finally {
+      setWithdrawing(false);
+    }
   };
 
   const handleStatusChange = async (newStatus: 'completed' | 'cancelled') => {
@@ -591,10 +638,55 @@ export default function ProjectDetail() {
                 ) : project.status === 'open' && isTeamLeader && (
                   <div className="space-y-2">
                     {hasApplied ? (
-                      <Button className="w-full" disabled>
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                        제안 완료
-                      </Button>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-primary/10 text-primary border border-primary/20">
+                          <CheckCircle2 className="w-4 h-4" />
+                          <span className="font-medium">
+                            {userProposalStatus === 'accepted' ? '제안이 수락되었습니다!' : '제안서 검토 중'}
+                          </span>
+                        </div>
+                        {userProposalStatus === 'pending' && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                className="w-full hover:bg-destructive/10 hover:text-destructive hover:border-destructive/50"
+                                disabled={withdrawing}
+                              >
+                                {withdrawing ? (
+                                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                ) : (
+                                  <XCircle className="w-4 h-4 mr-2" />
+                                )}
+                                제안 철회
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>제안 철회</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  제출한 제안서를 철회하시겠습니까? 철회 후에는 새로운 제안을 다시 보낼 수 있습니다.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>취소</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={handleWithdrawProposal}
+                                  className="bg-destructive hover:bg-destructive/90"
+                                  disabled={withdrawing}
+                                >
+                                  {withdrawing ? (
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                  ) : (
+                                    <XCircle className="w-4 h-4 mr-2" />
+                                  )}
+                                  철회하기
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
+                      </div>
                     ) : (
                       <Dialog open={proposalDialogOpen} onOpenChange={setProposalDialogOpen}>
                         <DialogTrigger asChild>
