@@ -19,6 +19,14 @@ import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { supabase } from '@/integrations/supabase/client';
 
+interface SlotInfo {
+  role: UserRole;
+  roleType: RoleType | null;
+  currentCount: number;
+  maxCount: number;
+  isOpen: boolean;
+}
+
 interface TeamWithSlots {
   id: string;
   name: string;
@@ -30,7 +38,7 @@ interface TeamWithSlots {
   status: 'active' | 'inactive' | 'recruiting' | null;
   recruitment_method: 'public' | 'invite' | 'auto' | null;
   memberCount: number;
-  openSlots: { role: UserRole; roleType: RoleType | null; filled: boolean }[];
+  slots: SlotInfo[];
 }
 
 export default function Teams() {
@@ -64,24 +72,18 @@ export default function Teams() {
             .select('*', { count: 'exact', head: true })
             .eq('team_id', team.id);
 
-          // Get role slots with role_type
+          // Get role slots with role_type, max_count, current_count
           const { data: slots } = await supabase
             .from('team_role_slots')
-            .select('role, role_type, is_open')
+            .select('role, role_type, is_open, max_count, current_count')
             .eq('team_id', team.id);
 
-          // Get filled memberships by role
-          const { data: memberships } = await supabase
-            .from('team_memberships')
-            .select('role')
-            .eq('team_id', team.id);
-
-          const filledRoles = memberships?.map(m => m.role) || [];
-          
-          const openSlots = (slots || []).map(slot => ({
+          const slotInfos: SlotInfo[] = (slots || []).map(slot => ({
             role: slot.role as UserRole,
             roleType: slot.role_type as RoleType | null,
-            filled: !slot.is_open || filledRoles.includes(slot.role),
+            currentCount: slot.current_count || 0,
+            maxCount: slot.max_count || 1,
+            isOpen: slot.is_open ?? true,
           }));
 
           return {
@@ -89,7 +91,7 @@ export default function Teams() {
             status: team.status as 'active' | 'inactive' | 'recruiting' | null,
             recruitment_method: team.recruitment_method as 'public' | 'invite' | 'auto' | null,
             memberCount: (memberCount || 0) + 1, // +1 for leader
-            openSlots,
+            slots: slotInfos,
           };
         })
       );
@@ -108,10 +110,10 @@ export default function Teams() {
       team.description?.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesRole = roleFilter === 'all' || 
-      team.openSlots.some(r => r.role === roleFilter && !r.filled);
+      team.slots.some(s => s.role === roleFilter && s.isOpen && s.currentCount < s.maxCount);
     
     const matchesRoleType = roleTypeFilter === 'all' || 
-      team.openSlots.some(r => r.roleType === roleTypeFilter && !r.filled);
+      team.slots.some(s => s.roleType === roleTypeFilter && s.isOpen && s.currentCount < s.maxCount);
     
     const matchesStatus = statusFilter === 'all' || team.status === statusFilter;
     
@@ -223,29 +225,37 @@ export default function Teams() {
                     </div>
                   </div>
 
-                  {/* Roles */}
-                  {team.openSlots.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 mb-4">
-                      {team.openSlots.map((r, i) => (
-                        <div 
-                          key={i}
-                          className={`relative w-8 h-8 rounded-lg flex items-center justify-center text-lg ${
-                            r.filled 
-                              ? 'bg-muted' 
-                              : 'bg-primary/10 border-2 border-dashed border-primary/30'
-                          }`}
-                          title={`${ROLES[r.role].name}${r.roleType ? ` (${ROLE_TYPES[r.roleType]?.name})` : ''} ${r.filled ? '(충원됨)' : '(모집중)'}`}
-                        >
-                          {ROLES[r.role].icon}
-                          {r.roleType && !r.filled && (
-                            <span 
-                              className="absolute -bottom-1 -right-1 w-3 h-3 rounded-full border border-background"
-                              style={{ backgroundColor: ROLE_TYPES[r.roleType]?.color }}
-                              title={ROLE_TYPES[r.roleType]?.name}
-                            />
-                          )}
-                        </div>
-                      ))}
+                  {/* Roles with recruitment count */}
+                  {team.slots.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-4">
+                      {team.slots.map((slot, i) => {
+                        const isFilled = slot.currentCount >= slot.maxCount;
+                        const isRecruiting = slot.isOpen && !isFilled;
+                        
+                        return (
+                          <div 
+                            key={i}
+                            className={`relative flex items-center gap-1.5 px-2 py-1 rounded-lg text-sm ${
+                              isFilled 
+                                ? 'bg-muted text-muted-foreground opacity-60' 
+                                : 'bg-primary/10 border border-dashed border-primary/30'
+                            }`}
+                            title={`${ROLES[slot.role].name}${slot.roleType ? ` (${ROLE_TYPES[slot.roleType]?.name})` : ''} - ${slot.currentCount}/${slot.maxCount}명 ${isFilled ? '(충원완료)' : '(모집중)'}`}
+                          >
+                            <span className="text-base">{ROLES[slot.role].icon}</span>
+                            <span className={`text-xs font-medium ${isFilled ? 'text-muted-foreground' : 'text-primary'}`}>
+                              {slot.currentCount}/{slot.maxCount}
+                            </span>
+                            {slot.roleType && isRecruiting && (
+                              <span 
+                                className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border border-background"
+                                style={{ backgroundColor: ROLE_TYPES[slot.roleType]?.color }}
+                                title={ROLE_TYPES[slot.roleType]?.name}
+                              />
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
