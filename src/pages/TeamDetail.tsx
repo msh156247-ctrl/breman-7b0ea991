@@ -66,6 +66,8 @@ interface OpenSlot {
   min_level: number;
   required_skills: string[] | null;
   required_skill_levels: { skillName: string; minLevel: number }[] | null;
+  current_count: number;
+  max_count: number;
 }
 
 export default function TeamDetail() {
@@ -156,12 +158,11 @@ export default function TeamDetail() {
 
       setMembers(membersList);
 
-      // Fetch open slots
+      // Fetch all slots (both open and filled)
       const { data: slotsData } = await supabase
         .from('team_role_slots')
         .select('*')
-        .eq('team_id', teamId)
-        .eq('is_open', true);
+        .eq('team_id', teamId);
 
       setOpenSlots((slotsData || []).map(slot => ({
         id: slot.id,
@@ -170,6 +171,8 @@ export default function TeamDetail() {
         min_level: slot.min_level || 1,
         required_skills: slot.required_skills,
         required_skill_levels: slot.required_skill_levels as { skillName: string; minLevel: number }[] | null,
+        current_count: slot.current_count || 0,
+        max_count: slot.max_count || 1,
       })));
 
     } catch (error) {
@@ -596,34 +599,64 @@ export default function TeamDetail() {
           <TabsContent value="openings" className="space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-success" />
-              모집중인 포지션 ({openSlots.length}개)
+              포지션 ({openSlots.length}개)
             </h2>
             {openSlots.length > 0 ? (
               <div className="grid md:grid-cols-2 gap-4">
                 {openSlots.map((slot) => {
                   const roleTypeInfo = slot.role_type ? ROLE_TYPES[slot.role_type] : null;
                   const animalInfo = ROLES[slot.role];
+                  const isFilled = slot.current_count >= slot.max_count;
                   
                   return (
-                    <Card key={slot.id} className="border-dashed border-primary/30 bg-primary/5">
+                    <Card 
+                      key={slot.id} 
+                      className={`border-dashed ${
+                        isFilled 
+                          ? 'border-muted bg-muted/30 opacity-60' 
+                          : 'border-primary/30 bg-primary/5'
+                      }`}
+                    >
                       <CardContent className="p-5">
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl">
+                            <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${
+                              isFilled 
+                                ? 'bg-muted' 
+                                : 'bg-gradient-to-br from-primary/20 to-accent/20'
+                            }`}>
                               {roleTypeInfo?.icon || animalInfo?.icon || '👤'}
                             </div>
                             <div>
-                              <h3 className="font-semibold">
-                                {roleTypeInfo?.name || animalInfo?.name || '포지션'}
-                              </h3>
+                              <div className="flex items-center gap-2">
+                                <h3 className="font-semibold">
+                                  {roleTypeInfo?.name || animalInfo?.name || '포지션'}
+                                </h3>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  isFilled 
+                                    ? 'bg-muted text-muted-foreground' 
+                                    : 'bg-primary/10 text-primary'
+                                }`}>
+                                  {slot.current_count}/{slot.max_count}명
+                                </span>
+                              </div>
                               <p className="text-sm text-muted-foreground">
                                 {roleTypeInfo?.description || animalInfo?.description || ''}
                               </p>
                             </div>
                           </div>
-                          <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
-                            최소 Lv.{slot.min_level}
-                          </span>
+                          <div className="flex flex-col items-end gap-1">
+                            <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                              isFilled 
+                                ? 'bg-muted text-muted-foreground' 
+                                : 'bg-primary/10 text-primary'
+                            }`}>
+                              최소 Lv.{slot.min_level}
+                            </span>
+                            {isFilled && (
+                              <span className="text-xs text-muted-foreground">모집 완료</span>
+                            )}
+                          </div>
                         </div>
                         
                         {/* Required Skill Levels (new format) */}
@@ -657,7 +690,7 @@ export default function TeamDetail() {
               <Card className="bg-muted/30">
                 <CardContent className="p-8 text-center">
                   <UserPlus className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-muted-foreground">현재 모집중인 포지션이 없습니다</p>
+                  <p className="text-muted-foreground">등록된 포지션이 없습니다</p>
                 </CardContent>
               </Card>
             )}
