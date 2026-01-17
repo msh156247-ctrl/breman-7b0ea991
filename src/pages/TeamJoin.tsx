@@ -57,6 +57,8 @@ interface OpenSlot {
   role_type: RoleType | null;
   min_level: number;
   required_skill_levels: RequiredSkillLevel[];
+  current_count: number;
+  max_count: number;
 }
 
 interface UserSkill {
@@ -211,12 +213,11 @@ export default function TeamJoin() {
 
       setMembers(membersList);
 
-      // Fetch open slots
+      // Fetch all slots (including filled ones to show as disabled)
       const { data: slotsData } = await supabase
         .from('team_role_slots')
         .select('*')
-        .eq('team_id', teamId)
-        .eq('is_open', true);
+        .eq('team_id', teamId);
 
       const slots: OpenSlot[] = (slotsData || []).map(slot => {
         let requiredSkillLevels: RequiredSkillLevel[] = [];
@@ -241,6 +242,8 @@ export default function TeamJoin() {
           role_type: slot.role_type as RoleType | null,
           min_level: slot.min_level || 1,
           required_skill_levels: requiredSkillLevels,
+          current_count: slot.current_count || 0,
+          max_count: slot.max_count || 1,
         };
       });
       
@@ -267,9 +270,10 @@ export default function TeamJoin() {
         }
       }
       
-      // Auto-select first available role
-      if (slots.length > 0 && !selectedRole) {
-        setSelectedRole(slots[0].role);
+      // Auto-select first available (not filled) role
+      const availableSlot = slots.find(s => s.current_count < s.max_count);
+      if (availableSlot && !selectedRole) {
+        setSelectedRole(availableSlot.role);
       }
 
     } catch (error) {
@@ -493,7 +497,7 @@ export default function TeamJoin() {
                 </Button>
               </div>
             </div>
-          ) : openSlots.length === 0 ? (
+          ) : openSlots.length === 0 || openSlots.every(s => s.current_count >= s.max_count) ? (
             /* No Open Positions */
             <div className="text-center space-y-4">
               <div className="p-4 bg-muted/50 rounded-lg">
@@ -525,20 +529,28 @@ export default function TeamJoin() {
                         ? calculateFitScore(slot, userSkills, profile.level) 
                         : null;
                       const meetsLevel = !profile || profile.level >= slot.min_level;
+                      const isFilled = slot.current_count >= slot.max_count;
+                      const isDisabled = !meetsLevel || isFilled;
                       
                       return (
                         <SelectItem 
                           key={slot.id} 
                           value={slot.role}
-                          disabled={!meetsLevel}
+                          disabled={isDisabled}
+                          className={isFilled ? "opacity-50" : ""}
                         >
                           <div className="flex items-center gap-2">
                             <span>{roleTypeInfo?.icon || roleInfo.icon}</span>
                             <span>{roleTypeInfo?.name || roleInfo.name}</span>
-                            <Badge variant="secondary" className="text-xs">
-                              Lv.{slot.min_level}+
-                            </Badge>
-                            {fitResult && (
+                            <span className={`text-xs ${isFilled ? "text-muted-foreground" : "text-muted-foreground"}`}>
+                              ({slot.current_count}/{slot.max_count})
+                            </span>
+                            {!isFilled && (
+                              <Badge variant="secondary" className="text-xs">
+                                Lv.{slot.min_level}+
+                              </Badge>
+                            )}
+                            {!isFilled && fitResult && (
                               <Badge 
                                 variant={fitResult.score >= 80 ? "default" : fitResult.score >= 50 ? "secondary" : "outline"}
                                 className={`text-xs ${
@@ -552,7 +564,10 @@ export default function TeamJoin() {
                                 적합도 {fitResult.score}%
                               </Badge>
                             )}
-                            {!meetsLevel && (
+                            {isFilled && (
+                              <span className="text-xs text-destructive/70">모집완료</span>
+                            )}
+                            {!isFilled && !meetsLevel && (
                               <span className="text-xs text-destructive">(레벨 부족)</span>
                             )}
                           </div>
