@@ -445,11 +445,27 @@ export default function TeamDetail() {
                               <SelectValue placeholder="역할 선택" />
                             </SelectTrigger>
                             <SelectContent>
-                              {openSlots.map((slot) => (
-                                <SelectItem key={slot.id} value={slot.role}>
-                                  {ROLES[slot.role].icon} {ROLES[slot.role].name} (최소 Lv.{slot.min_level})
-                                </SelectItem>
-                              ))}
+                              {openSlots.map((slot) => {
+                                const isFilled = slot.current_count >= slot.max_count;
+                                return (
+                                  <SelectItem 
+                                    key={slot.id} 
+                                    value={slot.role}
+                                    disabled={isFilled}
+                                    className={isFilled ? "opacity-50" : ""}
+                                  >
+                                    <span className="flex items-center gap-2">
+                                      <span>{ROLES[slot.role].icon} {ROLES[slot.role].name}</span>
+                                      <span className={`text-xs ${isFilled ? "text-muted-foreground" : "text-muted-foreground"}`}>
+                                        ({slot.current_count}/{slot.max_count})
+                                      </span>
+                                      {isFilled && (
+                                        <span className="text-xs text-destructive/70 ml-1">모집완료</span>
+                                      )}
+                                    </span>
+                                  </SelectItem>
+                                );
+                              })}
                             </SelectContent>
                           </Select>
                         </div>
