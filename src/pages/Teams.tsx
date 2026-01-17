@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Users, Star, Loader2, Briefcase } from 'lucide-react';
+import { Search, Plus, Users, Star, Loader2, Briefcase, Trophy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -260,20 +260,21 @@ export default function Teams() {
                   )}
 
                   {/* Stats */}
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between text-sm border-t pt-3">
+                    <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Users className="w-4 h-4" />
                         <span>{team.memberCount}명</span>
                       </div>
-                      <div className="flex items-center gap-1 text-muted-foreground">
-                        <Star className="w-4 h-4 text-secondary" />
-                        <span>{team.rating_avg || 0}</span>
+                      <div className="flex items-center gap-1">
+                        <Trophy className="w-4 h-4 text-primary" />
+                        <span className="font-medium text-primary">Lv.{team.avg_level || 1}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                        <span className="font-medium">{(team.rating_avg || 0).toFixed(1)}</span>
                       </div>
                     </div>
-                    <span className="text-xs text-muted-foreground">
-                      평균 Lv.{team.avg_level || 1}
-                    </span>
                   </div>
                 </CardContent>
               </Card>
