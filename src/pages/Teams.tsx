@@ -222,6 +222,25 @@ export default function Teams() {
                       <p className="text-sm text-muted-foreground line-clamp-1">
                         {team.slogan || '슬로건 없음'}
                       </p>
+                      {/* Recruiting slots summary */}
+                      {(() => {
+                        const recruitingSlots = team.slots.filter(s => s.isOpen && s.currentCount < s.maxCount);
+                        const totalRecruiting = recruitingSlots.reduce((sum, s) => sum + (s.maxCount - s.currentCount), 0);
+                        if (totalRecruiting > 0) {
+                          return (
+                            <div className="flex items-center gap-1.5 mt-1.5">
+                              <Badge variant="outline" className="text-xs bg-primary/5 border-primary/30 text-primary">
+                                <Users className="w-3 h-3 mr-1" />
+                                {totalRecruiting}명 모집중
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                ({recruitingSlots.length}개 포지션)
+                              </span>
+                            </div>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   </div>
 
