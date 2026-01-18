@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Users, Star, Loader2, Briefcase, Trophy, Clock } from 'lucide-react';
+import { Search, Plus, Users, Star, Loader2, Briefcase, Trophy, Clock, Crown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,12 @@ interface SlotInfo {
   isOpen: boolean;
 }
 
+interface LeaderInfo {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+}
+
 interface TeamWithSlots {
   id: string;
   name: string;
@@ -42,6 +49,7 @@ interface TeamWithSlots {
   memberCount: number;
   slots: SlotInfo[];
   updated_at: string | null;
+  leader: LeaderInfo | null;
 }
 
 export default function Teams() {
@@ -58,10 +66,13 @@ export default function Teams() {
 
   const fetchTeams = async () => {
     try {
-      // Fetch teams
+      // Fetch teams with leader info from public_profiles
       const { data: teamsData, error: teamsError } = await supabase
         .from('teams')
-        .select('*')
+        .select(`
+          *,
+          leader:public_profiles!teams_leader_id_fkey(id, name, avatar_url)
+        `)
         .order('created_at', { ascending: false });
 
       if (teamsError) throw teamsError;
@@ -95,6 +106,7 @@ export default function Teams() {
             recruitment_method: team.recruitment_method as 'public' | 'invite' | 'auto' | null,
             memberCount: (memberCount || 0) + 1, // +1 for leader
             slots: slotInfos,
+            leader: team.leader as LeaderInfo | null,
           };
         })
       );
@@ -281,8 +293,24 @@ export default function Teams() {
                     </div>
                   )}
 
+                  {/* Leader info */}
+                  {team.leader && (
+                    <div className="flex items-center gap-2 mb-3 pb-3 border-b">
+                      <Avatar className="w-6 h-6">
+                        <AvatarImage src={team.leader.avatar_url || undefined} />
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                          {team.leader.name?.charAt(0) || 'L'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex items-center gap-1 text-sm">
+                        <Crown className="w-3.5 h-3.5 text-yellow-500" />
+                        <span className="text-muted-foreground">{team.leader.name}</span>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Stats */}
-                  <div className="flex items-center justify-between text-sm border-t pt-3">
+                  <div className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-3">
                       <div className="flex items-center gap-1 text-muted-foreground">
                         <Users className="w-4 h-4" />
