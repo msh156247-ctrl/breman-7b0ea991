@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Users, Star, Loader2, Briefcase, Trophy, Clock, Crown } from 'lucide-react';
+import { Search, Plus, Users, Star, Loader2, Briefcase, Trophy, Clock, Crown, ArrowUpDown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -57,6 +57,7 @@ export default function Teams() {
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [roleTypeFilter, setRoleTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortOption, setSortOption] = useState<string>('newest');
   const [teams, setTeams] = useState<TeamWithSlots[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -119,21 +120,33 @@ export default function Teams() {
     }
   };
 
-  const filteredTeams = teams.filter((team) => {
-    const matchesSearch = team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      team.slogan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      team.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesRole = roleFilter === 'all' || 
-      team.slots.some(s => s.role === roleFilter && s.isOpen && s.currentCount < s.maxCount);
-    
-    const matchesRoleType = roleTypeFilter === 'all' || 
-      team.slots.some(s => s.roleType === roleTypeFilter && s.isOpen && s.currentCount < s.maxCount);
-    
-    const matchesStatus = statusFilter === 'all' || team.status === statusFilter;
-    
-    return matchesSearch && matchesRole && matchesRoleType && matchesStatus;
-  });
+  const filteredTeams = teams
+    .filter((team) => {
+      const matchesSearch = team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        team.slogan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        team.description?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesRole = roleFilter === 'all' || 
+        team.slots.some(s => s.role === roleFilter && s.isOpen && s.currentCount < s.maxCount);
+      
+      const matchesRoleType = roleTypeFilter === 'all' || 
+        team.slots.some(s => s.roleType === roleTypeFilter && s.isOpen && s.currentCount < s.maxCount);
+      
+      const matchesStatus = statusFilter === 'all' || team.status === statusFilter;
+      
+      return matchesSearch && matchesRole && matchesRoleType && matchesStatus;
+    })
+    .sort((a, b) => {
+      switch (sortOption) {
+        case 'level':
+          return (b.avg_level || 1) - (a.avg_level || 1);
+        case 'rating':
+          return (b.rating_avg || 0) - (a.rating_avg || 0);
+        case 'newest':
+        default:
+          return new Date(b.updated_at || 0).getTime() - new Date(a.updated_at || 0).getTime();
+      }
+    });
 
   if (loading) {
     return (
@@ -215,13 +228,24 @@ export default function Teams() {
         </div>
       </ScrollReveal>
 
-      {/* Results count */}
+      {/* Results count and sort */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {searchQuery || roleFilter !== 'all' || roleTypeFilter !== 'all' || statusFilter !== 'all'
             ? `검색 결과 ${filteredTeams.length}개 팀`
             : `총 ${teams.length}개 팀`}
         </p>
+        <Select value={sortOption} onValueChange={setSortOption}>
+          <SelectTrigger className="w-32">
+            <ArrowUpDown className="w-3.5 h-3.5 mr-1.5" />
+            <SelectValue placeholder="정렬" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="newest">최신순</SelectItem>
+            <SelectItem value="level">레벨순</SelectItem>
+            <SelectItem value="rating">평점순</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Teams grid */}
