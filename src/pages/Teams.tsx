@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Users, Star, Loader2, Briefcase, Trophy } from 'lucide-react';
+import { Search, Plus, Users, Star, Loader2, Briefcase, Trophy, Clock } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,6 +41,7 @@ interface TeamWithSlots {
   recruitment_method: 'public' | 'invite' | 'auto' | null;
   memberCount: number;
   slots: SlotInfo[];
+  updated_at: string | null;
 }
 
 export default function Teams() {
@@ -294,6 +297,12 @@ export default function Teams() {
                         <span className="font-medium">{(team.rating_avg || 0).toFixed(1)}</span>
                       </div>
                     </div>
+                    {team.updated_at && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        <span>{formatDistanceToNow(new Date(team.updated_at), { addSuffix: true, locale: ko })}</span>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
