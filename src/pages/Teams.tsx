@@ -215,6 +215,15 @@ export default function Teams() {
         </div>
       </ScrollReveal>
 
+      {/* Results count */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {searchQuery || roleFilter !== 'all' || roleTypeFilter !== 'all' || statusFilter !== 'all'
+            ? `검색 결과 ${filteredTeams.length}개 팀`
+            : `총 ${teams.length}개 팀`}
+        </p>
+      </div>
+
       {/* Teams grid */}
       <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredTeams.map((team, index) => (
