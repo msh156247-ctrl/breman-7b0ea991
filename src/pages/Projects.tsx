@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Briefcase, Clock, DollarSign, Users, Loader2 } from 'lucide-react';
+import { Search, Plus, Briefcase, Clock, DollarSign, Users, Loader2, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { RoleBadge } from '@/components/ui/RoleBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PROJECT_STATUS, type UserRole } from '@/lib/constants';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { supabase } from '@/integrations/supabase/client';
@@ -48,6 +49,7 @@ function formatBudget(min: number | null, max: number | null): string {
 export default function Projects() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sortOption, setSortOption] = useState<string>('newest');
   const [projects, setProjects] = useState<ProjectWithClient[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -104,14 +106,26 @@ export default function Projects() {
     }
   };
 
-  const filteredProjects = projects.filter((project) => {
-    const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      project.required_skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
-    
-    const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
-    
-    return matchesSearch && matchesStatus;
-  });
+  const filteredProjects = projects
+    .filter((project) => {
+      const matchesSearch = project.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        project.required_skills?.some(s => s.toLowerCase().includes(searchQuery.toLowerCase()));
+      
+      const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
+      
+      return matchesSearch && matchesStatus;
+    })
+    .sort((a, b) => {
+      switch (sortOption) {
+        case 'budget':
+          return ((b.budget_max || b.budget_min || 0) - (a.budget_max || a.budget_min || 0));
+        case 'proposals':
+          return b.proposalCount - a.proposalCount;
+        case 'newest':
+        default:
+          return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+      }
+    });
 
   const getStatusVariant = (status: keyof typeof PROJECT_STATUS) => {
     switch (status) {
@@ -163,16 +177,29 @@ export default function Projects() {
         </Tabs>
       </ScrollReveal>
 
-      {/* Search */}
+      {/* Search and Sort */}
       <ScrollReveal animation="fade-up" delay={150}>
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="프로젝트 또는 기술 스택 검색..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="프로젝트 또는 기술 스택 검색..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={sortOption} onValueChange={setSortOption}>
+            <SelectTrigger className="w-32">
+              <ArrowUpDown className="w-3.5 h-3.5 mr-1.5" />
+              <SelectValue placeholder="정렬" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="newest">최신순</SelectItem>
+              <SelectItem value="budget">예산순</SelectItem>
+              <SelectItem value="proposals">제안순</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </ScrollReveal>
 
