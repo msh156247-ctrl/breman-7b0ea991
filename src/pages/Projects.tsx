@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Briefcase, Clock, DollarSign, Users, Loader2, ArrowUpDown } from 'lucide-react';
+import { Search, Plus, Briefcase, Clock, DollarSign, Users, Loader2, ArrowUpDown, Timer } from 'lucide-react';
+import { formatDistanceToNow, isPast, differenceInDays } from 'date-fns';
+import { ko } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -26,11 +28,35 @@ interface ProjectWithClient {
   required_skills: string[] | null;
   required_roles: UserRole[] | null;
   created_at: string | null;
+  deadline: string | null;
   client?: {
     name: string;
     avatar_url: string | null;
   };
   proposalCount: number;
+}
+
+function formatDeadline(deadline: string | null): { text: string; urgent: boolean; expired: boolean } | null {
+  if (!deadline) return null;
+  
+  const deadlineDate = new Date(deadline);
+  const now = new Date();
+  
+  if (isPast(deadlineDate)) {
+    return { text: '마감됨', urgent: false, expired: true };
+  }
+  
+  const daysLeft = differenceInDays(deadlineDate, now);
+  
+  if (daysLeft <= 1) {
+    return { text: formatDistanceToNow(deadlineDate, { addSuffix: true, locale: ko }), urgent: true, expired: false };
+  }
+  
+  if (daysLeft <= 3) {
+    return { text: `${daysLeft}일 남음`, urgent: true, expired: false };
+  }
+  
+  return { text: `${daysLeft}일 남음`, urgent: false, expired: false };
 }
 
 function formatBudget(min: number | null, max: number | null): string {
@@ -92,6 +118,7 @@ export default function Projects() {
             ...project,
             status: project.status as ProjectWithClient['status'],
             required_roles: project.required_roles as UserRole[] | null,
+            deadline: project.deadline,
             client,
             proposalCount: proposalCount || 0,
           };
@@ -213,7 +240,7 @@ export default function Projects() {
                   <div className="flex flex-col md:flex-row md:items-start gap-4">
                     {/* Main content */}
                     <div className="flex-1 min-w-0">
-                      {/* Title & Status */}
+                      {/* Title & Status & Deadline */}
                       <div className="flex flex-wrap items-center gap-2 mb-2">
                         <h3 className="font-display font-bold text-lg">{project.title}</h3>
                         <StatusBadge 
@@ -221,6 +248,22 @@ export default function Projects() {
                           variant={getStatusVariant(project.status)}
                           size="sm"
                         />
+                        {project.status === 'open' && (() => {
+                          const deadlineInfo = formatDeadline(project.deadline);
+                          if (!deadlineInfo) return null;
+                          return (
+                            <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+                              deadlineInfo.expired 
+                                ? 'bg-muted text-muted-foreground' 
+                                : deadlineInfo.urgent 
+                                  ? 'bg-destructive/10 text-destructive animate-pulse' 
+                                  : 'bg-primary/10 text-primary'
+                            }`}>
+                              <Timer className="w-3 h-3" />
+                              {deadlineInfo.text}
+                            </span>
+                          );
+                        })()}
                       </div>
 
                       {/* Description */}
