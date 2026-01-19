@@ -801,6 +801,7 @@ export type Database = {
           budget_min: number | null
           client_id: string | null
           created_at: string | null
+          deadline: string | null
           description: string | null
           id: string
           required_roles: Database["public"]["Enums"]["user_role"][] | null
@@ -816,6 +817,7 @@ export type Database = {
           budget_min?: number | null
           client_id?: string | null
           created_at?: string | null
+          deadline?: string | null
           description?: string | null
           id?: string
           required_roles?: Database["public"]["Enums"]["user_role"][] | null
@@ -831,6 +833,7 @@ export type Database = {
           budget_min?: number | null
           client_id?: string | null
           created_at?: string | null
+          deadline?: string | null
           description?: string | null
           id?: string
           required_roles?: Database["public"]["Enums"]["user_role"][] | null
