@@ -1,50 +1,44 @@
 import { Link } from 'react-router-dom';
 import { 
   Users, Briefcase, Swords, Bell, Trophy, ArrowRight, 
-  Calendar, TrendingUp, Star, MessageSquare
+  TrendingUp, Star, Loader2, CheckCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { XPBar } from '@/components/ui/XPBar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { useAuth } from '@/hooks/useAuth';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useDashboardData } from '@/hooks/useDashboardData';
 import { AnnouncementsBanner, AnnouncementsWidget } from '@/components/dashboard/AnnouncementsWidget';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
-
-// Sample data for demo
-const myTeams = [
-  { id: '1', name: '스타트업 드림팀', emblem: '🚀', role: 'horse' as const, members: 4 },
-  { id: '2', name: '웹개발 마스터즈', emblem: '💻', role: 'rooster' as const, members: 5 },
-];
-
-const activeProjects = [
-  { id: '1', title: 'AI 기반 고객 서비스 챗봇', client: '테크스타트', status: '진행중', progress: 65 },
-  { id: '2', title: 'E-commerce 리뉴얼 프로젝트', client: '쇼핑몰코리아', status: '검토중', progress: 30 },
-];
-
-const upcomingSiege = {
-  title: '2024 겨울 알고리즘 챌린지',
-  startsIn: '3일',
-  prize: '₩5,000,000',
-  participants: 128,
-};
-
-const notifications = [
-  { id: '1', type: 'team_invite', message: '디자인팩토리에서 팀 초대가 왔습니다', time: '10분 전' },
-  { id: '2', type: 'project', message: '새 프로젝트 제안이 도착했습니다', time: '1시간 전' },
-  { id: '3', type: 'milestone', message: '마일스톤 검토가 완료되었습니다', time: '3시간 전' },
-];
+import { PROJECT_STATUS } from '@/lib/constants';
 
 export default function Dashboard() {
   const { profile } = useAuth();
+  const { notifications, unreadCount } = useNotifications();
+  const { myTeams, activeProjects, upcomingSiege, stats, loading } = useDashboardData();
   
   // Calculate XP for next level (simple formula)
   const currentXP = profile?.xp || 0;
   const level = profile?.level || 1;
   const maxXP = level * 1000;
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'open': return 'success';
+      case 'matched': return 'primary';
+      case 'in_progress': return 'secondary';
+      case 'completed': return 'muted';
+      default: return 'muted';
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    return PROJECT_STATUS[status as keyof typeof PROJECT_STATUS]?.name || status;
+  };
 
   return (
     <div className="space-y-6">
@@ -115,7 +109,9 @@ export default function Dashboard() {
                   <Users className="w-5 h-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{myTeams.length}</p>
+                  <p className="text-2xl font-bold">
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : stats.teamCount}
+                  </p>
                   <p className="text-xs text-muted-foreground">소속 팀</p>
                 </div>
               </div>
@@ -128,7 +124,9 @@ export default function Dashboard() {
                   <Trophy className="w-5 h-5 text-accent" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">5</p>
+                  <p className="text-2xl font-bold">
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : stats.badgeCount}
+                  </p>
                   <p className="text-xs text-muted-foreground">배지</p>
                 </div>
               </div>
@@ -162,25 +160,35 @@ export default function Dashboard() {
                 </Link>
               </CardHeader>
               <CardContent className="space-y-3">
-                {myTeams.length > 0 ? myTeams.map((team) => (
-                  <Link 
-                    key={team.id}
-                    to={`/teams/${team.id}`}
-                    className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl">
-                      {team.emblem}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{team.name}</p>
-                      <div className="flex items-center gap-2 mt-1">
-                        <RoleBadge role={team.role} size="sm" showName={false} />
-                        <span className="text-xs text-muted-foreground">{team.members}명</span>
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : myTeams.length > 0 ? (
+                  myTeams.slice(0, 3).map((team) => (
+                    <Link 
+                      key={team.id}
+                      to={`/teams/${team.id}`}
+                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl overflow-hidden">
+                        {team.emblem_url ? (
+                          <img src={team.emblem_url} alt="" className="w-full h-full object-cover" />
+                        ) : (
+                          '🚀'
+                        )}
                       </div>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                  </Link>
-                )) : (
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{team.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <RoleBadge role={team.role} size="sm" showName={false} />
+                          <span className="text-xs text-muted-foreground">{team.memberCount}명</span>
+                        </div>
+                      </div>
+                      <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                    </Link>
+                  ))
+                ) : (
                   <div className="text-center py-8 text-muted-foreground">
                     <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
                     <p>아직 소속된 팀이 없습니다</p>
@@ -205,32 +213,55 @@ export default function Dashboard() {
                 </Link>
               </CardHeader>
               <CardContent className="space-y-3">
-                {activeProjects.map((project) => (
-                  <Link 
-                    key={project.id}
-                    to={`/projects/${project.id}`}
-                    className="block p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                  >
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <p className="font-medium line-clamp-1">{project.title}</p>
-                      <StatusBadge 
-                        status={project.status} 
-                        variant={project.status === '진행중' ? 'primary' : 'secondary'}
-                        size="sm"
-                      />
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                      <span>{project.client}</span>
-                    </div>
-                    <div className="w-full bg-muted rounded-full h-2">
-                      <div 
-                        className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all"
-                        style={{ width: `${project.progress}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">{project.progress}% 완료</p>
-                  </Link>
-                ))}
+                {loading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                  </div>
+                ) : activeProjects.length > 0 ? (
+                  activeProjects.map((project) => (
+                    <Link 
+                      key={project.id}
+                      to={`/projects/${project.id}`}
+                      className="block p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <p className="font-medium line-clamp-1">{project.title}</p>
+                        <StatusBadge 
+                          status={getStatusLabel(project.status)} 
+                          variant={getStatusVariant(project.status)}
+                          size="sm"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                        <span>{project.clientName}</span>
+                        {project.totalMilestones > 0 && (
+                          <>
+                            <span>•</span>
+                            <span className="flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" />
+                              {project.completedMilestones}/{project.totalMilestones} 마일스톤
+                            </span>
+                          </>
+                        )}
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div 
+                          className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all"
+                          style={{ width: `${project.progress}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">{project.progress}% 완료</p>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                    <p>진행중인 프로젝트가 없습니다</p>
+                    <Link to="/projects">
+                      <Button variant="link" size="sm">프로젝트 찾아보기</Button>
+                    </Link>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </ScrollReveal>
@@ -240,56 +271,96 @@ export default function Dashboard() {
         <div className="space-y-6">
           {/* Upcoming Siege */}
           <ScrollReveal animation="fade-up" delay={200}>
-            <Card className="overflow-hidden">
-              <div className="bg-gradient-to-br from-primary to-accent p-4 text-primary-foreground">
-                <div className="flex items-center gap-2 mb-2">
-                  <Swords className="w-5 h-5" />
-                  <span className="text-sm font-medium">다가오는 Siege</span>
+            {upcomingSiege ? (
+              <Card className="overflow-hidden">
+                <div className="bg-gradient-to-br from-primary to-accent p-4 text-primary-foreground">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Swords className="w-5 h-5" />
+                    <span className="text-sm font-medium">
+                      {upcomingSiege.status === 'ongoing' ? '진행중인 Siege' : '다가오는 Siege'}
+                    </span>
+                  </div>
+                  <h3 className="font-display font-bold text-lg mb-3">{upcomingSiege.title}</h3>
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <div className="bg-background/20 rounded-lg p-2">
+                      <p className="text-lg font-bold">{upcomingSiege.startsIn}</p>
+                      <p className="text-xs opacity-80">
+                        {upcomingSiege.status === 'ongoing' ? '상태' : '시작까지'}
+                      </p>
+                    </div>
+                    <div className="bg-background/20 rounded-lg p-2">
+                      <p className="text-lg font-bold">{upcomingSiege.prize}</p>
+                      <p className="text-xs opacity-80">상금</p>
+                    </div>
+                    <div className="bg-background/20 rounded-lg p-2">
+                      <p className="text-lg font-bold">{upcomingSiege.participants}</p>
+                      <p className="text-xs opacity-80">참가팀</p>
+                    </div>
+                  </div>
                 </div>
-                <h3 className="font-display font-bold text-lg mb-3">{upcomingSiege.title}</h3>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  <div className="bg-background/20 rounded-lg p-2">
-                    <p className="text-lg font-bold">{upcomingSiege.startsIn}</p>
-                    <p className="text-xs opacity-80">시작까지</p>
+                <CardContent className="p-4">
+                  <Link to={`/siege/${upcomingSiege.id}`}>
+                    <Button className="w-full">
+                      {upcomingSiege.status === 'ongoing' ? '자세히 보기' : '참가 신청하기'}
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="overflow-hidden">
+                <div className="bg-gradient-to-br from-muted to-muted/50 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Swords className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-sm font-medium text-muted-foreground">Siege</span>
                   </div>
-                  <div className="bg-background/20 rounded-lg p-2">
-                    <p className="text-lg font-bold">{upcomingSiege.prize}</p>
-                    <p className="text-xs opacity-80">상금</p>
-                  </div>
-                  <div className="bg-background/20 rounded-lg p-2">
-                    <p className="text-lg font-bold">{upcomingSiege.participants}</p>
-                    <p className="text-xs opacity-80">참가팀</p>
-                  </div>
+                  <p className="text-muted-foreground text-center py-4">
+                    예정된 Siege가 없습니다
+                  </p>
                 </div>
-              </div>
-              <CardContent className="p-4">
-                <Link to="/siege">
-                  <Button className="w-full">참가 신청하기</Button>
-                </Link>
-              </CardContent>
-            </Card>
+              </Card>
+            )}
           </ScrollReveal>
 
           {/* Notifications */}
           <ScrollReveal animation="fade-up" delay={250}>
             <Card>
               <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-display">알림</CardTitle>
-                <Bell className="w-4 h-4 text-muted-foreground" />
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  알림
+                  {unreadCount > 0 && (
+                    <span className="text-xs bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full">
+                      {unreadCount}
+                    </span>
+                  )}
+                </CardTitle>
+                <Link to="/notifications">
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <Bell className="w-4 h-4" />
+                  </Button>
+                </Link>
               </CardHeader>
               <CardContent className="space-y-3">
-                {notifications.map((notif) => (
-                  <div 
-                    key={notif.id}
-                    className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                  >
-                    <div className="w-2 h-2 rounded-full bg-primary mt-2" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm line-clamp-2">{notif.message}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{notif.time}</p>
-                    </div>
+                {notifications.length > 0 ? (
+                  notifications.slice(0, 3).map((notif) => (
+                    <Link
+                      key={notif.id}
+                      to={notif.link || '/notifications'}
+                      className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                    >
+                      <div className={`w-2 h-2 rounded-full mt-2 ${notif.read ? 'bg-muted' : 'bg-primary'}`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm line-clamp-2">{notif.title}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {notif.created_at && new Date(notif.created_at).toLocaleDateString('ko-KR')}
+                        </p>
+                      </div>
+                    </Link>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-muted-foreground text-sm">
+                    새로운 알림이 없습니다
                   </div>
-                ))}
+                )}
               </CardContent>
             </Card>
           </ScrollReveal>
