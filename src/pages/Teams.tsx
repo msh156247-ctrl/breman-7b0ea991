@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Plus, Users, Star, Loader2, Briefcase, Trophy, Clock, Crown, ArrowUpDown } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Search, Plus, Users, Star, Loader2, Briefcase, Trophy, Clock, Crown, ArrowUpDown, RefreshCw } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,8 @@ import {
 import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { supabase } from '@/integrations/supabase/client';
+import { useRealtimeTeams } from '@/hooks/useRealtime';
+import { toast } from 'sonner';
 
 interface SlotInfo {
   role: UserRole;
@@ -53,19 +55,17 @@ interface TeamWithSlots {
 }
 
 export default function Teams() {
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [roleTypeFilter, setRoleTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortOption, setSortOption] = useState<string>('newest');
   const [teams, setTeams] = useState<TeamWithSlots[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasUpdates, setHasUpdates] = useState(false);
 
-  useEffect(() => {
-    fetchTeams();
-  }, []);
-
-  const fetchTeams = async () => {
+  const fetchTeams = useCallback(async () => {
     try {
       // Fetch teams with leader info from public_profiles
       const { data: teamsData, error: teamsError } = await supabase
@@ -117,8 +117,24 @@ export default function Teams() {
       console.error('Error fetching teams:', error);
     } finally {
       setLoading(false);
+      setHasUpdates(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchTeams();
+  }, [fetchTeams]);
+
+  // Real-time updates
+  useRealtimeTeams(() => {
+    setHasUpdates(true);
+    toast.info('팀 목록이 업데이트되었습니다', {
+      action: {
+        label: '새로고침',
+        onClick: () => fetchTeams(),
+      },
+    });
+  });
 
   const filteredTeams = teams
     .filter((team) => {

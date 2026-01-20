@@ -6,7 +6,6 @@ import {
   Briefcase, 
   Swords, 
   Trophy,
-  Search,
   Menu,
   Shield,
   X,
@@ -18,7 +17,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -31,6 +29,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { GlobalSearch } from '@/components/search/GlobalSearch';
 
 // PRD: Main navigation items - Siege, Ranking, Notifications as core nav
 const NAV_ITEMS = [
@@ -166,15 +165,9 @@ export function AppShell() {
                 <Menu className="w-5 h-5" />
               </button>
               
-              {/* Search */}
+              {/* Global Search */}
               <div className="hidden sm:flex items-center">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="검색..." 
-                    className="w-64 pl-9 bg-muted/50 border-0 focus-visible:ring-1"
-                  />
-                </div>
+                <GlobalSearch />
               </div>
             </div>
 
