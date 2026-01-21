@@ -2,7 +2,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { RealtimeChannel } from '@supabase/supabase-js';
 
-type TableName = 'teams' | 'projects' | 'team_memberships' | 'project_proposals' | 'contracts' | 'sieges';
+type TableName = 'teams' | 'projects' | 'team_memberships' | 'project_proposals' | 'contracts' | 'showcases';
 
 interface UseRealtimeOptions {
   table: TableName;
@@ -105,7 +105,7 @@ export function useRealtimeDashboard(onUpdate: () => void) {
   });
 
   useRealtime({
-    table: 'sieges',
+    table: 'showcases',
     onChange: onUpdate,
   });
 
