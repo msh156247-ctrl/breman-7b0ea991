@@ -23,9 +23,9 @@ import ProjectCreate from "./pages/ProjectCreate";
 import ProjectEdit from "./pages/ProjectEdit";
 import ProjectDetail from "./pages/ProjectDetail";
 import ContractManagement from "./pages/ContractManagement";
-import Challenge from "./pages/Challenge";
-import ChallengeDetail from "./pages/ChallengeDetail";
-import Rankings from "./pages/Rankings";
+import Showcase from "./pages/Showcase";
+import ShowcaseDetail from "./pages/ShowcaseDetail";
+import ShowcaseCreate from "./pages/ShowcaseCreate";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import AdminSettings from "./pages/AdminSettings";
@@ -91,9 +91,9 @@ function AppRoutes() {
         <Route path="projects/:projectId" element={<ProjectDetail />} />
         <Route path="projects/:projectId/edit" element={<ProjectEdit />} />
         <Route path="contracts/:contractId" element={<ContractManagement />} />
-        <Route path="challenges" element={<Challenge />} />
-        <Route path="challenges/:challengeId" element={<ChallengeDetail />} />
-        <Route path="rankings" element={<Rankings />} />
+        <Route path="showcase" element={<Showcase />} />
+        <Route path="showcase/create" element={<ShowcaseCreate />} />
+        <Route path="showcase/:showcaseId" element={<ShowcaseDetail />} />
         <Route path="profile" element={<Profile />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="admin" element={<AdminSettings />} />

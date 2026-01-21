@@ -976,6 +976,188 @@ export type Database = {
           },
         ]
       }
+      showcase_contributors: {
+        Row: {
+          contribution_summary: string | null
+          created_at: string
+          id: string
+          is_verified: boolean | null
+          role_description: string | null
+          role_type: Database["public"]["Enums"]["role_type"]
+          showcase_id: string
+          user_id: string
+          xp_earned: number | null
+        }
+        Insert: {
+          contribution_summary?: string | null
+          created_at?: string
+          id?: string
+          is_verified?: boolean | null
+          role_description?: string | null
+          role_type: Database["public"]["Enums"]["role_type"]
+          showcase_id: string
+          user_id: string
+          xp_earned?: number | null
+        }
+        Update: {
+          contribution_summary?: string | null
+          created_at?: string
+          id?: string
+          is_verified?: boolean | null
+          role_description?: string | null
+          role_type?: Database["public"]["Enums"]["role_type"]
+          showcase_id?: string
+          user_id?: string
+          xp_earned?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showcase_contributors_showcase_id_fkey"
+            columns: ["showcase_id"]
+            isOneToOne: false
+            referencedRelation: "showcases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showcase_contributors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showcase_contributors_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      showcase_skills: {
+        Row: {
+          created_at: string
+          id: string
+          proficiency_level: number | null
+          showcase_id: string
+          skill_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          proficiency_level?: number | null
+          showcase_id: string
+          skill_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          proficiency_level?: number | null
+          showcase_id?: string
+          skill_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showcase_skills_showcase_id_fkey"
+            columns: ["showcase_id"]
+            isOneToOne: false
+            referencedRelation: "showcases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showcase_skills_skill_id_fkey"
+            columns: ["skill_id"]
+            isOneToOne: false
+            referencedRelation: "skills"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      showcases: {
+        Row: {
+          attachments: string[] | null
+          cover_image_url: string | null
+          created_at: string
+          description: string | null
+          ended_at: string | null
+          goal: string | null
+          id: string
+          owner_team_id: string | null
+          owner_user_id: string | null
+          process: string | null
+          result: string | null
+          retrospective: string | null
+          started_at: string | null
+          status: string
+          title: string
+          updated_at: string
+          view_count: number | null
+          visibility: string
+        }
+        Insert: {
+          attachments?: string[] | null
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          ended_at?: string | null
+          goal?: string | null
+          id?: string
+          owner_team_id?: string | null
+          owner_user_id?: string | null
+          process?: string | null
+          result?: string | null
+          retrospective?: string | null
+          started_at?: string | null
+          status?: string
+          title: string
+          updated_at?: string
+          view_count?: number | null
+          visibility?: string
+        }
+        Update: {
+          attachments?: string[] | null
+          cover_image_url?: string | null
+          created_at?: string
+          description?: string | null
+          ended_at?: string | null
+          goal?: string | null
+          id?: string
+          owner_team_id?: string | null
+          owner_user_id?: string | null
+          process?: string | null
+          result?: string | null
+          retrospective?: string | null
+          started_at?: string | null
+          status?: string
+          title?: string
+          updated_at?: string
+          view_count?: number | null
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "showcases_owner_team_id_fkey"
+            columns: ["owner_team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showcases_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "showcases_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       siege_registrations: {
         Row: {
           alias: string | null
@@ -1457,6 +1639,99 @@ export type Database = {
           {
             foreignKeyName: "teams_leader_id_fkey"
             columns: ["leader_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      track_showcases: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          order_index: number | null
+          showcase_id: string
+          track_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_index?: number | null
+          showcase_id: string
+          track_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          order_index?: number | null
+          showcase_id?: string
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "track_showcases_showcase_id_fkey"
+            columns: ["showcase_id"]
+            isOneToOne: false
+            referencedRelation: "showcases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "track_showcases_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tracks: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          status: string
+          target_role_type: Database["public"]["Enums"]["role_type"] | null
+          target_skills: string[] | null
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string
+          target_role_type?: Database["public"]["Enums"]["role_type"] | null
+          target_skills?: string[] | null
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string
+          target_role_type?: Database["public"]["Enums"]["role_type"] | null
+          target_skills?: string[] | null
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tracks_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tracks_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]

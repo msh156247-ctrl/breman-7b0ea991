@@ -4,8 +4,7 @@ import {
   LayoutDashboard, 
   Users, 
   Briefcase, 
-  Swords, 
-  Trophy,
+  Sparkles,
   Menu,
   Shield,
   X,
@@ -31,14 +30,13 @@ import { NotificationsDropdown } from '@/components/notifications/NotificationsD
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { GlobalSearch } from '@/components/search/GlobalSearch';
 
-// PRD: Main navigation items - Siege, Ranking, Notifications as core nav
+// Showcase 중심 네비게이션 (경쟁/랭킹 요소 제거)
 const NAV_ITEMS = [
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
   { href: '/teams', label: '팀', icon: Users },
   { href: '/projects', label: '프로젝트', icon: Briefcase },
+  { href: '/showcase', label: 'Showcase', icon: Sparkles },
   { href: '/chat', label: '채팅', icon: MessageSquare },
-  { href: '/siege', label: 'Siege', icon: Swords },
-  { href: '/rankings', label: '랭킹', icon: Trophy },
   { href: '/notifications', label: '알림', icon: Bell },
 ];
 

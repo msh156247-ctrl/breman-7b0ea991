@@ -186,24 +186,34 @@ export const PROJECT_STATUS = {
   cancelled: { name: '취소됨', color: 'destructive' },
 } as const;
 
-export const CHALLENGE_STATUS = {
-  registering: { name: '등록중', color: 'success' },
-  ongoing: { name: '진행중', color: 'secondary' },
-  ended: { name: '종료', color: 'muted' },
-  results: { name: '결과발표', color: 'primary' },
+// Showcase 상태 (경쟁 대신 협업/기록 중심)
+export const SHOWCASE_STATUS = {
+  draft: { name: '작성중', color: 'muted' },
+  published: { name: '공개', color: 'success' },
+  archived: { name: '보관됨', color: 'secondary' },
 } as const;
 
-// Legacy alias for backward compatibility
-export const SIEGE_STATUS = CHALLENGE_STATUS;
+// Showcase 가시성
+export const SHOWCASE_VISIBILITY = {
+  public: { name: '전체공개', color: 'success' },
+  team_only: { name: '팀원만', color: 'secondary' },
+  private: { name: '나만보기', color: 'muted' },
+} as const;
 
-// PRD: Main navigation with Challenge, Ranking, Notifications as core items
+// Track 상태 (성장 경로)
+export const TRACK_STATUS = {
+  active: { name: '진행중', color: 'success' },
+  completed: { name: '완료', color: 'primary' },
+  paused: { name: '일시중지', color: 'muted' },
+} as const;
+
+// Main navigation - Showcase 중심으로 변경 (랭킹/경쟁 요소 제거)
 export const NAV_ITEMS = [
   { href: '/dashboard', label: '대시보드', icon: 'LayoutDashboard' },
   { href: '/teams', label: '팀', icon: 'Users' },
   { href: '/projects', label: '프로젝트', icon: 'Briefcase' },
+  { href: '/showcase', label: 'Showcase', icon: 'Sparkles' },
   { href: '/chat', label: '채팅', icon: 'MessageSquare' },
-  { href: '/challenges', label: '챌린지', icon: 'Swords' },
-  { href: '/rankings', label: '랭킹', icon: 'Trophy' },
   { href: '/notifications', label: '알림', icon: 'Bell' },
 ] as const;
 
