@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { 
-  Users, Briefcase, Swords, Bell, Trophy, ArrowRight, 
+  Users, Briefcase, Eye, Bell, Trophy, ArrowRight, 
   TrendingUp, Star, Loader2, CheckCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,7 @@ import { PROJECT_STATUS } from '@/lib/constants';
 export default function Dashboard() {
   const { profile } = useAuth();
   const { notifications, unreadCount } = useNotifications();
-  const { myTeams, activeProjects, upcomingSiege, stats, loading } = useDashboardData();
+  const { myTeams, activeProjects, stats, loading } = useDashboardData();
   
   // Calculate XP for next level (simple formula)
   const currentXP = profile?.xp || 0;
@@ -269,56 +269,34 @@ export default function Dashboard() {
 
         {/* Right column - Siege, Notifications, Announcements */}
         <div className="space-y-6">
-          {/* Upcoming Siege */}
+          {/* Recent Showcases */}
           <ScrollReveal animation="fade-up" delay={200}>
-            {upcomingSiege ? (
-              <Card className="overflow-hidden">
-                <div className="bg-gradient-to-br from-primary to-accent p-4 text-primary-foreground">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Swords className="w-5 h-5" />
-                    <span className="text-sm font-medium">
-                      {upcomingSiege.status === 'ongoing' ? '진행중인 Siege' : '다가오는 Siege'}
-                    </span>
-                  </div>
-                  <h3 className="font-display font-bold text-lg mb-3">{upcomingSiege.title}</h3>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-background/20 rounded-lg p-2">
-                      <p className="text-lg font-bold">{upcomingSiege.startsIn}</p>
-                      <p className="text-xs opacity-80">
-                        {upcomingSiege.status === 'ongoing' ? '상태' : '시작까지'}
-                      </p>
-                    </div>
-                    <div className="bg-background/20 rounded-lg p-2">
-                      <p className="text-lg font-bold">{upcomingSiege.prize}</p>
-                      <p className="text-xs opacity-80">상금</p>
-                    </div>
-                    <div className="bg-background/20 rounded-lg p-2">
-                      <p className="text-lg font-bold">{upcomingSiege.participants}</p>
-                      <p className="text-xs opacity-80">참가팀</p>
-                    </div>
-                  </div>
-                </div>
-                <CardContent className="p-4">
-                  <Link to={`/siege/${upcomingSiege.id}`}>
-                    <Button className="w-full">
-                      {upcomingSiege.status === 'ongoing' ? '자세히 보기' : '참가 신청하기'}
+            <Card className="overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Eye className="w-5 h-5" />
+                  Showcase
+                </CardTitle>
+                <Link to="/showcase">
+                  <Button variant="ghost" size="sm" className="text-primary">
+                    전체 보기 <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </Link>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-center py-6">
+                  <Eye className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
+                  <p className="text-muted-foreground text-sm mb-2">
+                    작업물을 기록하고 성장을 증명하세요
+                  </p>
+                  <Link to="/showcase/create">
+                    <Button variant="outline" size="sm">
+                      첫 Showcase 만들기
                     </Button>
                   </Link>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card className="overflow-hidden">
-                <div className="bg-gradient-to-br from-muted to-muted/50 p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Swords className="w-5 h-5 text-muted-foreground" />
-                    <span className="text-sm font-medium text-muted-foreground">Siege</span>
-                  </div>
-                  <p className="text-muted-foreground text-center py-4">
-                    예정된 Siege가 없습니다
-                  </p>
                 </div>
-              </Card>
-            )}
+              </CardContent>
+            </Card>
           </ScrollReveal>
 
           {/* Notifications */}
