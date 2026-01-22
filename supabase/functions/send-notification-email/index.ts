@@ -23,10 +23,57 @@ interface NotificationEmailRequest {
   link?: string;
 }
 
-// Generate unsubscribe token
-function generateUnsubscribeToken(userId: string, type?: string): string {
-  const data = type ? `${userId}:${type}` : userId;
-  return btoa(data);
+// HMAC secret for secure token generation
+const HMAC_SECRET = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "fallback-secret-key";
+
+// Generate secure unsubscribe token using HMAC (matching send-digest-email)
+async function generateSecureToken(userId: string, type?: string): Promise<string> {
+  const expiresAt = Date.now() + (7 * 24 * 60 * 60 * 1000); // 7 days
+  const data = type ? `${userId}:${type}:${expiresAt}` : `${userId}::${expiresAt}`;
+  
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(HMAC_SECRET);
+  const messageData = encoder.encode(data);
+  
+  const cryptoKey = await crypto.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+  
+  const signature = await crypto.subtle.sign("HMAC", cryptoKey, messageData);
+  const hmac = Array.from(new Uint8Array(signature))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+  
+  return btoa(`${data}:${hmac}`);
+}
+
+// Validate that request comes from internal sources only (service role or database trigger)
+function validateInternalRequest(req: Request): boolean {
+  const authHeader = req.headers.get('authorization');
+  if (!authHeader) {
+    console.log("No authorization header provided");
+    return false;
+  }
+
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (!serviceRoleKey) {
+    console.error("Service role key not configured");
+    return false;
+  }
+
+  const token = authHeader.replace('Bearer ', '');
+  
+  // Accept service role key for internal/trigger calls
+  if (token === serviceRoleKey) {
+    return true;
+  }
+
+  console.log("Invalid authorization token - not service role");
+  return false;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -34,6 +81,15 @@ const handler = async (req: Request): Promise<Response> => {
 
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Validate that request is from internal source only
+  if (!validateInternalRequest(req)) {
+    console.log("Unauthorized request rejected");
+    return new Response(
+      JSON.stringify({ error: "Unauthorized - this endpoint is for internal use only" }),
+      { status: 401, headers: { "Content-Type": "application/json", ...corsHeaders } }
+    );
   }
 
   try {
@@ -95,9 +151,9 @@ const handler = async (req: Request): Promise<Response> => {
 
     const typeLabel = notificationTypeLabels[notification_type] || notification_type;
     
-    // Generate unsubscribe links
-    const unsubscribeToken = generateUnsubscribeToken(user_id, notification_type);
-    const unsubscribeAllToken = generateUnsubscribeToken(user_id);
+    // Generate secure unsubscribe links with HMAC
+    const unsubscribeToken = await generateSecureToken(user_id, notification_type);
+    const unsubscribeAllToken = await generateSecureToken(user_id);
     const unsubscribeTypeUrl = `${supabaseUrl}/functions/v1/email-unsubscribe?token=${unsubscribeToken}&type=${notification_type}`;
     const unsubscribeAllUrl = `${supabaseUrl}/functions/v1/email-unsubscribe?token=${unsubscribeAllToken}`;
     
