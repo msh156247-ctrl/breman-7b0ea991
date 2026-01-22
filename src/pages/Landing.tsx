@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Users, Briefcase, Swords, Trophy, Star, Zap, Shield, Info } from 'lucide-react';
+import { ArrowRight, Users, Briefcase, Eye, Trophy, Star, Zap, Shield, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
@@ -113,8 +113,8 @@ export default function Landing() {
             {[
               { icon: Users, title: '팀 빌딩', desc: '역할 기반 자동 매칭으로 완벽한 팀 구성' },
               { icon: Briefcase, title: '프로젝트 마켓', desc: '검증된 팀과 클라이언트 연결' },
-              { icon: Swords, title: 'Siege 대회', desc: '알고리즘 경쟁으로 실력 검증' },
-              { icon: Trophy, title: '랭킹 시스템', desc: 'XP와 배지로 성장을 추적' },
+              { icon: Eye, title: 'Showcase', desc: '작업물 기록으로 성장 증명' },
+              { icon: Trophy, title: '성장 시스템', desc: 'XP와 배지로 성장을 추적' },
             ].map((feature, i) => (
               <ScrollReveal key={i} animation="fade-up" delay={i * 100}>
                 <div className="p-6 rounded-2xl bg-card border border-border hover:shadow-md transition-all h-full">
@@ -254,7 +254,7 @@ export default function Landing() {
                 <h3 className="font-display font-bold text-xl mb-2">개인 / 팀</h3>
                 <div className="text-4xl font-bold mb-4">무료</div>
                 <ul className="space-y-3 mb-6">
-                  {['팀 생성 및 참여', '프로젝트 지원', 'Siege 참가', '랭킹 시스템'].map((f, i) => (
+                  {['팀 생성 및 참여', '프로젝트 지원', 'Showcase 등록', '성장 시스템'].map((f, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm">
                       <Star className="w-4 h-4 text-success" />
                       {f}
