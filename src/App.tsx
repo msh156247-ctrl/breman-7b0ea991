@@ -26,6 +26,10 @@ import ContractManagement from "./pages/ContractManagement";
 import Showcase from "./pages/Showcase";
 import ShowcaseDetail from "./pages/ShowcaseDetail";
 import ShowcaseCreate from "./pages/ShowcaseCreate";
+import Tracks from "./pages/Tracks";
+import TrackCreate from "./pages/TrackCreate";
+import TrackDetail from "./pages/TrackDetail";
+import TrackEdit from "./pages/TrackEdit";
 import Profile from "./pages/Profile";
 import Notifications from "./pages/Notifications";
 import AdminSettings from "./pages/AdminSettings";
@@ -94,6 +98,10 @@ function AppRoutes() {
         <Route path="showcase" element={<Showcase />} />
         <Route path="showcase/create" element={<ShowcaseCreate />} />
         <Route path="showcase/:showcaseId" element={<ShowcaseDetail />} />
+        <Route path="tracks" element={<Tracks />} />
+        <Route path="tracks/create" element={<TrackCreate />} />
+        <Route path="tracks/:trackId" element={<TrackDetail />} />
+        <Route path="tracks/:trackId/edit" element={<TrackEdit />} />
         <Route path="profile" element={<Profile />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="admin" element={<AdminSettings />} />
