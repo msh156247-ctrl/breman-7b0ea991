@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Mail, Bell, Trophy, Users, FileText, CreditCard, AlertTriangle, Star, Settings, Send, Loader2, Clock, Calendar, Globe } from 'lucide-react';
+import { Mail, Bell, Trophy, Users, FileText, CreditCard, AlertTriangle, Star, Settings, Send, Loader2, Clock, Calendar, Globe, MessageCircle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -86,11 +87,20 @@ const timezoneOptions = [
 
 export function NotificationPreferences() {
   const { user } = useAuth();
+  const { isSupported, permission, requestPermission } = useBrowserNotification();
   const [preferences, setPreferences] = useState<NotificationPreference | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
   const [sendingTestDigest, setSendingTestDigest] = useState(false);
+  const [browserNotificationEnabled, setBrowserNotificationEnabled] = useState(false);
+
+  // Check browser notification permission status
+  useEffect(() => {
+    if (isSupported) {
+      setBrowserNotificationEnabled(permission === 'granted');
+    }
+  }, [isSupported, permission]);
 
   useEffect(() => {
     if (user) {
@@ -362,6 +372,26 @@ export function NotificationPreferences() {
     }
   };
 
+  const handleBrowserNotificationToggle = async (enabled: boolean) => {
+    if (!isSupported) {
+      toast.error('이 브라우저는 알림을 지원하지 않습니다');
+      return;
+    }
+
+    if (enabled) {
+      const granted = await requestPermission();
+      if (granted) {
+        setBrowserNotificationEnabled(true);
+        toast.success('브라우저 알림이 활성화되었습니다');
+      } else {
+        toast.error('브라우저 알림 권한이 거부되었습니다. 브라우저 설정에서 알림을 허용해주세요.');
+      }
+    } else {
+      setBrowserNotificationEnabled(false);
+      toast.info('브라우저 알림이 비활성화되었습니다. 완전히 차단하려면 브라우저 설정에서 변경해주세요.');
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -384,6 +414,48 @@ export function NotificationPreferences() {
 
   return (
     <div className="space-y-6">
+      {/* Browser Notification Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MessageCircle className="h-5 w-5" />
+            브라우저 알림
+          </CardTitle>
+          <CardDescription>
+            채팅 메시지가 도착하면 브라우저 알림을 받습니다
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-full ${browserNotificationEnabled ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                <Bell className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="font-medium">채팅 알림</p>
+                <p className="text-sm text-muted-foreground">
+                  {!isSupported 
+                    ? '이 브라우저는 알림을 지원하지 않습니다' 
+                    : permission === 'denied'
+                      ? '브라우저 설정에서 알림이 차단되었습니다'
+                      : '새 메시지가 오면 브라우저 알림을 표시합니다'}
+                </p>
+              </div>
+            </div>
+            <Switch
+              checked={browserNotificationEnabled}
+              onCheckedChange={handleBrowserNotificationToggle}
+              disabled={!isSupported || permission === 'denied'}
+            />
+          </div>
+          {permission === 'denied' && (
+            <p className="text-sm text-muted-foreground mt-2">
+              알림을 다시 활성화하려면 브라우저 주소창 옆의 자물쇠 아이콘을 클릭하여 알림을 허용해주세요.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Digest Mode Settings */}
       <Card>
         <CardHeader>
