@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { useBrowserNotification } from '@/hooks/useBrowserNotification';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -66,6 +67,7 @@ export default function ChatRoom() {
   const { conversationId } = useParams<{ conversationId: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { showNotification, requestPermission } = useBrowserNotification();
   
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [conversationInfo, setConversationInfo] = useState<ConversationInfo | null>(null);
@@ -78,6 +80,11 @@ export default function ChatRoom() {
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    requestPermission();
+  }, [requestPermission]);
 
   // Mark messages as read when entering the chat room
   const markAsRead = async () => {
@@ -120,6 +127,21 @@ export default function ChatRoom() {
             scrollToBottom();
             // Mark as read immediately when receiving new messages
             markAsRead();
+
+            // Show browser notification for messages from others
+            if (newMsg.sender_id !== user?.id) {
+              showNotification({
+                title: sender?.name || '새 메시지',
+                body: newMsg.content.length > 50 
+                  ? newMsg.content.substring(0, 50) + '...' 
+                  : newMsg.content,
+                icon: sender?.avatar_url || '/favicon.ico',
+                tag: `chat-${conversationId}`,
+                onClick: () => {
+                  navigate(`/chat/${conversationId}`);
+                }
+              });
+            }
           }
         )
         .on(
