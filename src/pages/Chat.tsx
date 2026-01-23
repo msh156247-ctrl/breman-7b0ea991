@@ -202,9 +202,19 @@ export default function Chat() {
         })
       );
 
-      setConversations(enrichedConvos.sort((a, b) => 
-        new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime()
-      ));
+      // Sort: unread first, then by last_message_at
+      setConversations(enrichedConvos.sort((a, b) => {
+        // Prioritize conversations with unread messages
+        const aUnread = (a.unread_count || 0) > 0 ? 1 : 0;
+        const bUnread = (b.unread_count || 0) > 0 ? 1 : 0;
+        
+        if (bUnread !== aUnread) {
+          return bUnread - aUnread; // Unread first
+        }
+        
+        // Then sort by last message time
+        return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
+      }));
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
