@@ -8,13 +8,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { 
   MessageCircle, 
   Users, 
   UsersRound, 
   Search,
-  Plus,
-  ChevronRight
+  Plus
 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -41,6 +41,7 @@ export default function Chat() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
+  const [activeTab, setActiveTab] = useState<'all' | 'direct' | 'team'>('all');
 
   useEffect(() => {
     if (user) {
@@ -248,6 +249,11 @@ export default function Chat() {
   };
 
   const filteredConversations = conversations.filter(convo => {
+    // Filter by tab
+    if (activeTab === 'direct' && convo.type !== 'direct') return false;
+    if (activeTab === 'team' && convo.type !== 'team' && convo.type !== 'team_to_team') return false;
+    
+    // Filter by search
     const searchLower = searchQuery.toLowerCase();
     return !searchQuery || 
       convo.participant_name?.toLowerCase().includes(searchLower) ||
@@ -270,6 +276,24 @@ export default function Chat() {
         </Button>
       </div>
 
+      {/* Tabs */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'direct' | 'team')} className="mb-4">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="all" className="flex items-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            전체
+          </TabsTrigger>
+          <TabsTrigger value="direct" className="flex items-center gap-2">
+            <MessageCircle className="h-4 w-4" />
+            1:1
+          </TabsTrigger>
+          <TabsTrigger value="team" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            팀
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Search */}
       <div className="relative mb-4">
         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -281,8 +305,8 @@ export default function Chat() {
         />
       </div>
 
-      {/* Conversation List - KakaoTalk style without tabs */}
-      <ScrollArea className="h-[calc(100vh-220px)]">
+      {/* Conversation List */}
+      <ScrollArea className="h-[calc(100vh-280px)]">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-pulse text-muted-foreground">로딩중...</div>
