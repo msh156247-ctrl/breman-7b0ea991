@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
+import { ChatInputArea } from '@/components/chat/ChatInputArea';
+import { MessageAttachments } from '@/components/chat/ChatAttachments';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -342,8 +344,11 @@ export default function ChatRoom() {
     setLoading(false);
   };
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !conversationId || !user || sending) return;
+  const handleSendMessage = async (attachmentUrls: string[] = []) => {
+    const hasContent = newMessage.trim();
+    const hasAttachments = attachmentUrls.length > 0;
+    
+    if ((!hasContent && !hasAttachments) || !conversationId || !user || sending) return;
 
     setSending(true);
     const content = newMessage.trim();
@@ -355,8 +360,9 @@ export default function ChatRoom() {
         .insert({
           conversation_id: conversationId,
           sender_id: user.id,
-          content,
-          reply_to_id: replyTo?.id || null
+          content: content || (hasAttachments ? '📎 첨부파일' : ''),
+          reply_to_id: replyTo?.id || null,
+          attachments: attachmentUrls.length > 0 ? attachmentUrls : null
         });
 
       if (error) throw error;
@@ -482,7 +488,10 @@ export default function ChatRoom() {
                       ? 'bg-primary text-primary-foreground rounded-tr-sm' 
                       : 'bg-muted rounded-tl-sm'
                   }`}>
-                    <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                    {msg.content && msg.content !== '📎 첨부파일' && (
+                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                    )}
+                    <MessageAttachments attachments={msg.attachments} />
                   </div>
 
                   <DropdownMenu>
@@ -576,29 +585,14 @@ export default function ChatRoom() {
       )}
 
       {/* Input */}
-      <div className="flex items-center gap-2 p-4 border-t bg-background">
-        <Input
-          ref={inputRef}
-          placeholder="메시지를 입력하세요..."
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              handleSendMessage();
-            }
-          }}
-          disabled={sending}
-          className="flex-1"
-        />
-        <Button 
-          size="icon" 
-          onClick={handleSendMessage} 
-          disabled={!newMessage.trim() || sending}
-        >
-          <Send className="h-4 w-4" />
-        </Button>
-      </div>
+      <ChatInputArea
+        inputRef={inputRef}
+        newMessage={newMessage}
+        setNewMessage={setNewMessage}
+        sending={sending}
+        userId={user?.id || ''}
+        onSendMessage={handleSendMessage}
+      />
     </div>
   );
 }
