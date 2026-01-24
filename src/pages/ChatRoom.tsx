@@ -19,14 +19,28 @@ import {
   MessageCircle,
   UsersRound,
   Check,
-  CheckCheck
+  CheckCheck,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
@@ -76,6 +90,9 @@ export default function ChatRoom() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [deleteMessageId, setDeleteMessageId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [participantCount, setParticipantCount] = useState(0);
@@ -376,6 +393,65 @@ export default function ChatRoom() {
     }
   };
 
+  const handleEditMessage = async () => {
+    if (!editingMessage || !editContent.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .update({ 
+          content: editContent.trim(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', editingMessage.id);
+
+      if (error) throw error;
+
+      setMessages(prev => prev.map(msg => 
+        msg.id === editingMessage.id 
+          ? { ...msg, content: editContent.trim() }
+          : msg
+      ));
+
+      toast.success('메시지가 수정되었습니다');
+      setEditingMessage(null);
+      setEditContent('');
+    } catch (error) {
+      console.error('Error editing message:', error);
+      toast.error('메시지 수정에 실패했습니다');
+    }
+  };
+
+  const handleDeleteMessage = async () => {
+    if (!deleteMessageId) return;
+
+    try {
+      const { error } = await supabase
+        .from('messages')
+        .delete()
+        .eq('id', deleteMessageId);
+
+      if (error) throw error;
+
+      setMessages(prev => prev.filter(msg => msg.id !== deleteMessageId));
+      toast.success('메시지가 삭제되었습니다');
+      setDeleteMessageId(null);
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast.error('메시지 삭제에 실패했습니다');
+    }
+  };
+
+  const startEditing = (msg: Message) => {
+    setEditingMessage(msg);
+    setEditContent(msg.content);
+  };
+
+  const cancelEditing = () => {
+    setEditingMessage(null);
+    setEditContent('');
+  };
+
   const formatDateDivider = (date: Date) => {
     if (isToday(date)) return '오늘';
     if (isYesterday(date)) return '어제';
@@ -511,6 +587,22 @@ export default function ChatRoom() {
                         <Reply className="h-4 w-4 mr-2" />
                         답장
                       </DropdownMenuItem>
+                      {isOwn && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => startEditing(msg)}>
+                            <Pencil className="h-4 w-4 mr-2" />
+                            수정
+                          </DropdownMenuItem>
+                          <DropdownMenuItem 
+                            onClick={() => setDeleteMessageId(msg.id)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            삭제
+                          </DropdownMenuItem>
+                        </>
+                      )}
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </div>
@@ -570,8 +662,38 @@ export default function ChatRoom() {
         <div ref={scrollRef} />
       </ScrollArea>
 
+      {/* Edit Message Preview */}
+      {editingMessage && (
+        <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-t">
+          <Pencil className="h-4 w-4 text-muted-foreground" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-medium">메시지 수정</p>
+            <Input
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleEditMessage();
+                } else if (e.key === 'Escape') {
+                  cancelEditing();
+                }
+              }}
+              className="mt-1 h-8 text-sm"
+              autoFocus
+            />
+          </div>
+          <Button variant="ghost" size="icon" onClick={handleEditMessage} disabled={!editContent.trim()}>
+            <Check className="h-4 w-4" />
+          </Button>
+          <Button variant="ghost" size="icon" onClick={cancelEditing}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       {/* Reply Preview */}
-      {replyTo && (
+      {replyTo && !editingMessage && (
         <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-t">
           <Reply className="h-4 w-4 text-muted-foreground" />
           <div className="flex-1 min-w-0">
@@ -583,6 +705,24 @@ export default function ChatRoom() {
           </Button>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteMessageId} onOpenChange={(open) => !open && setDeleteMessageId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>메시지를 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 작업은 되돌릴 수 없습니다. 메시지가 영구적으로 삭제됩니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteMessage} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              삭제
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Input */}
       <ChatInputArea
