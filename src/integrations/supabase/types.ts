@@ -976,6 +976,50 @@ export type Database = {
           },
         ]
       }
+      service_inquiries: {
+        Row: {
+          budget_proposal: number | null
+          client_id: string
+          created_at: string
+          id: string
+          message: string
+          offer_id: string
+          status: string
+          timeline_proposal: number | null
+          updated_at: string
+        }
+        Insert: {
+          budget_proposal?: number | null
+          client_id: string
+          created_at?: string
+          id?: string
+          message: string
+          offer_id: string
+          status?: string
+          timeline_proposal?: number | null
+          updated_at?: string
+        }
+        Update: {
+          budget_proposal?: number | null
+          client_id?: string
+          created_at?: string
+          id?: string
+          message?: string
+          offer_id?: string
+          status?: string
+          timeline_proposal?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_inquiries_offer_id_fkey"
+            columns: ["offer_id"]
+            isOneToOne: false
+            referencedRelation: "team_service_offers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       showcase_contributors: {
         Row: {
           contribution_summary: string | null
@@ -1578,6 +1622,57 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      team_service_offers: {
+        Row: {
+          budget_max: number | null
+          budget_min: number | null
+          created_at: string
+          description: string | null
+          id: string
+          offered_roles: Database["public"]["Enums"]["role_type"][] | null
+          offered_skills: string[] | null
+          service_category: string
+          status: string
+          team_id: string
+          timeline_weeks: number | null
+          title: string
+          updated_at: string
+          view_count: number | null
+        }
+        Insert: {
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          offered_roles?: Database["public"]["Enums"]["role_type"][] | null
+          offered_skills?: string[] | null
+          service_category?: string
+          status?: string
+          team_id: string
+          timeline_weeks?: number | null
+          title: string
+          updated_at?: string
+          view_count?: number | null
+        }
+        Update: {
+          budget_max?: number | null
+          budget_min?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          offered_roles?: Database["public"]["Enums"]["role_type"][] | null
+          offered_skills?: string[] | null
+          service_category?: string
+          status?: string
+          team_id?: string
+          timeline_weeks?: number | null
+          title?: string
+          updated_at?: string
+          view_count?: number | null
+        }
+        Relationships: []
       }
       teams: {
         Row: {

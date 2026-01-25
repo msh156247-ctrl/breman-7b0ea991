@@ -13,7 +13,8 @@ import {
   User,
   ChevronDown,
   MessageSquare,
-  Bell
+  Bell,
+  HandCoins
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -36,6 +37,7 @@ const NAV_ITEMS = [
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
   { href: '/teams', label: '팀', icon: Users },
   { href: '/projects', label: '프로젝트', icon: Briefcase },
+  { href: '/service-offers', label: '서비스 오퍼', icon: HandCoins },
   { href: '/showcase', label: 'Showcase', icon: Sparkles },
   { href: '/tracks', label: 'Tracks', icon: Route },
   { href: '/chat', label: '채팅', icon: MessageSquare },
