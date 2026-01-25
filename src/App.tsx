@@ -35,6 +35,9 @@ import Notifications from "./pages/Notifications";
 import AdminSettings from "./pages/AdminSettings";
 import NotFound from "./pages/NotFound";
 import RoleQuiz from "./pages/RoleQuiz";
+import ServiceOffers from "./pages/ServiceOffers";
+import ServiceOfferCreate from "./pages/ServiceOfferCreate";
+import ServiceOfferDetail from "./pages/ServiceOfferDetail";
 import { AppShell } from "./components/layout/AppShell";
 
 const queryClient = new QueryClient();
@@ -102,6 +105,9 @@ function AppRoutes() {
         <Route path="tracks/create" element={<TrackCreate />} />
         <Route path="tracks/:trackId" element={<TrackDetail />} />
         <Route path="tracks/:trackId/edit" element={<TrackEdit />} />
+        <Route path="service-offers" element={<ServiceOffers />} />
+        <Route path="service-offers/create" element={<ServiceOfferCreate />} />
+        <Route path="service-offers/:offerId" element={<ServiceOfferDetail />} />
         <Route path="profile" element={<Profile />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="admin" element={<AdminSettings />} />
