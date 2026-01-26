@@ -40,8 +40,6 @@ const NAV_ITEMS = [
   { href: '/service-offers', label: '서비스 오퍼', icon: HandCoins },
   { href: '/showcase', label: 'Showcase', icon: Sparkles },
   { href: '/tracks', label: 'Tracks', icon: Route },
-  { href: '/chat', label: '채팅', icon: MessageSquare },
-  { href: '/notifications', label: '알림', icon: Bell },
 ];
 
 export function AppShell() {
@@ -198,6 +196,18 @@ export function AppShell() {
                     <Link to="/profile" className="cursor-pointer">
                       <User className="w-4 h-4 mr-2" />
                       프로필
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/chat" className="cursor-pointer">
+                      <MessageSquare className="w-4 h-4 mr-2" />
+                      채팅
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/notifications" className="cursor-pointer">
+                      <Bell className="w-4 h-4 mr-2" />
+                      알림
                     </Link>
                   </DropdownMenuItem>
                   {isAdmin && (
