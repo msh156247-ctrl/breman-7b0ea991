@@ -35,6 +35,7 @@ import {
 import { TeamAnnouncementBoard } from '@/components/team/TeamAnnouncementBoard';
 import { TeamMemberManagement } from '@/components/team/TeamMemberManagement';
 import { TeamApplicationManagement } from '@/components/team/TeamApplicationManagement';
+import { TeamServiceOfferList } from '@/components/team/TeamServiceOfferList';
 
 interface Team {
   id: string;
@@ -498,8 +499,9 @@ export default function TeamDetail() {
       {/* Content tabs */}
       <ScrollReveal animation="fade-up" delay={150}>
         <Tabs defaultValue="members" className="space-y-6">
-          <TabsList className="bg-muted/50">
+          <TabsList className="bg-muted/50 flex-wrap h-auto gap-1">
             <TabsTrigger value="members">멤버</TabsTrigger>
+            <TabsTrigger value="services">서비스 오퍼</TabsTrigger>
             {isLeader && <TabsTrigger value="applications">지원 관리</TabsTrigger>}
             {isLeader && <TabsTrigger value="manage">멤버 관리</TabsTrigger>}
             <TabsTrigger value="board">공지사항</TabsTrigger>
@@ -549,6 +551,14 @@ export default function TeamDetail() {
             )}
           </TabsContent>
 
+          {/* Service Offers Tab */}
+          <TabsContent value="services" className="space-y-4">
+            <h2 className="text-lg font-semibold flex items-center gap-2">
+              <Briefcase className="w-5 h-5 text-primary" />
+              서비스 오퍼
+            </h2>
+            <TeamServiceOfferList teamId={team.id} isLeader={isLeader} />
+          </TabsContent>
 
           {/* Application Management Tab (Leader only) */}
           {isLeader && (
