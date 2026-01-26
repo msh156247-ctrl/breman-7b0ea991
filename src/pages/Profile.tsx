@@ -1,9 +1,10 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Edit, Calendar, Star, Users, Briefcase, Award, 
-  ChevronRight, Trophy, Code, Mail, ClipboardList
+  ChevronRight, Trophy, Code, Mail, ClipboardList, X
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +20,17 @@ import { SkillManagement } from '@/components/profile/SkillManagement';
 import { RoleTypeManagement } from '@/components/profile/RoleTypeManagement';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
+import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const userTeams = [
   { id: '1', name: '스타트업 드림팀', emblem: '🚀', role: 'horse' as const, members: 4 },
@@ -71,6 +83,11 @@ const userReviews = [
 
 export default function Profile() {
   const { profile, user } = useAuth();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
+  const [selectedApplication, setSelectedApplication] = useState<{ id: string; teamName: string; isPending: boolean } | null>(null);
+  
   const role = profile?.primary_role || 'horse';
   const level = profile?.level || 1;
   const xp = profile?.xp || 0;
@@ -109,6 +126,51 @@ export default function Profile() {
     },
     enabled: !!user?.id,
   });
+
+  // Withdraw application mutation
+  const withdrawMutation = useMutation({
+    mutationFn: async (applicationId: string) => {
+      const { error } = await supabase
+        .from('team_applications')
+        .update({ status: 'withdrawn' })
+        .eq('id', applicationId)
+        .eq('user_id', user?.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['my-applications'] });
+      toast({
+        title: '지원 취소 완료',
+        description: '팀 지원이 취소되었습니다.',
+      });
+      setWithdrawDialogOpen(false);
+      setSelectedApplication(null);
+    },
+    onError: () => {
+      toast({
+        title: '오류',
+        description: '지원 취소에 실패했습니다. 다시 시도해주세요.',
+        variant: 'destructive',
+      });
+    },
+  });
+
+  const handleWithdraw = (app: any) => {
+    const isPending = app.status === 'pending';
+    setSelectedApplication({
+      id: app.id,
+      teamName: app.team?.name || '팀',
+      isPending,
+    });
+    
+    if (isPending) {
+      // 대기 상태면 바로 취소
+      withdrawMutation.mutate(app.id);
+    } else {
+      // 면접 진행 중이면 확인 다이얼로그
+      setWithdrawDialogOpen(true);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -303,34 +365,59 @@ export default function Profile() {
                 myApplications.map((app: any) => {
                   const statusInfo = APPLICATION_STATUS[app.status as keyof typeof APPLICATION_STATUS];
                   const roleTypeInfo = app.role_type ? ROLE_TYPES[app.role_type as RoleType] : null;
+                  const canWithdraw = app.status === 'pending' || app.status === 'accepted';
+                  const isWithdrawn = app.status === 'withdrawn';
+                  const isRejected = app.status === 'rejected';
+                  
                   return (
-                    <Link 
+                    <div 
                       key={app.id}
-                      to={`/teams/${app.team?.id}`}
                       className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors border"
                     >
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl">
-                        {app.team?.emblem_url || '🎯'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{app.team?.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          {roleTypeInfo && (
-                            <span className="text-xs px-2 py-0.5 rounded bg-muted">
-                              {roleTypeInfo.icon} {roleTypeInfo.name}
-                            </span>
-                          )}
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(app.created_at).toLocaleDateString('ko-KR')}
-                          </span>
-                        </div>
-                      </div>
-                      <Badge 
-                        variant={app.status === 'accepted' ? 'default' : app.status === 'rejected' ? 'destructive' : 'secondary'}
+                      <Link 
+                        to={`/teams/${app.team?.id}`}
+                        className="flex items-center gap-4 flex-1 min-w-0"
                       >
-                        {statusInfo?.name || app.status}
-                      </Badge>
-                    </Link>
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl shrink-0">
+                          {app.team?.emblem_url || '🎯'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{app.team?.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {roleTypeInfo && (
+                              <span className="text-xs px-2 py-0.5 rounded bg-muted">
+                                {roleTypeInfo.icon} {roleTypeInfo.name}
+                              </span>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(app.created_at).toLocaleDateString('ko-KR')}
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge 
+                          variant={app.status === 'accepted' ? 'default' : app.status === 'rejected' || app.status === 'withdrawn' ? 'destructive' : 'secondary'}
+                        >
+                          {statusInfo?.name || app.status}
+                        </Badge>
+                        {canWithdraw && !isWithdrawn && !isRejected && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleWithdraw(app);
+                            }}
+                            disabled={withdrawMutation.isPending}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
                   );
                 })
               )}
@@ -454,6 +541,28 @@ export default function Profile() {
           </TabsContent>
         </Tabs>
       </ScrollReveal>
+
+      {/* Withdraw Confirmation Dialog */}
+      <AlertDialog open={withdrawDialogOpen} onOpenChange={setWithdrawDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>지원을 포기하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              현재 <span className="font-semibold">{selectedApplication?.teamName}</span> 팀에서 면접이 진행되는 상태입니다.
+              지원을 포기하시면 되돌릴 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => selectedApplication && withdrawMutation.mutate(selectedApplication.id)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              포기하기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <BackToTop />
     </div>
