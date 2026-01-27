@@ -545,8 +545,7 @@ export default function TeamDetail() {
           <TabsList className="w-full grid grid-cols-4 md:grid-cols-4">
             <TabsTrigger value="intro" className="gap-1.5">
               <Users className="w-4 h-4" />
-              <span className="hidden sm:inline">팀 소개</span>
-              <span className="sm:hidden">소개</span>
+              소개
             </TabsTrigger>
             <TabsTrigger value="openings" className="gap-1.5">
               <UserPlus className="w-4 h-4" />
