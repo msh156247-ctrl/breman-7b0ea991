@@ -74,11 +74,24 @@ interface Project {
   required_skills: string[] | null;
 }
 
+interface TeamWithHistory extends Team {
+  completedProjects: number;
+  reviews: {
+    rating: number;
+    comment: string | null;
+    project_title: string | null;
+  }[];
+}
+
 export default function Projects() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('recommendations');
   const [searchQuery, setSearchQuery] = useState('');
+  const [showDirectProposalList, setShowDirectProposalList] = useState(false);
+  const [directProposalTeams, setDirectProposalTeams] = useState<TeamWithHistory[]>([]);
+  const [directProposalLoading, setDirectProposalLoading] = useState(false);
+  const [directProposalSearch, setDirectProposalSearch] = useState('');
 
   // States
   const [recommendedTeams, setRecommendedTeams] = useState<Team[]>([]);
@@ -203,6 +216,67 @@ export default function Projects() {
       console.error('Error fetching sent proposals:', error);
     } finally {
       setSentLoading(false);
+    }
+  };
+
+  const fetchDirectProposalTeams = async () => {
+    setDirectProposalLoading(true);
+    try {
+      // Fetch teams with their reviews and completed projects
+      const { data: teamsData, error: teamsError } = await supabase
+        .from('teams')
+        .select('*')
+        .eq('status', 'active')
+        .order('rating_avg', { ascending: false });
+      
+      if (teamsError) throw teamsError;
+
+      // Fetch reviews and completed projects for each team
+      const enrichedTeams = await Promise.all(
+        (teamsData || []).map(async (team) => {
+          // Get reviews for this team
+          const { data: reviewsData } = await supabase
+            .from('reviews')
+            .select(`
+              rating,
+              comment,
+              project:projects(title)
+            `)
+            .eq('to_team_id', team.id)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+          // Get completed projects count
+          const { count: completedCount } = await supabase
+            .from('contracts')
+            .select('*', { count: 'exact', head: true })
+            .eq('team_id', team.id)
+            .eq('status', 'completed');
+
+          return {
+            ...team,
+            completedProjects: completedCount || 0,
+            reviews: (reviewsData || []).map((r: any) => ({
+              rating: r.rating,
+              comment: r.comment,
+              project_title: r.project?.title || null,
+            })),
+          };
+        })
+      );
+
+      setDirectProposalTeams(enrichedTeams);
+    } catch (error) {
+      console.error('Error fetching teams with history:', error);
+    } finally {
+      setDirectProposalLoading(false);
+    }
+  };
+
+  const handleDirectProposalClick = () => {
+    setShowDirectProposalList(true);
+    if (directProposalTeams.length === 0) {
+      fetchDirectProposalTeams();
     }
   };
 
@@ -355,53 +429,191 @@ export default function Projects() {
 
         {/* 의뢰하기 */}
         <TabsContent value="request" className="space-y-4">
-          <ScrollReveal animation="fade-up" delay={100}>
-            <Card>
-              <CardHeader>
-                <CardTitle>새 프로젝트 의뢰</CardTitle>
-                <CardDescription>
-                  프로젝트를 등록하고 팀들의 제안을 받아보세요
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Card 
-                    className="p-6 cursor-pointer hover:shadow-md transition-shadow border-dashed"
-                    onClick={() => navigate('/projects/create')}
-                  >
-                    <div className="flex flex-col items-center text-center gap-3">
-                      <div className="p-4 rounded-full bg-primary/10">
-                        <Plus className="w-8 h-8 text-primary" />
+          {!showDirectProposalList ? (
+            <ScrollReveal animation="fade-up" delay={100}>
+              <Card>
+                <CardHeader>
+                  <CardTitle>새 프로젝트 의뢰</CardTitle>
+                  <CardDescription>
+                    프로젝트를 등록하고 팀들의 제안을 받아보세요
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Card 
+                      className="p-6 cursor-pointer hover:shadow-md transition-shadow border-dashed"
+                      onClick={() => navigate('/projects/create')}
+                    >
+                      <div className="flex flex-col items-center text-center gap-3">
+                        <div className="p-4 rounded-full bg-primary/10">
+                          <Plus className="w-8 h-8 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold">공개 의뢰 등록</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            마켓에 공개하고 다양한 팀의 제안을 받아보세요
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h3 className="font-semibold">공개 의뢰 등록</h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          마켓에 공개하고 다양한 팀의 제안을 받아보세요
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
+                    </Card>
 
-                  <Card 
-                    className="p-6 cursor-pointer hover:shadow-md transition-shadow border-dashed"
-                    onClick={() => navigate('/teams')}
+                    <Card 
+                      className="p-6 cursor-pointer hover:shadow-md transition-shadow border-dashed"
+                      onClick={handleDirectProposalClick}
+                    >
+                      <div className="flex flex-col items-center text-center gap-3">
+                        <div className="p-4 rounded-full bg-secondary/50">
+                          <Users className="w-8 h-8 text-secondary-foreground" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold">팀에 직접 제안</h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            원하는 팀을 선택해 직접 프로젝트를 제안하세요
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+                  </div>
+                </CardContent>
+              </Card>
+            </ScrollReveal>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setShowDirectProposalList(false)}
                   >
-                    <div className="flex flex-col items-center text-center gap-3">
-                      <div className="p-4 rounded-full bg-secondary/50">
-                        <Users className="w-8 h-8 text-secondary-foreground" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">팀에 직접 제안</h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          원하는 팀을 선택해 직접 프로젝트를 제안하세요
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
+                    ← 뒤로
+                  </Button>
+                  <h2 className="text-lg font-semibold">팀 선택</h2>
                 </div>
-              </CardContent>
-            </Card>
-          </ScrollReveal>
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  placeholder="팀 이름으로 검색..."
+                  value={directProposalSearch}
+                  onChange={(e) => setDirectProposalSearch(e.target.value)}
+                  className="pl-9"
+                />
+              </div>
+
+              {directProposalLoading ? (
+                <div className="flex items-center justify-center py-16">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {directProposalTeams
+                    .filter(team => 
+                      team.name.toLowerCase().includes(directProposalSearch.toLowerCase()) ||
+                      team.description?.toLowerCase().includes(directProposalSearch.toLowerCase())
+                    )
+                    .map((team, index) => (
+                    <ScrollReveal key={team.id} animation="fade-up" delay={index * 50}>
+                      <Card className="overflow-hidden">
+                        <CardContent className="p-0">
+                          <div className="flex flex-col md:flex-row">
+                            {/* Team Info */}
+                            <div className="flex-1 p-4 border-b md:border-b-0 md:border-r">
+                              <div className="flex items-start gap-3">
+                                <Avatar className="h-12 w-12 rounded-lg">
+                                  <AvatarImage src={team.emblem_url || undefined} />
+                                  <AvatarFallback className="rounded-lg bg-primary/10">
+                                    {team.name[0]}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <h3 className="font-semibold">{team.name}</h3>
+                                  <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                                    {team.rating_avg && team.rating_avg > 0 && (
+                                      <span className="flex items-center gap-1">
+                                        <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                                        {team.rating_avg.toFixed(1)}
+                                      </span>
+                                    )}
+                                    {team.avg_level && (
+                                      <span className="flex items-center gap-1">
+                                        <TrendingUp className="w-3.5 h-3.5" />
+                                        Lv.{team.avg_level}
+                                      </span>
+                                    )}
+                                    <span className="flex items-center gap-1">
+                                      <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />
+                                      완료 {team.completedProjects}건
+                                    </span>
+                                  </div>
+                                  <p className="text-sm text-muted-foreground mt-2 line-clamp-2">
+                                    {team.description || '팀 소개가 없습니다'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Reviews Section */}
+                            <div className="w-full md:w-80 p-4 bg-muted/30">
+                              <h4 className="text-sm font-medium mb-2">최근 평가</h4>
+                              {team.reviews.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">아직 평가가 없습니다</p>
+                              ) : (
+                                <div className="space-y-2">
+                                  {team.reviews.slice(0, 2).map((review, i) => (
+                                    <div key={i} className="text-sm">
+                                      <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-0.5">
+                                          {[...Array(5)].map((_, j) => (
+                                            <Star 
+                                              key={j} 
+                                              className={`w-3 h-3 ${j < review.rating ? 'fill-amber-400 text-amber-400' : 'text-muted-foreground/30'}`}
+                                            />
+                                          ))}
+                                        </div>
+                                        {review.project_title && (
+                                          <span className="text-muted-foreground truncate text-xs">
+                                            {review.project_title}
+                                          </span>
+                                        )}
+                                      </div>
+                                      {review.comment && (
+                                        <p className="text-muted-foreground line-clamp-1 mt-0.5">
+                                          "{review.comment}"
+                                        </p>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <Button 
+                                size="sm" 
+                                className="w-full mt-3"
+                                onClick={() => navigate(`/projects/create?teamId=${team.id}`)}
+                              >
+                                이 팀에 제안하기
+                                <ArrowRight className="w-4 h-4 ml-1" />
+                              </Button>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </ScrollReveal>
+                  ))}
+                  
+                  {directProposalTeams.filter(team => 
+                    team.name.toLowerCase().includes(directProposalSearch.toLowerCase()) ||
+                    team.description?.toLowerCase().includes(directProposalSearch.toLowerCase())
+                  ).length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      검색 결과가 없습니다
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </TabsContent>
 
         {/* 의뢰 내역 */}
