@@ -238,23 +238,7 @@ export default function Profile() {
                 )}
               </div>
 
-              {/* Animal Skin (성향) */}
-              <div className="flex items-center gap-3 mb-3 p-3 rounded-lg bg-muted/30 border border-border/50">
-                <span className="text-3xl">{animalSkinData.icon}</span>
-                <div>
-                  <span className="font-bold text-lg">{animalSkinData.name}</span>
-                  <span className="text-sm text-muted-foreground ml-2">({animalSkinData.title})</span>
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {animalSkinData.keywords.map((keyword) => (
-                      <span key={keyword} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                        {keyword}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Role Types (직무) */}
+              {/* Role Types (직무) - 1st */}
               <div className="flex flex-wrap items-center gap-2 mb-3">
                 {profile?.main_role_type && ROLE_TYPES[profile.main_role_type as RoleType] && (
                   <Badge 
@@ -285,7 +269,7 @@ export default function Profile() {
                 )}
               </div>
 
-              {/* Top Skills Preview */}
+              {/* Top Skills Preview (기술) - 2nd */}
               {userSkills.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 mb-3">
                   {userSkills.slice(0, 5).map((skill) => (
@@ -303,6 +287,22 @@ export default function Profile() {
                   )}
                 </div>
               )}
+
+              {/* Animal Skin (성향) - 3rd */}
+              <div className="flex items-center gap-3 mb-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                <span className="text-3xl">{animalSkinData.icon}</span>
+                <div>
+                  <span className="font-bold text-lg">{animalSkinData.name}</span>
+                  <span className="text-sm text-muted-foreground ml-2">({animalSkinData.title})</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {animalSkinData.keywords.map((keyword) => (
+                      <span key={keyword} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                        {keyword}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
 
               <p className="text-muted-foreground mb-4 max-w-2xl">
                 {profile?.bio || '아직 소개가 없습니다. 프로필을 수정해서 자기소개를 추가해보세요!'}
@@ -397,11 +397,11 @@ export default function Profile() {
 
       {/* Tabs */}
       <ScrollReveal animation="fade-up" delay={200}>
-        <Tabs defaultValue="personality" className="w-full">
+        <Tabs defaultValue="roles" className="w-full">
           <TabsList className="w-full md:w-auto flex-wrap">
-            <TabsTrigger value="personality">성향</TabsTrigger>
             <TabsTrigger value="roles">직무</TabsTrigger>
             <TabsTrigger value="skills">스킬</TabsTrigger>
+            <TabsTrigger value="personality">성향</TabsTrigger>
             <TabsTrigger value="applications">지원 현황</TabsTrigger>
             <TabsTrigger value="teams">팀</TabsTrigger>
             <TabsTrigger value="badges">배지</TabsTrigger>
@@ -413,19 +413,19 @@ export default function Profile() {
             </TabsTrigger>
           </TabsList>
 
-        {/* Personality (Animal Skin) Tab */}
-        <TabsContent value="personality" className="mt-6">
-          <AnimalSkinManagement />
-        </TabsContent>
-
-        {/* Roles Tab */}
+        {/* Roles Tab - 직무 (1st) */}
         <TabsContent value="roles" className="mt-6">
           <RoleTypeManagement />
         </TabsContent>
 
-        {/* Skills Tab */}
+        {/* Skills Tab - 스킬 (2nd) */}
         <TabsContent value="skills" className="mt-6">
           <SkillManagement />
+        </TabsContent>
+
+        {/* Personality (Animal Skin) Tab - 성향 (3rd) */}
+        <TabsContent value="personality" className="mt-6">
+          <AnimalSkinManagement />
         </TabsContent>
 
         {/* Applications Tab */}
