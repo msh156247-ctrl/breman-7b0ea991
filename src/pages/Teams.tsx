@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Badge } from '@/components/ui/badge';
+import { LevelBadge } from '@/components/ui/LevelBadge';
 import { ROLES, ROLE_TYPES, ANIMAL_SKINS, type UserRole, type RoleType, type AnimalSkin } from '@/lib/constants';
 import {
   Select,
@@ -385,10 +386,7 @@ export default function Teams() {
                         <Users className="w-4 h-4" />
                         <span>{team.memberCount}명</span>
                       </div>
-                      <div className="flex items-center gap-1">
-                        <Trophy className="w-4 h-4 text-primary" />
-                        <span className="font-medium text-primary">Lv.{team.avg_level || 1}</span>
-                      </div>
+                      <LevelBadge level={team.avg_level || 1} size="sm" />
                       <div className="flex items-center gap-1">
                         <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
                         <span className="font-medium">{(team.rating_avg || 0).toFixed(1)}</span>

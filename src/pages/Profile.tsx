@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Edit, Calendar, Star, Users, Briefcase, Award, 
-  ChevronRight, Trophy, Code, Mail, ClipboardList, X
+  ChevronRight, Trophy, Code, Mail, ClipboardList, X, RefreshCw
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { RoleBadge } from '@/components/ui/RoleBadge';
-import { XPBar } from '@/components/ui/XPBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { ROLES, ROLE_TYPES, ANIMAL_SKINS, APPLICATION_STATUS, type RoleType, type AnimalSkin } from '@/lib/constants';
@@ -19,6 +18,9 @@ import { NotificationPreferences } from '@/components/notifications/Notification
 import { SkillManagement } from '@/components/profile/SkillManagement';
 import { RoleTypeManagement } from '@/components/profile/RoleTypeManagement';
 import { AnimalSkinManagement } from '@/components/profile/AnimalSkinManagement';
+import { LevelBreakdownCard } from '@/components/profile/LevelBreakdownCard';
+import { LevelBadge } from '@/components/ui/LevelBadge';
+import { useCalculatedLevel, type LevelBreakdown } from '@/hooks/useCalculatedLevel';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { useToast } from '@/hooks/use-toast';
@@ -92,9 +94,31 @@ export default function Profile() {
   const role = profile?.primary_role || 'horse';
   const animalSkin = (profile?.animal_skin as AnimalSkin) || 'horse';
   const animalSkinData = ANIMAL_SKINS[animalSkin];
-  const level = profile?.level || 1;
-  const xp = profile?.xp || 0;
-  const maxXP = level * 1000;
+  
+  const { calculateLevel, getLevelBreakdownFromProfile, isCalculating } = useCalculatedLevel();
+  const [levelBreakdown, setLevelBreakdown] = useState<LevelBreakdown | null>(null);
+
+  // Get level breakdown from profile data
+  useEffect(() => {
+    if (profile) {
+      const breakdown = getLevelBreakdownFromProfile(profile as any);
+      setLevelBreakdown(breakdown);
+    }
+  }, [profile, getLevelBreakdownFromProfile]);
+
+  // Recalculate level on demand
+  const handleRecalculateLevel = async () => {
+    if (user?.id) {
+      const result = await calculateLevel(user.id);
+      if (result) {
+        setLevelBreakdown(result);
+        toast({
+          title: '레벨 재계산 완료',
+          description: `현재 레벨: Lv.${result.level} (${result.calculatedLevelScore.toFixed(1)}점)`,
+        });
+      }
+    }
+  };
 
   // Fetch user skills for stats
   const { data: userSkills = [] } = useQuery({
@@ -303,25 +327,39 @@ export default function Profile() {
                 </div>
               </div>
 
-              {/* PRD: Enhanced XP Bar with skill breakdown */}
-              <div className="space-y-4">
-                <XPBar current={xp} max={maxXP} level={level} />
-                
-                {/* Skill XP Summary */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {userSkills.slice(0, 4).map((skill) => (
-                    <div key={skill.id} className="flex items-center gap-2 p-2 rounded-lg bg-muted/30">
-                      <div className="w-2 h-2 rounded-full bg-gradient-to-r from-primary to-accent" />
-                      <span className="text-xs font-medium truncate">{skill.skill?.name || 'Unknown'}</span>
-                      <span className="text-xs text-muted-foreground ml-auto">Lv.{skill.level}</span>
-                    </div>
-                  ))}
+              {/* Level Breakdown Card */}
+              {levelBreakdown && (
+                <div className="mt-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <LevelBadge 
+                      level={levelBreakdown.level} 
+                      score={levelBreakdown.calculatedLevelScore} 
+                      showScore 
+                      size="lg" 
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={handleRecalculateLevel}
+                      disabled={isCalculating}
+                    >
+                      <RefreshCw className={`w-4 h-4 mr-1 ${isCalculating ? 'animate-spin' : ''}`} />
+                      재계산
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </CardContent>
         </Card>
       </ScrollReveal>
+
+      {/* Level Breakdown Detail - New section */}
+      {levelBreakdown && (
+        <ScrollReveal animation="fade-up" delay={50}>
+          <LevelBreakdownCard breakdown={levelBreakdown} showDetails />
+        </ScrollReveal>
+      )}
 
       {/* Stats cards */}
       <ScrollReveal animation="fade-up" delay={100}>

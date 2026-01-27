@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { LevelBadge } from '@/components/ui/LevelBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ROLES, ROLE_TYPES, ANIMAL_SKINS, type UserRole, type RoleType, type AnimalSkin } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
@@ -373,10 +374,7 @@ export default function TeamDetail() {
                     <Star className="w-4 h-4 text-secondary" />
                     <span>{team.rating_avg || 0} 평점</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <Trophy className="w-4 h-4 text-primary" />
-                    <span>평균 Lv.{team.avg_level || 1}</span>
-                  </div>
+                  <LevelBadge level={team.avg_level || 1} size="sm" />
                   {team.created_at && (
                     <div className="flex items-center gap-2 text-sm">
                       <Calendar className="w-4 h-4 text-muted-foreground" />

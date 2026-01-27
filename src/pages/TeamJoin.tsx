@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { Progress } from '@/components/ui/progress';
+import { LevelBadge } from '@/components/ui/LevelBadge';
 import { 
   Users, Star, Trophy, Calendar, CheckCircle, 
   UserPlus, LogIn, ArrowLeft, Crown, Briefcase,
@@ -429,10 +430,7 @@ export default function TeamJoin() {
               <Star className="w-4 h-4 text-yellow-500" />
               <span>{team.rating_avg || 0}</span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <Trophy className="w-4 h-4 text-primary" />
-              <span>Lv.{team.avg_level || 1}</span>
-            </div>
+            <LevelBadge level={team.avg_level || 1} size="sm" />
           </div>
 
           {/* Description */}
