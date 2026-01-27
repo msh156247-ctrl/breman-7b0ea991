@@ -430,7 +430,7 @@ export function SkillManagement() {
                   경험 추가
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-h-[90vh] flex flex-col">
                 <DialogHeader>
                   <DialogTitle>스킬 경험 추가</DialogTitle>
                   <DialogDescription>
@@ -438,7 +438,7 @@ export function SkillManagement() {
                   </DialogDescription>
                 </DialogHeader>
                 
-                <div className="space-y-4 py-4">
+                <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-1">
                   {/* Skill selection */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium">스킬 선택</label>
