@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { 
-  Users, Briefcase, Eye, Bell, Trophy, ArrowRight, 
+  Users, Briefcase, Bell, Trophy, ArrowRight, 
   TrendingUp, Star, Loader2, CheckCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -289,36 +289,6 @@ export default function Dashboard() {
 
         {/* Right column - Siege, Notifications, Announcements */}
         <div className="space-y-6">
-          {/* Recent Showcases */}
-          <ScrollReveal animation="fade-up" delay={200}>
-            <Card className="overflow-hidden">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  <Eye className="w-5 h-5" />
-                  Showcase
-                </CardTitle>
-                <Link to="/showcase">
-                  <Button variant="ghost" size="sm" className="text-primary">
-                    전체 보기 <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-center py-6">
-                  <Eye className="w-12 h-12 mx-auto mb-3 text-muted-foreground opacity-50" />
-                  <p className="text-muted-foreground text-sm mb-2">
-                    작업물을 기록하고 성장을 증명하세요
-                  </p>
-                  <Link to="/showcase/create">
-                    <Button variant="outline" size="sm">
-                      첫 Showcase 만들기
-                    </Button>
-                  </Link>
-                </div>
-              </CardContent>
-            </Card>
-          </ScrollReveal>
-
           {/* Notifications */}
           <ScrollReveal animation="fade-up" delay={250}>
             <Card>
