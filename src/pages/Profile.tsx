@@ -26,6 +26,8 @@ import { SkillManagement } from '@/components/profile/SkillManagement';
 import { RoleTypeManagement } from '@/components/profile/RoleTypeManagement';
 import { LevelBreakdownCard } from '@/components/profile/LevelBreakdownCard';
 import { ProfileEditDialog } from '@/components/profile/ProfileEditDialog';
+import { CertificationManagement } from '@/components/profile/CertificationManagement';
+import { VerificationRequestManagement } from '@/components/profile/VerificationRequestManagement';
 import { LevelBadge } from '@/components/ui/LevelBadge';
 import { useCalculatedLevel, type LevelBreakdown } from '@/hooks/useCalculatedLevel';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
@@ -803,6 +805,12 @@ export default function Profile() {
                 <LevelBreakdownCard breakdown={levelBreakdown} showDetails />
               )
             )}
+
+            {/* 자격증 */}
+            <CertificationManagement />
+
+            {/* 인증 현황 */}
+            <VerificationRequestManagement />
 
             {/* 경력 */}
             <Card>
