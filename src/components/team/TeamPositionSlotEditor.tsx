@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ROLE_TYPES, type RoleType } from '@/lib/constants';
+import { ROLE_TYPES, ANIMAL_SKINS, type RoleType, type AnimalSkin } from '@/lib/constants';
 
 interface RequiredSkillLevel {
   skillName: string;
@@ -14,6 +14,7 @@ interface RequiredSkillLevel {
 export interface PositionSlot {
   id?: string;
   role_type: RoleType | null;
+  preferred_animal_skin?: AnimalSkin | null;
   min_level: number;
   max_count: number;
   current_count: number;
@@ -31,7 +32,8 @@ interface TeamPositionSlotEditorProps {
 export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEditorProps) {
   const addSlot = () => {
     onChange([...slots, { 
-      role_type: null, 
+      role_type: null,
+      preferred_animal_skin: null,
       min_level: 1, 
       max_count: 1,
       current_count: 0,
@@ -112,6 +114,27 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                     </div>
                     
                     <div className="flex-1 space-y-4">
+                      {/* Preferred Animal Skin */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-muted-foreground">선호 성향 (선택사항)</label>
+                        <Select 
+                          value={slot.preferred_animal_skin || 'none'} 
+                          onValueChange={(v) => updateSlot(slotIndex, { preferred_animal_skin: v === 'none' ? null : v as AnimalSkin })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="선호 성향 선택" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">무관</SelectItem>
+                            {Object.entries(ANIMAL_SKINS).map(([key, value]) => (
+                              <SelectItem key={key} value={key}>
+                                {value.icon} {value.name} ({value.title})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       {/* Role Type, Level, and Count */}
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         <div className="space-y-1.5">

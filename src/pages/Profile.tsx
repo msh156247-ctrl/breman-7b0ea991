@@ -14,10 +14,11 @@ import { RoleBadge } from '@/components/ui/RoleBadge';
 import { XPBar } from '@/components/ui/XPBar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
-import { ROLES, ROLE_TYPES, APPLICATION_STATUS, type RoleType } from '@/lib/constants';
+import { ROLES, ROLE_TYPES, ANIMAL_SKINS, APPLICATION_STATUS, type RoleType, type AnimalSkin } from '@/lib/constants';
 import { NotificationPreferences } from '@/components/notifications/NotificationPreferences';
 import { SkillManagement } from '@/components/profile/SkillManagement';
 import { RoleTypeManagement } from '@/components/profile/RoleTypeManagement';
+import { AnimalSkinManagement } from '@/components/profile/AnimalSkinManagement';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { useToast } from '@/hooks/use-toast';
@@ -89,6 +90,8 @@ export default function Profile() {
   const [selectedApplication, setSelectedApplication] = useState<{ id: string; teamName: string; isPending: boolean } | null>(null);
   
   const role = profile?.primary_role || 'horse';
+  const animalSkin = (profile?.animal_skin as AnimalSkin) || 'horse';
+  const animalSkinData = ANIMAL_SKINS[animalSkin];
   const level = profile?.level || 1;
   const xp = profile?.xp || 0;
   const maxXP = level * 1000;
@@ -178,7 +181,7 @@ export default function Profile() {
       <ScrollReveal animation="fade-up">
         <Card className="overflow-hidden">
           {/* Banner */}
-          <div className={`h-32 bg-gradient-to-r ${ROLES[role].gradient}`} />
+          <div className={`h-32 bg-gradient-to-r ${animalSkinData.gradient}`} />
           
           <CardContent className="relative pb-6">
             {/* Avatar */}
@@ -201,25 +204,43 @@ export default function Profile() {
 
             {/* User info */}
             <div className="mt-8">
-              <div className="flex flex-wrap items-center gap-3 mb-2">
+              {/* Name and verified */}
+              <div className="flex flex-wrap items-center gap-3 mb-3">
                 <h1 className="text-2xl font-display font-bold">{profile?.name || '사용자'}</h1>
-                <RoleBadge role={role} level={level} />
-                {/* Main Role Type Badge */}
+                {profile?.verified && (
+                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success border border-success/20">
+                    ✓ 인증됨
+                  </span>
+                )}
+              </div>
+
+              {/* Animal Skin (성향) */}
+              <div className="flex items-center gap-3 mb-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+                <span className="text-3xl">{animalSkinData.icon}</span>
+                <div>
+                  <span className="font-bold text-lg">{animalSkinData.name}</span>
+                  <span className="text-sm text-muted-foreground ml-2">({animalSkinData.title})</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {animalSkinData.keywords.map((keyword) => (
+                      <span key={keyword} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                        {keyword}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Role Types (직무) */}
+              <div className="flex flex-wrap items-center gap-2 mb-3">
                 {profile?.main_role_type && ROLE_TYPES[profile.main_role_type as RoleType] && (
                   <Badge 
-                    variant="outline" 
+                    variant="default" 
                     className="gap-1 font-medium"
-                    style={{ 
-                      borderColor: ROLE_TYPES[profile.main_role_type as RoleType].color,
-                      color: ROLE_TYPES[profile.main_role_type as RoleType].color,
-                      backgroundColor: `${ROLE_TYPES[profile.main_role_type as RoleType].color}15`
-                    }}
                   >
                     {ROLE_TYPES[profile.main_role_type as RoleType].icon}
-                    {ROLE_TYPES[profile.main_role_type as RoleType].name}
+                    메인: {ROLE_TYPES[profile.main_role_type as RoleType].name}
                   </Badge>
                 )}
-                {/* Sub Role Type Badges */}
                 {profile?.sub_role_types && profile.sub_role_types.length > 0 && (
                   <>
                     {profile.sub_role_types.map((subRole) => {
@@ -229,7 +250,7 @@ export default function Profile() {
                         <Badge 
                           key={subRole}
                           variant="secondary" 
-                          className="gap-1 text-xs opacity-80"
+                          className="gap-1 text-xs"
                         >
                           {roleData.icon}
                           {roleData.name}
@@ -238,12 +259,26 @@ export default function Profile() {
                     })}
                   </>
                 )}
-                {profile?.verified && (
-                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success border border-success/20">
-                    ✓ 인증됨
-                  </span>
-                )}
               </div>
+
+              {/* Top Skills Preview */}
+              {userSkills.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mb-3">
+                  {userSkills.slice(0, 5).map((skill) => (
+                    <span 
+                      key={skill.id} 
+                      className="text-xs px-2 py-1 rounded-md bg-accent/10 text-accent-foreground border border-accent/20"
+                    >
+                      {skill.skill?.name || 'Unknown'} Lv.{skill.level}
+                    </span>
+                  ))}
+                  {userSkills.length > 5 && (
+                    <span className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">
+                      +{userSkills.length - 5}
+                    </span>
+                  )}
+                </div>
+              )}
 
               <p className="text-muted-foreground mb-4 max-w-2xl">
                 {profile?.bio || '아직 소개가 없습니다. 프로필을 수정해서 자기소개를 추가해보세요!'}
@@ -324,8 +359,9 @@ export default function Profile() {
 
       {/* Tabs */}
       <ScrollReveal animation="fade-up" delay={200}>
-        <Tabs defaultValue="roles" className="w-full">
+        <Tabs defaultValue="personality" className="w-full">
           <TabsList className="w-full md:w-auto flex-wrap">
+            <TabsTrigger value="personality">성향</TabsTrigger>
             <TabsTrigger value="roles">직무</TabsTrigger>
             <TabsTrigger value="skills">스킬</TabsTrigger>
             <TabsTrigger value="applications">지원 현황</TabsTrigger>
@@ -338,6 +374,11 @@ export default function Profile() {
               알림 설정
             </TabsTrigger>
           </TabsList>
+
+        {/* Personality (Animal Skin) Tab */}
+        <TabsContent value="personality" className="mt-6">
+          <AnimalSkinManagement />
+        </TabsContent>
 
         {/* Roles Tab */}
         <TabsContent value="roles" className="mt-6">

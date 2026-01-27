@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { ROLES, SKILL_TIERS, type UserRole } from '@/lib/constants';
+import { ANIMAL_SKINS, ROLE_TYPES, SKILL_TIERS, type AnimalSkin, type RoleType } from '@/lib/constants';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { Check, ChevronLeft, ChevronRight, Loader2, Sparkles, X, Info } from 'lucide-react';
@@ -23,13 +23,18 @@ const POPULAR_SKILLS = [
   'Jest', 'Cypress', 'Security', 'DevOps', 'CI/CD'
 ];
 
-type OnboardingStep = 'role' | 'skills' | 'experience' | 'summary';
+type OnboardingStep = 'personality' | 'roleType' | 'skills' | 'experience' | 'summary';
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const { user, refreshProfile } = useAuth();
-  const [currentStep, setCurrentStep] = useState<OnboardingStep>('role');
-  const [selectedRole, setSelectedRole] = useState<UserRole | null>(null);
+  const [currentStep, setCurrentStep] = useState<OnboardingStep>('personality');
+  
+  // New separate states
+  const [selectedAnimalSkin, setSelectedAnimalSkin] = useState<AnimalSkin | null>(null);
+  const [selectedMainRoleType, setSelectedMainRoleType] = useState<RoleType | null>(null);
+  const [selectedSubRoleTypes, setSelectedSubRoleTypes] = useState<RoleType[]>([]);
+  
   const [skills, setSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
   const [experience, setExperience] = useState('');
@@ -38,7 +43,7 @@ export default function Onboarding() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  const steps: OnboardingStep[] = ['role', 'skills', 'experience', 'summary'];
+  const steps: OnboardingStep[] = ['personality', 'roleType', 'skills', 'experience', 'summary'];
   const currentStepIndex = steps.indexOf(currentStep);
   const progress = ((currentStepIndex + 1) / steps.length) * 100;
 
@@ -66,8 +71,9 @@ export default function Onboarding() {
     // Simulate AI summary generation
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    const roleInfo = selectedRole ? ROLES[selectedRole] : null;
-    const summary = `${roleInfo?.icon} ${roleInfo?.name} 역할의 개발자입니다. ${skills.slice(0, 3).join(', ')} 등의 기술을 보유하고 있으며, ${experience ? '다양한 프로젝트 경험을 통해 성장해왔습니다.' : '새로운 도전을 향해 나아가고 있습니다.'} 팀과의 협업을 통해 더 큰 가치를 만들어가고 싶습니다.`;
+    const skinInfo = selectedAnimalSkin ? ANIMAL_SKINS[selectedAnimalSkin] : null;
+    const mainRoleInfo = selectedMainRoleType ? ROLE_TYPES[selectedMainRoleType] : null;
+    const summary = `${skinInfo?.icon} ${skinInfo?.name} 성향의 ${mainRoleInfo?.name || '개발자'}입니다. ${skills.slice(0, 3).join(', ')} 등의 기술을 보유하고 있으며, ${experience ? '다양한 프로젝트 경험을 통해 성장해왔습니다.' : '새로운 도전을 향해 나아가고 있습니다.'} 팀과의 협업을 통해 더 큰 가치를 만들어가고 싶습니다.`;
     
     setGeneratedSummary(summary);
     setBio(summary);
@@ -90,8 +96,10 @@ export default function Onboarding() {
 
   const canProceed = () => {
     switch (currentStep) {
-      case 'role':
-        return selectedRole !== null;
+      case 'personality':
+        return selectedAnimalSkin !== null;
+      case 'roleType':
+        return selectedMainRoleType !== null;
       case 'skills':
         return skills.length >= 1;
       case 'experience':
@@ -103,8 +111,17 @@ export default function Onboarding() {
     }
   };
 
+  const toggleSubRoleType = (roleType: RoleType) => {
+    if (roleType === selectedMainRoleType) return; // Can't add main as sub
+    if (selectedSubRoleTypes.includes(roleType)) {
+      setSelectedSubRoleTypes(prev => prev.filter(r => r !== roleType));
+    } else {
+      setSelectedSubRoleTypes(prev => [...prev, roleType]);
+    }
+  };
+
   const handleComplete = async () => {
-    if (!user || !selectedRole) return;
+    if (!user || !selectedAnimalSkin || !selectedMainRoleType) return;
 
     setIsSaving(true);
     try {
@@ -112,7 +129,10 @@ export default function Onboarding() {
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
-          primary_role: selectedRole,
+          animal_skin: selectedAnimalSkin,
+          primary_role: selectedAnimalSkin, // Keep backward compatibility
+          main_role_type: selectedMainRoleType,
+          sub_role_types: selectedSubRoleTypes,
           bio: bio,
           xp: 100, // Initial XP reward
           level: 1,
@@ -120,9 +140,6 @@ export default function Onboarding() {
         .eq('id', user.id);
 
       if (profileError) throw profileError;
-
-      // Add skills to user_skills (simplified - would need skill IDs in real app)
-      // For now, we'll just complete the onboarding
 
       await refreshProfile();
       toast.success('온보딩 완료! 🎉 초기 100 XP를 획득했습니다.');
@@ -156,7 +173,8 @@ export default function Onboarding() {
                 key={step}
                 className={`text-xs ${index <= currentStepIndex ? 'text-primary' : 'text-muted-foreground'}`}
               >
-                {step === 'role' && '역할 선택'}
+                {step === 'personality' && '성향 선택'}
+                {step === 'roleType' && '직무 선택'}
                 {step === 'skills' && '기술 스택'}
                 {step === 'experience' && '경험 입력'}
                 {step === 'summary' && 'AI 요약'}
@@ -167,54 +185,49 @@ export default function Onboarding() {
 
         {/* Step Content */}
         <Card className="border-border/50 shadow-elegant">
-          {currentStep === 'role' && (
+          {/* Step 1: Personality (Animal Skin) Selection */}
+          {currentStep === 'personality' && (
             <>
               <CardHeader className="text-center">
-                <CardTitle className="text-2xl">당신의 역할을 선택하세요</CardTitle>
+                <CardTitle className="text-2xl">당신의 성향을 선택하세요</CardTitle>
                 <CardDescription>
-                  브래맨에서의 주요 역할을 선택해주세요. 나중에 변경할 수 있습니다.
+                  브레맨에서의 협업 스타일을 나타내는 캐릭터를 선택해주세요. 나중에 변경할 수 있습니다.
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {(Object.entries(ROLES) as [UserRole, typeof ROLES[UserRole]][]).map(([key, role]) => (
+                  {(Object.entries(ANIMAL_SKINS) as [AnimalSkin, typeof ANIMAL_SKINS[AnimalSkin]][]).map(([key, skin]) => (
                     <button
                       key={key}
-                      onClick={() => setSelectedRole(key)}
+                      onClick={() => setSelectedAnimalSkin(key)}
                       className={`p-5 rounded-xl border-2 transition-all text-left ${
-                        selectedRole === key
+                        selectedAnimalSkin === key
                           ? 'border-primary bg-primary/5 shadow-glow'
                           : 'border-border hover:border-primary/50 hover:bg-muted/50'
                       }`}
                     >
-                      {/* Header */}
                       <div className="flex items-start gap-3 mb-3">
-                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${role.gradient} flex items-center justify-center text-2xl flex-shrink-0`}>
-                          {role.icon}
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${skin.gradient} flex items-center justify-center text-2xl flex-shrink-0`}>
+                          {skin.icon}
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="font-bold text-lg">{role.name}</div>
-                          <div className="text-xs text-primary font-medium">{role.title}</div>
+                          <div className="font-bold text-lg">{skin.name}</div>
+                          <div className="text-xs text-primary font-medium">{skin.title}</div>
                         </div>
-                        {selectedRole === key && (
+                        {selectedAnimalSkin === key && (
                           <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
                             <Check className="h-4 w-4 text-primary-foreground" />
                           </div>
                         )}
                       </div>
-
-                      {/* Description */}
-                      <p className="text-sm text-muted-foreground mb-3">{role.description}</p>
-
-
-                      {/* Keywords */}
+                      <p className="text-sm text-muted-foreground mb-3">{skin.description}</p>
                       <div className="flex flex-wrap gap-1.5">
-                        {role.keywords.map((keyword) => (
+                        {skin.keywords.map((keyword) => (
                           <span 
                             key={keyword}
                             className={`text-xs px-2 py-0.5 rounded-full ${
-                              selectedRole === key 
-                                ? `bg-gradient-to-r ${role.gradient} text-primary-foreground`
+                              selectedAnimalSkin === key 
+                                ? `bg-gradient-to-r ${skin.gradient} text-primary-foreground`
                                 : 'bg-muted text-muted-foreground'
                             }`}
                           >
@@ -224,6 +237,79 @@ export default function Onboarding() {
                       </div>
                     </button>
                   ))}
+                </div>
+              </CardContent>
+            </>
+          )}
+
+          {/* Step 2: Role Type Selection */}
+          {currentStep === 'roleType' && (
+            <>
+              <CardHeader className="text-center">
+                <CardTitle className="text-2xl">전문 직무를 선택하세요</CardTitle>
+                <CardDescription>
+                  메인 직무 1개와 서브 직무(선택사항)를 선택해주세요.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Main Role Type */}
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">메인 직무 (필수)</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {(Object.entries(ROLE_TYPES) as [RoleType, typeof ROLE_TYPES[RoleType]][]).map(([key, roleType]) => (
+                      <button
+                        key={key}
+                        onClick={() => {
+                          setSelectedMainRoleType(key);
+                          // Remove from sub if selected as main
+                          setSelectedSubRoleTypes(prev => prev.filter(r => r !== key));
+                        }}
+                        className={`p-3 rounded-lg border-2 transition-all text-left ${
+                          selectedMainRoleType === key
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl">{roleType.icon}</span>
+                          <span className="font-medium">{roleType.name}</span>
+                          {selectedMainRoleType === key && (
+                            <Check className="h-4 w-4 text-primary ml-auto" />
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Sub Role Types */}
+                <div>
+                  <Label className="text-sm font-medium mb-3 block">서브 직무 (선택사항)</Label>
+                  <div className="flex flex-wrap gap-2">
+                    {(Object.entries(ROLE_TYPES) as [RoleType, typeof ROLE_TYPES[RoleType]][]).map(([key, roleType]) => {
+                      const isMain = selectedMainRoleType === key;
+                      const isSelected = selectedSubRoleTypes.includes(key);
+                      return (
+                        <button
+                          key={key}
+                          onClick={() => toggleSubRoleType(key)}
+                          disabled={isMain}
+                          className={`px-3 py-1.5 rounded-full border transition-all text-sm ${
+                            isMain
+                              ? 'border-muted bg-muted text-muted-foreground opacity-50 cursor-not-allowed'
+                              : isSelected
+                                ? 'border-secondary bg-secondary/10 text-secondary-foreground'
+                                : 'border-border hover:border-secondary/50'
+                          }`}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            {roleType.icon} {roleType.name}
+                            {isSelected && <Check className="h-3 w-3" />}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </CardContent>
             </>
@@ -344,8 +430,30 @@ export default function Onboarding() {
                 {/* Preview Info */}
                 <div className="bg-muted/30 rounded-lg p-4 space-y-3">
                   <div className="flex items-center gap-3">
-                    <span className="text-sm text-muted-foreground">선택한 역할:</span>
-                    {selectedRole && <RoleBadge role={selectedRole} level={1} />}
+                    <span className="text-sm text-muted-foreground">선택한 성향:</span>
+                    {selectedAnimalSkin && (
+                      <div className="flex items-center gap-2">
+                        <span className="text-2xl">{ANIMAL_SKINS[selectedAnimalSkin].icon}</span>
+                        <span className="font-medium">{ANIMAL_SKINS[selectedAnimalSkin].name}</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm text-muted-foreground">메인 직무:</span>
+                    {selectedMainRoleType && (
+                      <Badge variant="default">
+                        {ROLE_TYPES[selectedMainRoleType].icon} {ROLE_TYPES[selectedMainRoleType].name}
+                      </Badge>
+                    )}
+                    {selectedSubRoleTypes.length > 0 && (
+                      <div className="flex gap-1">
+                        {selectedSubRoleTypes.map(sub => (
+                          <Badge key={sub} variant="secondary">
+                            {ROLE_TYPES[sub].icon} {ROLE_TYPES[sub].name}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <span className="text-sm text-muted-foreground">선택한 기술:</span>

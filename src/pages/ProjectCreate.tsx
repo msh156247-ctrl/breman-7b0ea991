@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ROLES, type UserRole } from '@/lib/constants';
+import { ROLES, ANIMAL_SKINS, type UserRole, type AnimalSkin } from '@/lib/constants';
 
 export default function ProjectCreate() {
   const navigate = useNavigate();
@@ -35,6 +35,7 @@ export default function ProjectCreate() {
   });
 
   const [requiredRoles, setRequiredRoles] = useState<UserRole[]>([]);
+  const [preferredAnimalSkins, setPreferredAnimalSkins] = useState<AnimalSkin[]>([]);
   const [requiredSkills, setRequiredSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState('');
 
@@ -50,6 +51,14 @@ export default function ProjectCreate() {
 
   const removeRole = (role: UserRole) => {
     setRequiredRoles(prev => prev.filter(r => r !== role));
+  };
+
+  const toggleAnimalSkin = (skin: AnimalSkin) => {
+    if (preferredAnimalSkins.includes(skin)) {
+      setPreferredAnimalSkins(prev => prev.filter(s => s !== skin));
+    } else {
+      setPreferredAnimalSkins(prev => [...prev, skin]);
+    }
   };
 
   const addSkill = () => {
@@ -97,6 +106,7 @@ export default function ProjectCreate() {
           timeline_weeks: formData.timeline_weeks ? parseInt(formData.timeline_weeks) : null,
           visibility: formData.visibility,
           required_roles: requiredRoles.length > 0 ? requiredRoles : null,
+          preferred_animal_skins: preferredAnimalSkins.length > 0 ? preferredAnimalSkins : [],
           required_skills: requiredSkills.length > 0 ? requiredSkills : null,
           client_id: user.id,
           status: 'open',
@@ -216,6 +226,28 @@ export default function ProjectCreate() {
                       <SelectItem value="private">비공개 (초대된 팀만)</SelectItem>
                     </SelectContent>
                   </Select>
+                </div>
+              </div>
+
+              {/* Preferred Animal Skins */}
+              <div className="space-y-4">
+                <Label>선호 성향 (선택사항)</Label>
+                <div className="flex flex-wrap gap-2">
+                  {Object.entries(ANIMAL_SKINS).map(([key, skin]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => toggleAnimalSkin(key as AnimalSkin)}
+                      className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-all ${
+                        preferredAnimalSkins.includes(key as AnimalSkin)
+                          ? 'bg-secondary text-secondary-foreground'
+                          : 'bg-muted hover:bg-muted/80'
+                      }`}
+                    >
+                      <span>{skin.icon}</span>
+                      <span>{skin.name}</span>
+                    </button>
+                  ))}
                 </div>
               </div>
 

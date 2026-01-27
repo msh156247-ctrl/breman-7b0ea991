@@ -12,7 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ROLES, ROLE_TYPES, type UserRole, type RoleType } from '@/lib/constants';
+import { ROLES, ROLE_TYPES, ANIMAL_SKINS, type UserRole, type RoleType, type AnimalSkin } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import {
@@ -63,6 +63,7 @@ interface OpenSlot {
   id: string;
   role: UserRole;
   role_type: RoleType | null;
+  preferred_animal_skin: AnimalSkin | null;
   min_level: number;
   required_skills: string[] | null;
   required_skill_levels: { skillName: string; minLevel: number }[] | null;
@@ -168,6 +169,7 @@ export default function TeamDetail() {
         id: slot.id,
         role: slot.role as UserRole,
         role_type: slot.role_type as RoleType | null,
+        preferred_animal_skin: slot.preferred_animal_skin as AnimalSkin | null,
         min_level: slot.min_level || 1,
         required_skills: slot.required_skills,
         required_skill_levels: slot.required_skill_levels as { skillName: string; minLevel: number }[] | null,
