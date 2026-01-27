@@ -70,6 +70,23 @@ export function useTypingIndicator({ conversationId, userId, userName }: UseTypi
     };
   }, [conversationId, userId, userName]);
 
+  const stopTyping = useCallback(async () => {
+    if (!channelRef.current || !userId) return;
+
+    isTypingRef.current = false;
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+      typingTimeoutRef.current = null;
+    }
+
+    await channelRef.current.track({
+      user_id: userId,
+      user_name: userName || '사용자',
+      typing: false,
+    });
+  }, [userId, userName]);
+
   const startTyping = useCallback(async () => {
     if (!channelRef.current || !userId || isTypingRef.current) return;
 
@@ -90,24 +107,7 @@ export function useTypingIndicator({ conversationId, userId, userName }: UseTypi
     typingTimeoutRef.current = setTimeout(() => {
       stopTyping();
     }, 3000);
-  }, [userId, userName]);
-
-  const stopTyping = useCallback(async () => {
-    if (!channelRef.current || !userId) return;
-
-    isTypingRef.current = false;
-
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-      typingTimeoutRef.current = null;
-    }
-
-    await channelRef.current.track({
-      user_id: userId,
-      user_name: userName || '사용자',
-      typing: false,
-    });
-  }, [userId, userName]);
+  }, [userId, userName, stopTyping]);
 
   const handleInputChange = useCallback(() => {
     startTyping();
