@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { Plus, X, GripVertical, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ROLE_TYPES, ANIMAL_SKINS, type RoleType, type AnimalSkin } from '@/lib/constants';
+import { ROLE_TYPES, ANIMAL_SKINS, ROLE_TYPE_TO_SKILL_CATEGORIES, SKILL_CATEGORIES, type RoleType, type AnimalSkin } from '@/lib/constants';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 interface RequiredSkillLevel {
   skillName: string;
@@ -30,6 +31,38 @@ interface TeamPositionSlotEditorProps {
 }
 
 export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEditorProps) {
+  // Fetch all available skills
+  const { data: allSkills = [] } = useQuery({
+    queryKey: ['skills'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('skills')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
+      
+      if (error) throw error;
+      return data as { id: string; name: string; category: string | null }[];
+    },
+  });
+
+  // Get skills filtered by role type for a slot
+  const getSkillsForRoleType = (roleType: RoleType | null) => {
+    if (!roleType) return allSkills;
+    const categories = ROLE_TYPE_TO_SKILL_CATEGORIES[roleType] || [];
+    return allSkills.filter(skill => categories.includes(skill.category || ''));
+  };
+
+  // Group skills by category
+  const groupSkillsByCategory = (skills: typeof allSkills) => {
+    return skills.reduce((acc, skill) => {
+      const category = skill.category || 'other';
+      if (!acc[category]) acc[category] = [];
+      acc[category].push(skill);
+      return acc;
+    }, {} as Record<string, typeof allSkills>);
+  };
+
   const addSlot = () => {
     onChange([...slots, { 
       role_type: null,
@@ -45,7 +78,12 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
 
   const updateSlot = (index: number, updates: Partial<PositionSlot>) => {
     const newSlots = [...slots];
-    newSlots[index] = { ...newSlots[index], ...updates };
+    // If role_type changed, clear skills
+    if ('role_type' in updates && updates.role_type !== newSlots[index].role_type) {
+      newSlots[index] = { ...newSlots[index], ...updates, required_skill_levels: [] };
+    } else {
+      newSlots[index] = { ...newSlots[index], ...updates };
+    }
     onChange(newSlots);
   };
 
@@ -60,10 +98,11 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
     }
   };
 
-  const addRequiredSkill = (slotIndex: number) => {
+  const addRequiredSkill = (slotIndex: number, skillName: string) => {
     const slot = slots[slotIndex];
+    if (!skillName || slot.required_skill_levels.some(s => s.skillName === skillName)) return;
     updateSlot(slotIndex, {
-      required_skill_levels: [...slot.required_skill_levels, { skillName: '', minLevel: 1 }]
+      required_skill_levels: [...slot.required_skill_levels, { skillName, minLevel: 1 }]
     });
   };
 
@@ -155,37 +194,25 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                         </div>
                       </div>
 
-                      {/* Required Skills - 기술 */}
+                      {/* Required Skills - 기술 (직무에 따라 필터링) */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <label className="text-xs text-muted-foreground">필요 기술 (선택)</label>
-                          <Button 
-                            type="button"
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-7 text-xs"
-                            onClick={() => addRequiredSkill(slotIndex)}
-                          >
-                            <Plus className="w-3 h-3 mr-1" />
-                            기술 추가
-                          </Button>
+                          <label className="text-xs text-muted-foreground">
+                            필요 기술 {slot.role_type && `(${ROLE_TYPES[slot.role_type].name} 관련)`}
+                          </label>
                         </div>
                         
+                        {/* Selected skills */}
                         {slot.required_skill_levels.length > 0 && (
-                          <div className="space-y-2">
+                          <div className="space-y-2 mb-2">
                             {slot.required_skill_levels.map((skill, skillIndex) => (
-                              <div key={skillIndex} className="flex items-center gap-2">
-                                <Input
-                                  placeholder="기술명 (예: React)"
-                                  value={skill.skillName}
-                                  onChange={(e) => updateRequiredSkill(slotIndex, skillIndex, { skillName: e.target.value })}
-                                  className="flex-1 h-8 text-sm"
-                                />
+                              <div key={skillIndex} className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+                                <span className="flex-1 text-sm font-medium">{skill.skillName}</span>
                                 <Select
                                   value={String(skill.minLevel)}
                                   onValueChange={(v) => updateRequiredSkill(slotIndex, skillIndex, { minLevel: parseInt(v) })}
                                 >
-                                  <SelectTrigger className="w-24 h-8">
+                                  <SelectTrigger className="w-20 h-7 text-xs">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent>
@@ -200,7 +227,7 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                                   type="button"
                                   variant="ghost"
                                   size="icon"
-                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  className="h-7 w-7 text-muted-foreground hover:text-destructive"
                                   onClick={() => removeRequiredSkill(slotIndex, skillIndex)}
                                 >
                                   <X className="w-3 h-3" />
@@ -209,6 +236,42 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                             ))}
                           </div>
                         )}
+                        
+                        {/* Skill selector dropdown */}
+                        {(() => {
+                          const availableSkills = getSkillsForRoleType(slot.role_type);
+                          const groupedSkills = groupSkillsByCategory(
+                            availableSkills.filter(s => !slot.required_skill_levels.some(rs => rs.skillName === s.name))
+                          );
+                          
+                          if (Object.keys(groupedSkills).length === 0) return null;
+                          
+                          return (
+                            <Select
+                              value=""
+                              onValueChange={(skillName) => addRequiredSkill(slotIndex, skillName)}
+                            >
+                              <SelectTrigger className="h-8 text-sm">
+                                <SelectValue placeholder="+ 기술 추가" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(groupedSkills).map(([category, skills]) => (
+                                  <div key={category}>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                                      {SKILL_CATEGORIES[category as keyof typeof SKILL_CATEGORIES]?.icon}
+                                      {SKILL_CATEGORIES[category as keyof typeof SKILL_CATEGORIES]?.name || category}
+                                    </div>
+                                    {skills.map((skill) => (
+                                      <SelectItem key={skill.id} value={skill.name}>
+                                        {skill.name}
+                                      </SelectItem>
+                                    ))}
+                                  </div>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          );
+                        })()}
                       </div>
 
                       {/* Preferred Animal Skin - 성향 */}

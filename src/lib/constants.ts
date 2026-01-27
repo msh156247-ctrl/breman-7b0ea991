@@ -170,6 +170,20 @@ export const SKILL_CATEGORIES = {
   mobile: { name: '모바일', icon: '📱', color: 'from-teal-500 to-cyan-400' },
 } as const;
 
+// 직무(Role Type)와 스킬 카테고리 매핑
+export const ROLE_TYPE_TO_SKILL_CATEGORIES: Record<RoleType, string[]> = {
+  backend: ['backend'],
+  frontend: ['frontend'],
+  design: ['design'],
+  pm: ['frontend', 'backend', 'design', 'data'], // PM은 전반적 이해 필요
+  data: ['data', 'backend'],
+  qa: ['qa', 'frontend', 'backend'],
+  devops: ['devops', 'backend', 'security'],
+  marketing: ['design', 'data'],
+  mobile: ['mobile', 'frontend'],
+  security: ['security', 'backend', 'devops'],
+};
+
 export const SKILL_TIERS = {
   bronze: { name: '브론즈', color: 'tier-bronze', icon: '🥉' },
   silver: { name: '실버', color: 'tier-silver', icon: '🥈' },

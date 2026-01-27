@@ -10,7 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { SkillBadge } from '@/components/ui/SkillBadge';
-import { SKILL_TIERS, SKILL_CATEGORIES, type SkillTier } from '@/lib/constants';
+import { SKILL_TIERS, SKILL_CATEGORIES, ROLE_TYPE_TO_SKILL_CATEGORIES, type SkillTier, type RoleType } from '@/lib/constants';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
@@ -92,7 +92,7 @@ const XP_OPTIONS = [
 ];
 
 export function SkillManagement() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isExpDialogOpen, setIsExpDialogOpen] = useState(false);
@@ -178,10 +178,22 @@ export function SkillManagement() {
     return acc;
   }, {} as Record<string, number>);
 
-  // Get skills that user doesn't have yet
-  const availableSkills = allSkills.filter(
-    skill => !userSkills.some(us => us.skill_id === skill.id)
-  );
+  // Get user's role types for filtering
+  const userMainRole = (profile as any)?.main_role_type as RoleType | null;
+  const userSubRoles = ((profile as any)?.sub_role_types || []) as RoleType[];
+  const userRoleTypes = userMainRole ? [userMainRole, ...userSubRoles] : [];
+  
+  // Get relevant skill categories based on user's role types
+  const relevantCategories = userRoleTypes.length > 0
+    ? [...new Set(userRoleTypes.flatMap(role => ROLE_TYPE_TO_SKILL_CATEGORIES[role] || []))]
+    : Object.keys(SKILL_CATEGORIES);
+
+  // Get skills that user doesn't have yet, filtered by role type
+  const availableSkills = allSkills.filter(skill => {
+    const notOwned = !userSkills.some(us => us.skill_id === skill.id);
+    const isRelevant = relevantCategories.includes(skill.category || '');
+    return notOwned && isRelevant;
+  });
 
   // Group available skills by category
   const groupedSkills = availableSkills.reduce((acc, skill) => {
