@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   Edit, Calendar, Star, Users, Briefcase, Award, 
   ChevronRight, Trophy, Code, ClipboardList, X, RefreshCw,
-  User, Activity, Medal, TrendingUp
+  User, Activity, Medal, TrendingUp, Sparkles
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,11 +13,17 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAuth } from '@/hooks/useAuth';
 import { ROLES, ROLE_TYPES, ANIMAL_SKINS, APPLICATION_STATUS, type RoleType, type AnimalSkin } from '@/lib/constants';
 import { SkillManagement } from '@/components/profile/SkillManagement';
 import { RoleTypeManagement } from '@/components/profile/RoleTypeManagement';
-import { AnimalSkinManagement } from '@/components/profile/AnimalSkinManagement';
 import { LevelBreakdownCard } from '@/components/profile/LevelBreakdownCard';
 import { ProfileEditDialog } from '@/components/profile/ProfileEditDialog';
 import { LevelBadge } from '@/components/ui/LevelBadge';
@@ -92,7 +98,7 @@ const userReviews = [
 ];
 
 export default function Profile() {
-  const { profile, user } = useAuth();
+  const { profile, user, refreshProfile } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
@@ -418,11 +424,68 @@ export default function Profile() {
             </TabsTrigger>
           </TabsList>
 
-          {/* 프로필 Tab: 직무 + 스킬 + 성향 */}
+          {/* 기본 정보 Tab: 직무 + 스킬 + 성향 */}
           <TabsContent value="profile" className="mt-6 space-y-6">
             <RoleTypeManagement />
             <SkillManagement />
-            <AnimalSkinManagement />
+            
+            {/* 성향 - 간소화 표시 */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  협업 성향
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4">
+                  {(() => {
+                    const currentSkin = profile?.animal_skin as AnimalSkin || 'horse';
+                    const skinInfo = ANIMAL_SKINS[currentSkin];
+                    return (
+                      <>
+                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${skinInfo?.gradient || 'from-primary/20 to-accent/20'} flex items-center justify-center text-2xl shrink-0`}>
+                          {skinInfo?.icon || '🐴'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium">{skinInfo?.name || '말'}</p>
+                          <p className="text-sm text-muted-foreground">{skinInfo?.title || ''}</p>
+                        </div>
+                        <Select
+                          value={currentSkin}
+                          onValueChange={async (value: AnimalSkin) => {
+                            if (!user) return;
+                            try {
+                              const { error } = await supabase
+                                .from('profiles')
+                                .update({ animal_skin: value })
+                                .eq('id', user.id);
+                              if (error) throw error;
+                              await refreshProfile();
+                              toast({ title: '성향이 변경되었습니다' });
+                            } catch (error) {
+                              toast({ title: '변경 실패', variant: 'destructive' });
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {(Object.entries(ANIMAL_SKINS) as [AnimalSkin, typeof ANIMAL_SKINS[AnimalSkin]][]).map(([key, skin]) => (
+                              <SelectItem key={key} value={key}>
+                                <span className="flex items-center gap-2">
+                                  {skin.icon} {skin.name}
+                                </span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </>
+                    );
+                  })()}</div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* 활동 Tab: 팀 + 지원 현황 */}
