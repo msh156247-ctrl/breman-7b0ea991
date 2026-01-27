@@ -10,7 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { Badge } from '@/components/ui/badge';
-import { ROLES, ROLE_TYPES, type UserRole, type RoleType } from '@/lib/constants';
+import { ROLES, ROLE_TYPES, ANIMAL_SKINS, type UserRole, type RoleType, type AnimalSkin } from '@/lib/constants';
 import {
   Select,
   SelectContent,
@@ -27,6 +27,7 @@ import { toast } from 'sonner';
 interface SlotInfo {
   role: UserRole;
   roleType: RoleType | null;
+  preferredAnimalSkin: AnimalSkin | null;
   currentCount: number;
   maxCount: number;
   isOpen: boolean;
@@ -59,6 +60,7 @@ export default function Teams() {
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [roleTypeFilter, setRoleTypeFilter] = useState<string>('all');
+  const [animalSkinFilter, setAnimalSkinFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortOption, setSortOption] = useState<string>('newest');
   const [teams, setTeams] = useState<TeamWithSlots[]>([]);
@@ -87,15 +89,16 @@ export default function Teams() {
             .select('*', { count: 'exact', head: true })
             .eq('team_id', team.id);
 
-          // Get role slots with role_type, max_count, current_count
+          // Get role slots with role_type, max_count, current_count, preferred_animal_skin
           const { data: slots } = await supabase
             .from('team_role_slots')
-            .select('role, role_type, is_open, max_count, current_count')
+            .select('role, role_type, preferred_animal_skin, is_open, max_count, current_count')
             .eq('team_id', team.id);
 
           const slotInfos: SlotInfo[] = (slots || []).map(slot => ({
             role: slot.role as UserRole,
             roleType: slot.role_type as RoleType | null,
+            preferredAnimalSkin: slot.preferred_animal_skin as AnimalSkin | null,
             currentCount: slot.current_count || 0,
             maxCount: slot.max_count || 1,
             isOpen: slot.is_open ?? true,
@@ -148,9 +151,12 @@ export default function Teams() {
       const matchesRoleType = roleTypeFilter === 'all' || 
         team.slots.some(s => s.roleType === roleTypeFilter && s.isOpen && s.currentCount < s.maxCount);
       
+      const matchesAnimalSkin = animalSkinFilter === 'all' || 
+        team.slots.some(s => s.preferredAnimalSkin === animalSkinFilter && s.isOpen && s.currentCount < s.maxCount);
+      
       const matchesStatus = statusFilter === 'all' || team.status === statusFilter;
       
-      return matchesSearch && matchesRole && matchesRoleType && matchesStatus;
+      return matchesSearch && matchesRole && matchesRoleType && matchesAnimalSkin && matchesStatus;
     })
     .sort((a, b) => {
       switch (sortOption) {
@@ -224,8 +230,22 @@ export default function Teams() {
               {Object.entries(ROLE_TYPES).map(([key, roleType]) => (
                 <SelectItem key={key} value={key}>
                   <span className="flex items-center gap-2">
-                    <Briefcase className="w-3 h-3" style={{ color: roleType.color }} />
-                    {roleType.name}
+                    {roleType.icon} {roleType.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={animalSkinFilter} onValueChange={setAnimalSkinFilter}>
+            <SelectTrigger className="w-full sm:w-36">
+              <SelectValue placeholder="성향" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">모든 성향</SelectItem>
+              {Object.entries(ANIMAL_SKINS).map(([key, skin]) => (
+                <SelectItem key={key} value={key}>
+                  <span className="flex items-center gap-2">
+                    {skin.icon} {skin.name}
                   </span>
                 </SelectItem>
               ))}
@@ -247,7 +267,7 @@ export default function Teams() {
       {/* Results count and sort */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {searchQuery || roleFilter !== 'all' || roleTypeFilter !== 'all' || statusFilter !== 'all'
+          {searchQuery || roleFilter !== 'all' || roleTypeFilter !== 'all' || animalSkinFilter !== 'all' || statusFilter !== 'all'
             ? `검색 결과 ${filteredTeams.length}개 팀`
             : `총 ${teams.length}개 팀`}
         </p>
@@ -314,6 +334,7 @@ export default function Teams() {
                       {team.slots.map((slot, i) => {
                         const isFilled = slot.currentCount >= slot.maxCount;
                         const isRecruiting = slot.isOpen && !isFilled;
+                        const skinInfo = slot.preferredAnimalSkin ? ANIMAL_SKINS[slot.preferredAnimalSkin] : null;
                         
                         return (
                           <div 
@@ -323,18 +344,17 @@ export default function Teams() {
                                 ? 'bg-muted text-muted-foreground opacity-60' 
                                 : 'bg-primary/10 border border-dashed border-primary/30'
                             }`}
-                            title={`${ROLES[slot.role].name}${slot.roleType ? ` (${ROLE_TYPES[slot.roleType]?.name})` : ''} - ${slot.currentCount}/${slot.maxCount}명 ${isFilled ? '(충원완료)' : '(모집중)'}`}
+                            title={`${skinInfo ? `${skinInfo.name} ` : ''}${ROLES[slot.role].name}${slot.roleType ? ` (${ROLE_TYPES[slot.roleType]?.name})` : ''} - ${slot.currentCount}/${slot.maxCount}명 ${isFilled ? '(충원완료)' : '(모집중)'}`}
                           >
+                            {skinInfo && <span className="text-sm">{skinInfo.icon}</span>}
                             <span className="text-base">{ROLES[slot.role].icon}</span>
                             <span className={`text-xs font-medium ${isFilled ? 'text-muted-foreground' : 'text-primary'}`}>
                               {slot.currentCount}/{slot.maxCount}
                             </span>
                             {slot.roleType && isRecruiting && (
-                              <span 
-                                className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full border border-background"
-                                style={{ backgroundColor: ROLE_TYPES[slot.roleType]?.color }}
-                                title={ROLE_TYPES[slot.roleType]?.name}
-                              />
+                              <span className="text-xs text-muted-foreground">
+                                {ROLE_TYPES[slot.roleType]?.icon}
+                              </span>
                             )}
                           </div>
                         );

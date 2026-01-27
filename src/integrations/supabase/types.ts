@@ -860,6 +860,9 @@ export type Database = {
           deadline: string | null
           description: string | null
           id: string
+          preferred_animal_skins:
+            | Database["public"]["Enums"]["animal_skin"][]
+            | null
           required_roles: Database["public"]["Enums"]["user_role"][] | null
           required_skills: string[] | null
           status: Database["public"]["Enums"]["project_status"] | null
@@ -876,6 +879,9 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           id?: string
+          preferred_animal_skins?:
+            | Database["public"]["Enums"]["animal_skin"][]
+            | null
           required_roles?: Database["public"]["Enums"]["user_role"][] | null
           required_skills?: string[] | null
           status?: Database["public"]["Enums"]["project_status"] | null
@@ -892,6 +898,9 @@ export type Database = {
           deadline?: string | null
           description?: string | null
           id?: string
+          preferred_animal_skins?:
+            | Database["public"]["Enums"]["animal_skin"][]
+            | null
           required_roles?: Database["public"]["Enums"]["user_role"][] | null
           required_skills?: string[] | null
           status?: Database["public"]["Enums"]["project_status"] | null
@@ -1637,6 +1646,9 @@ export type Database = {
           is_open: boolean | null
           max_count: number
           min_level: number | null
+          preferred_animal_skin:
+            | Database["public"]["Enums"]["animal_skin"]
+            | null
           required_skill_levels: Json | null
           required_skills: string[] | null
           role: Database["public"]["Enums"]["user_role"]
@@ -1650,6 +1662,9 @@ export type Database = {
           is_open?: boolean | null
           max_count?: number
           min_level?: number | null
+          preferred_animal_skin?:
+            | Database["public"]["Enums"]["animal_skin"]
+            | null
           required_skill_levels?: Json | null
           required_skills?: string[] | null
           role: Database["public"]["Enums"]["user_role"]
@@ -1663,6 +1678,9 @@ export type Database = {
           is_open?: boolean | null
           max_count?: number
           min_level?: number | null
+          preferred_animal_skin?:
+            | Database["public"]["Enums"]["animal_skin"]
+            | null
           required_skill_levels?: Json | null
           required_skills?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]

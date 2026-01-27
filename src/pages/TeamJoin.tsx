@@ -15,7 +15,7 @@ import {
   UserPlus, LogIn, ArrowLeft, Crown, Briefcase,
   CheckCircle2, XCircle, AlertCircle
 } from 'lucide-react';
-import { ROLES, ROLE_TYPES, type UserRole, type RoleType } from '@/lib/constants';
+import { ROLES, ROLE_TYPES, ANIMAL_SKINS, type UserRole, type RoleType, type AnimalSkin } from '@/lib/constants';
 import {
   Select,
   SelectContent,
@@ -55,6 +55,7 @@ interface OpenSlot {
   id: string;
   role: UserRole;
   role_type: RoleType | null;
+  preferred_animal_skin: AnimalSkin | null;
   min_level: number;
   required_skill_levels: RequiredSkillLevel[];
   current_count: number;
@@ -66,18 +67,24 @@ interface UserSkill {
   level: number;
 }
 
-// Calculate fit score for a slot based on user's skills
+// Calculate fit score for a slot based on user's skills and personality
 function calculateFitScore(
   slot: OpenSlot, 
   userSkills: UserSkill[], 
-  userLevel: number
-): { score: number; levelMet: boolean; skillsMatched: number; skillsTotal: number; details: { skillName: string; required: number; userLevel: number | null; met: boolean }[] } {
+  userLevel: number,
+  userAnimalSkin?: AnimalSkin | null
+): { score: number; levelMet: boolean; personalityMatch: boolean; skillsMatched: number; skillsTotal: number; details: { skillName: string; required: number; userLevel: number | null; met: boolean }[] } {
   const levelMet = userLevel >= slot.min_level;
   
+  // Check personality match (20 points)
+  const personalityMatch = !slot.preferred_animal_skin || slot.preferred_animal_skin === userAnimalSkin;
+  
   if (slot.required_skill_levels.length === 0) {
+    const baseScore = (levelMet ? 40 : 0) + (personalityMatch ? 20 : 0) + 40; // No skills = 40 points for skills
     return { 
-      score: levelMet ? 100 : 0, 
+      score: baseScore, 
       levelMet, 
+      personalityMatch,
       skillsMatched: 0, 
       skillsTotal: 0,
       details: []
@@ -99,13 +106,15 @@ function calculateFitScore(
   const skillsMatched = details.filter(d => d.met).length;
   const skillsTotal = slot.required_skill_levels.length;
   
-  // Score calculation: 40% for level, 60% for skills
-  const levelScore = levelMet ? 40 : 0;
+  // Score calculation: 20% for personality, 20% for level, 60% for skills
+  const personalityScore = personalityMatch ? 20 : 0;
+  const levelScore = levelMet ? 20 : 0;
   const skillScore = skillsTotal > 0 ? (skillsMatched / skillsTotal) * 60 : 60;
   
   return {
-    score: Math.round(levelScore + skillScore),
+    score: Math.round(personalityScore + levelScore + skillScore),
     levelMet,
+    personalityMatch,
     skillsMatched,
     skillsTotal,
     details
@@ -240,6 +249,7 @@ export default function TeamJoin() {
           id: slot.id,
           role: slot.role as UserRole,
           role_type: slot.role_type as RoleType | null,
+          preferred_animal_skin: slot.preferred_animal_skin as AnimalSkin | null,
           min_level: slot.min_level || 1,
           required_skill_levels: requiredSkillLevels,
           current_count: slot.current_count || 0,
@@ -525,8 +535,9 @@ export default function TeamJoin() {
                     {openSlots.map((slot) => {
                       const roleInfo = ROLES[slot.role];
                       const roleTypeInfo = slot.role_type ? ROLE_TYPES[slot.role_type] : null;
+                      const skinInfo = slot.preferred_animal_skin ? ANIMAL_SKINS[slot.preferred_animal_skin] : null;
                       const fitResult = profile 
-                        ? calculateFitScore(slot, userSkills, profile.level) 
+                        ? calculateFitScore(slot, userSkills, profile.level, profile.animal_skin as AnimalSkin | null) 
                         : null;
                       const meetsLevel = !profile || profile.level >= slot.min_level;
                       const isFilled = slot.current_count >= slot.max_count;
@@ -540,7 +551,7 @@ export default function TeamJoin() {
                           className={isFilled ? "opacity-50" : ""}
                         >
                           <div className="flex items-center gap-2">
-                            <span>{roleTypeInfo?.icon || roleInfo.icon}</span>
+                            <span>{skinInfo ? `${skinInfo.icon} ` : ''}{roleTypeInfo?.icon || roleInfo.icon}</span>
                             <span>{roleTypeInfo?.name || roleInfo.name}</span>
                             <span className={`text-xs ${isFilled ? "text-muted-foreground" : "text-muted-foreground"}`}>
                               ({slot.current_count}/{slot.max_count})
@@ -583,8 +594,9 @@ export default function TeamJoin() {
                 const selectedSlot = openSlots.find(s => s.role === selectedRole);
                 if (!selectedSlot) return null;
                 
-                const fitResult = calculateFitScore(selectedSlot, userSkills, profile.level);
+                const fitResult = calculateFitScore(selectedSlot, userSkills, profile.level, profile.animal_skin as AnimalSkin | null);
                 const roleTypeInfo = selectedSlot.role_type ? ROLE_TYPES[selectedSlot.role_type] : null;
+                const skinInfo = selectedSlot.preferred_animal_skin ? ANIMAL_SKINS[selectedSlot.preferred_animal_skin] : null;
                 
                 return (
                   <Card className="border-2">
@@ -625,6 +637,23 @@ export default function TeamJoin() {
                             : "[&>div]:bg-red-500"
                         }`}
                       />
+
+                      {/* Personality Match */}
+                      {selectedSlot.preferred_animal_skin && (
+                        <div className="flex items-center justify-between py-2 border-b">
+                          <span className="text-sm text-muted-foreground">선호 성향</span>
+                          <div className="flex items-center gap-2">
+                            <Badge variant={fitResult.personalityMatch ? "default" : "secondary"} className="text-xs">
+                              {skinInfo?.icon} {skinInfo?.name}
+                            </Badge>
+                            {fitResult.personalityMatch ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <AlertCircle className="w-4 h-4 text-yellow-500" />
+                            )}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Level Requirement */}
                       <div className="flex items-center justify-between py-2 border-b">
