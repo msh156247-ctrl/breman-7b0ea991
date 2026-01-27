@@ -144,15 +144,18 @@ export default function ProjectCreate() {
       <ScrollReveal animation="fade-up" delay={100}>
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl">새 프로젝트 의뢰하기</CardTitle>
+            <CardTitle className="text-2xl">프로젝트 의뢰하기</CardTitle>
+            <p className="text-muted-foreground text-sm mt-2">
+              완벽하지 않아도 괜찮아요. 팀과 함께 구체화해 나갈 수 있습니다 ✨
+            </p>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-8">
               {/* Step 1: 무엇 - What do you need? */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <div className="flex items-center gap-2 text-sm text-primary font-medium mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium">1</span>
-                  <span>어떤 프로젝트인가요?</span>
+                  <span>어떤 것을 만들고 싶으세요?</span>
                 </div>
                 <div>
                   <Label htmlFor="title">프로젝트 제목 *</Label>
@@ -160,33 +163,36 @@ export default function ProjectCreate() {
                     id="title"
                     value={formData.title}
                     onChange={(e) => handleChange('title', e.target.value)}
-                    placeholder="예: AI 기반 고객 서비스 챗봇 개발"
+                    placeholder="예: 우리 가게 예약 앱, 팀 협업 도구..."
                     className="mt-1"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="description">프로젝트 설명</Label>
+                  <Label htmlFor="description">어떤 프로젝트인지 간단히 알려주세요</Label>
                   <Textarea
                     id="description"
                     value={formData.description}
                     onChange={(e) => handleChange('description', e.target.value)}
-                    placeholder="프로젝트의 목표, 주요 기능, 기대 결과물 등을 작성해주세요..."
-                    rows={5}
+                    placeholder="대략적인 아이디어만 적어도 됩니다. 자세한 내용은 팀과 함께 정리할 수 있어요."
+                    rows={4}
                     className="mt-1"
                   />
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    💬 구체적인 기능이나 요구사항은 팀과 대화하면서 정리해도 됩니다.
+                  </p>
                 </div>
               </div>
 
               {/* Step 2: 누구 - Who do you need? (Roles + Skills combined) */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <div className="flex items-center gap-2 text-sm text-primary font-medium mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium">2</span>
-                  <span>어떤 역할과 기술이 필요한가요?</span>
+                  <span>어떤 도움이 필요하세요?</span>
                 </div>
                 
                 <div>
-                  <Label className="mb-2 block">필요 역할</Label>
+                  <Label className="mb-2 block">필요한 분야를 선택해주세요</Label>
                   <div className="flex flex-wrap gap-2">
                     {Object.entries(ROLE_TYPES).map(([key, role]) => (
                       <button
@@ -207,15 +213,18 @@ export default function ProjectCreate() {
                       </button>
                     ))}
                   </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    💡 잘 모르겠다면 비워두셔도 됩니다. 팀이 함께 판단해줄 거예요.
+                  </p>
                 </div>
 
                 <div>
-                  <Label className="mb-2 block">필요 기술 스택</Label>
+                  <Label className="mb-2 block">특별히 필요한 기술이 있나요? (선택)</Label>
                   <div className="flex gap-2">
                     <Input
                       value={newSkill}
                       onChange={(e) => setNewSkill(e.target.value)}
-                      placeholder="예: React, Python, AWS..."
+                      placeholder="예: React, Python, 결제 연동..."
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -251,62 +260,63 @@ export default function ProjectCreate() {
 
               {/* Step 3: 기간 - Timeline */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <div className="flex items-center gap-2 text-sm text-primary font-medium mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium">3</span>
-                  <span>언제까지 완료되어야 하나요?</span>
+                  <span>대략 언제쯤 완료되면 좋을까요?</span>
                 </div>
                 <div>
-                  <Label htmlFor="timeline">예상 기간 (주)</Label>
+                  <Label htmlFor="timeline">희망 기간 (주)</Label>
                   <Input
                     id="timeline"
                     type="number"
                     value={formData.timeline_weeks}
                     onChange={(e) => handleChange('timeline_weeks', e.target.value)}
-                    placeholder="8"
+                    placeholder="예: 4, 8, 12..."
                     className="mt-1"
                     min="1"
                   />
                   <p className="text-xs text-muted-foreground mt-1.5">
-                    💡 정확하지 않아도 괜찮아요. 팀과 협의를 통해 조정할 수 있습니다.
+                    📌 <strong>참고용</strong>이에요. 정확하지 않아도 괜찮습니다. 팀과 상의 후 조정할 수 있어요.
                   </p>
                 </div>
               </div>
 
               {/* Step 4: 예산 - Budget */}
               <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <div className="flex items-center gap-2 text-sm text-primary font-medium mb-2">
                   <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-medium">4</span>
-                  <span>예산 범위가 어떻게 되나요?</span>
+                  <span>예산은 어느 정도 생각하고 계세요?</span>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <Label htmlFor="budget_min">최소 예산 (원)</Label>
+                    <Label htmlFor="budget_min">최소 (원)</Label>
                     <Input
                       id="budget_min"
                       type="number"
                       value={formData.budget_min}
                       onChange={(e) => handleChange('budget_min', e.target.value)}
-                      placeholder="5,000,000"
+                      placeholder="예: 3000000"
                       className="mt-1"
                       min="0"
                     />
                   </div>
                   <div>
-                    <Label htmlFor="budget_max">최대 예산 (원)</Label>
+                    <Label htmlFor="budget_max">최대 (원)</Label>
                     <Input
                       id="budget_max"
                       type="number"
                       value={formData.budget_max}
                       onChange={(e) => handleChange('budget_max', e.target.value)}
-                      placeholder="10,000,000"
+                      placeholder="예: 10000000"
                       className="mt-1"
                       min="0"
                     />
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  💡 예산은 팀 선정 시 참고용입니다. 최종 금액은 계약 단계에서 확정됩니다.
-                </p>
+                <div className="bg-muted/50 rounded-lg p-3 text-sm text-muted-foreground">
+                  <p className="font-medium text-foreground mb-1">💰 예산은 참고용입니다</p>
+                  <p>정확하지 않아도 됩니다. 실제 금액은 팀과 협의 후 계약 단계에서 확정해요.</p>
+                </div>
               </div>
 
               {/* 공개 범위 */}
