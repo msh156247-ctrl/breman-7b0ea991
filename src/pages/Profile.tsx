@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Edit, Calendar, Star, Users, Briefcase, Award, 
-  ChevronRight, Trophy, Code, Mail, ClipboardList, X, RefreshCw
+  ChevronRight, Trophy, Code, ClipboardList, X, RefreshCw
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +14,6 @@ import { RoleBadge } from '@/components/ui/RoleBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/hooks/useAuth';
 import { ROLES, ROLE_TYPES, ANIMAL_SKINS, APPLICATION_STATUS, type RoleType, type AnimalSkin } from '@/lib/constants';
-import { NotificationPreferences } from '@/components/notifications/NotificationPreferences';
 import { SkillManagement } from '@/components/profile/SkillManagement';
 import { RoleTypeManagement } from '@/components/profile/RoleTypeManagement';
 import { AnimalSkinManagement } from '@/components/profile/AnimalSkinManagement';
@@ -407,10 +406,6 @@ export default function Profile() {
             <TabsTrigger value="badges">배지</TabsTrigger>
             <TabsTrigger value="experience">경력</TabsTrigger>
             <TabsTrigger value="reviews">리뷰</TabsTrigger>
-            <TabsTrigger value="settings" className="flex items-center gap-1">
-              <Mail className="w-3 h-3" />
-              알림 설정
-            </TabsTrigger>
           </TabsList>
 
         {/* Roles Tab - 직무 (1st) */}
@@ -614,10 +609,6 @@ export default function Profile() {
           </Card>
         </TabsContent>
 
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="mt-6">
-            <NotificationPreferences />
-          </TabsContent>
         </Tabs>
       </ScrollReveal>
 

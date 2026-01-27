@@ -9,7 +9,8 @@ import {
   Info, 
   CheckCheck,
   Filter,
-  Inbox
+  Inbox,
+  Settings
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -17,7 +18,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -26,6 +27,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { NotificationPreferences } from '@/components/notifications/NotificationPreferences';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Notification = Tables<'notifications'>;
@@ -147,6 +149,7 @@ export default function Notifications() {
   const [isLoading, setIsLoading] = useState(true);
   const [readFilter, setReadFilter] = useState<'all' | 'unread' | 'read'>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'notifications' | 'settings'>('notifications');
 
   const fetchNotifications = useCallback(async () => {
     if (!user?.id) return;
@@ -256,80 +259,100 @@ export default function Notifications() {
             {unreadCount > 0 ? `${unreadCount}개의 읽지 않은 알림` : '모든 알림을 확인했습니다'}
           </p>
         </div>
-        {unreadCount > 0 && (
-          <Button variant="outline" onClick={markAllAsRead} className="gap-2">
-            <CheckCheck className="w-4 h-4" />
-            모두 읽음 처리
-          </Button>
-        )}
       </div>
 
-      {/* Filters */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <Tabs value={readFilter} onValueChange={(v) => setReadFilter(v as typeof readFilter)} className="w-full sm:w-auto">
-              <TabsList className="grid w-full grid-cols-3 sm:w-auto">
-                <TabsTrigger value="all">전체</TabsTrigger>
-                <TabsTrigger value="unread">읽지 않음</TabsTrigger>
-                <TabsTrigger value="read">읽음</TabsTrigger>
-              </TabsList>
-            </Tabs>
-            
-            <div className="flex items-center gap-2">
-              <Filter className="w-4 h-4 text-muted-foreground" />
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="알림 유형" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">모든 유형</SelectItem>
-                  <SelectItem value="team_invite">팀 초대</SelectItem>
-                  <SelectItem value="application">지원</SelectItem>
-                  <SelectItem value="project_match">프로젝트 매칭</SelectItem>
-                  <SelectItem value="milestone">마일스톤</SelectItem>
-                  <SelectItem value="siege">Siege</SelectItem>
-                  <SelectItem value="system">시스템</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Main Tabs - Notifications / Settings */}
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)}>
+        <TabsList>
+          <TabsTrigger value="notifications" className="gap-2">
+            <Bell className="w-4 h-4" />
+            알림
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="gap-2">
+            <Settings className="w-4 h-4" />
+            설정
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Notifications List */}
-      {isLoading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="text-center">
-            <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
-            <p className="text-muted-foreground">알림을 불러오는 중...</p>
-          </div>
-        </div>
-      ) : notifications.length === 0 ? (
-        <Card>
-          <CardContent className="py-12">
-            <div className="text-center">
-              <Inbox className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
-              <h3 className="text-lg font-medium mb-1">알림이 없습니다</h3>
-              <p className="text-muted-foreground text-sm">
-                {readFilter !== 'all' || typeFilter !== 'all' 
-                  ? '필터 조건에 맞는 알림이 없습니다' 
-                  : '새로운 알림이 오면 여기에 표시됩니다'}
-              </p>
+        <TabsContent value="notifications" className="mt-6 space-y-4">
+          {/* Filters */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex flex-col sm:flex-row justify-between gap-4">
+                <Tabs value={readFilter} onValueChange={(v) => setReadFilter(v as typeof readFilter)} className="w-full sm:w-auto">
+                  <TabsList className="grid w-full grid-cols-3 sm:w-auto">
+                    <TabsTrigger value="all">전체</TabsTrigger>
+                    <TabsTrigger value="unread">읽지 않음</TabsTrigger>
+                    <TabsTrigger value="read">읽음</TabsTrigger>
+                  </TabsList>
+                </Tabs>
+                
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <Button variant="outline" size="sm" onClick={markAllAsRead} className="gap-2">
+                      <CheckCheck className="w-4 h-4" />
+                      모두 읽음
+                    </Button>
+                  )}
+                  <Filter className="w-4 h-4 text-muted-foreground" />
+                  <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-[160px]">
+                      <SelectValue placeholder="알림 유형" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">모든 유형</SelectItem>
+                      <SelectItem value="team_invite">팀 초대</SelectItem>
+                      <SelectItem value="application">지원</SelectItem>
+                      <SelectItem value="project_match">프로젝트 매칭</SelectItem>
+                      <SelectItem value="milestone">마일스톤</SelectItem>
+                      <SelectItem value="siege">Siege</SelectItem>
+                      <SelectItem value="system">시스템</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Notifications List */}
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <div className="animate-spin w-8 h-8 border-2 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+                <p className="text-muted-foreground">알림을 불러오는 중...</p>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {notifications.map((notification) => (
-            <NotificationCard 
-              key={notification.id} 
-              notification={notification}
-              onRead={markAsRead}
-            />
-          ))}
-        </div>
-      )}
+          ) : notifications.length === 0 ? (
+            <Card>
+              <CardContent className="py-12">
+                <div className="text-center">
+                  <Inbox className="w-12 h-12 mx-auto text-muted-foreground/30 mb-4" />
+                  <h3 className="text-lg font-medium mb-1">알림이 없습니다</h3>
+                  <p className="text-muted-foreground text-sm">
+                    {readFilter !== 'all' || typeFilter !== 'all' 
+                      ? '필터 조건에 맞는 알림이 없습니다' 
+                      : '새로운 알림이 오면 여기에 표시됩니다'}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {notifications.map((notification) => (
+                <NotificationCard 
+                  key={notification.id} 
+                  notification={notification}
+                  onRead={markAsRead}
+                />
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="settings" className="mt-6">
+          <NotificationPreferences />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
