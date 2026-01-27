@@ -224,6 +224,7 @@ export const SKILL_TIERS = {
 export const PROJECT_STATUS = {
   open: { name: '모집중', color: 'success' },
   matched: { name: '매칭완료', color: 'primary' },
+  negotiating: { name: '협상중', color: 'warning' },
   in_progress: { name: '진행중', color: 'secondary' },
   completed: { name: '완료', color: 'muted' },
   cancelled: { name: '취소됨', color: 'destructive' },

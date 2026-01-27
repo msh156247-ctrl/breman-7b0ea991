@@ -57,7 +57,7 @@ interface Project {
   title: string;
   description: string | null;
   client_id: string | null;
-  status: 'open' | 'matched' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'open' | 'matched' | 'negotiating' | 'in_progress' | 'completed' | 'cancelled';
   budget_min: number | null;
   budget_max: number | null;
   timeline_weeks: number | null;
@@ -91,14 +91,27 @@ function formatBudgetRange(min: number | null, max: number | null): string {
   return '협의';
 }
 
-const getStatusVariant = (status: keyof typeof PROJECT_STATUS) => {
+const getStatusVariant = (status: string) => {
   switch (status) {
     case 'open': return 'success';
     case 'matched': return 'primary';
+    case 'negotiating': return 'warning';
     case 'in_progress': return 'secondary';
     case 'completed': return 'muted';
     case 'cancelled': return 'destructive';
     default: return 'muted';
+  }
+};
+
+const getStatusLabel = (status: string) => {
+  switch (status) {
+    case 'open': return '모집중';
+    case 'matched': return '매칭됨';
+    case 'negotiating': return '협상중';
+    case 'in_progress': return '진행중';
+    case 'completed': return '완료';
+    case 'cancelled': return '취소됨';
+    default: return status;
   }
 };
 
@@ -416,8 +429,8 @@ export default function ProjectDetail() {
                 <div className="flex flex-wrap items-center gap-3">
                   <h1 className="text-2xl md:text-3xl font-display font-bold">{project.title}</h1>
                   <StatusBadge 
-                    status={PROJECT_STATUS[project.status]?.name || project.status} 
-                    variant={getStatusVariant(project.status)}
+                    status={getStatusLabel(project.status)} 
+                    variant={getStatusVariant(project.status) as 'success' | 'primary' | 'secondary' | 'muted' | 'destructive' | 'warning'}
                   />
                 </div>
 

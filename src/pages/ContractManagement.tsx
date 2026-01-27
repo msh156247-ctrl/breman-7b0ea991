@@ -20,8 +20,9 @@ import {
   ArrowLeft, CheckCircle2, Clock, AlertTriangle, XCircle, 
   Upload, FileText, MessageSquare, Shield, DollarSign,
   Calendar, User, Users, ExternalLink, Send, Eye,
-  Lock, Unlock, RefreshCw, Flag, ChevronRight, Plus, Pencil, Trash2, Play
+  Lock, Unlock, RefreshCw, Flag, ChevronRight, Plus, Pencil, Trash2, Play, Star
 } from 'lucide-react';
+import { ProjectReviewPrompt } from '@/components/project/ProjectReviewPrompt';
 import { toast } from 'sonner';
 import type { Database } from '@/integrations/supabase/types';
 
@@ -567,10 +568,14 @@ export default function ContractManagement() {
       </Card>
 
       <Tabs defaultValue="milestones" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="milestones">마일스톤</TabsTrigger>
           <TabsTrigger value="parties">계약 당사자</TabsTrigger>
           <TabsTrigger value="files">파일 & 커뮤니케이션</TabsTrigger>
+          <TabsTrigger value="review" className="flex items-center gap-1">
+            <Star className="h-3 w-3" />
+            후기
+          </TabsTrigger>
         </TabsList>
 
         {/* Milestones Tab */}
@@ -1005,6 +1010,49 @@ export default function ContractManagement() {
               </Dialog>
             </CardContent>
           </Card>
+        </TabsContent>
+
+        {/* Review Tab */}
+        <TabsContent value="review" className="space-y-4">
+          {progressPercentage === 100 ? (
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Client Review */}
+              {isClient && contract.team && (
+                <ProjectReviewPrompt
+                  projectId={contract.project_id || ''}
+                  projectTitle={contract.project?.title || '프로젝트'}
+                  reviewerId={user?.id || ''}
+                  targetType="team"
+                  targetId={contract.team.id}
+                  targetName={contract.team.name}
+                />
+              )}
+              
+              {/* Team Review */}
+              {isTeamMember && contract.project?.client && (
+                <ProjectReviewPrompt
+                  projectId={contract.project_id || ''}
+                  projectTitle={contract.project?.title || '프로젝트'}
+                  reviewerId={user?.id || ''}
+                  targetType="user"
+                  targetId={contract.project.client.id}
+                  targetName={contract.project.client.name}
+                />
+              )}
+            </div>
+          ) : (
+            <Card className="border-border/50">
+              <CardContent className="p-8 text-center text-muted-foreground">
+                <Star className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="font-medium mb-2">후기는 프로젝트 완료 후 작성할 수 있습니다</p>
+                <p className="text-sm">모든 마일스톤이 승인되면 후기 작성이 가능합니다.</p>
+                <div className="mt-4 flex items-center justify-center gap-2">
+                  <Progress value={progressPercentage} className="w-48 h-2" />
+                  <span className="text-xs">{Math.round(progressPercentage)}%</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
       </Tabs>
 
