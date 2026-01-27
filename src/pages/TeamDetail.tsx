@@ -3,12 +3,15 @@ import { supabase } from '@/integrations/supabase/client';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, Users, Star, Trophy, Calendar, Settings, 
-  UserPlus, Copy, Check, Briefcase, Crown, MessageSquare, ExternalLink, Loader2, UserCog, ClipboardList
+  UserPlus, Copy, Check, Briefcase, Crown, MessageSquare, ExternalLink, Loader2, UserCog, ClipboardList,
+  Inbox, Clock, CheckCircle, XCircle, AlertCircle
 } from 'lucide-react';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { LevelBadge } from '@/components/ui/LevelBadge';
@@ -88,7 +91,11 @@ export default function TeamDetail() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [applicationText, setApplicationText] = useState('');
-
+  
+  // Proposal states
+  const [sentProposals, setSentProposals] = useState<any[]>([]);
+  const [receivedProposals, setReceivedProposals] = useState<any[]>([]);
+  const [proposalsLoading, setProposalsLoading] = useState(false);
   useEffect(() => {
     if (teamId) {
       fetchTeamData();
@@ -185,8 +192,64 @@ export default function TeamDetail() {
     }
   };
 
+  // Fetch proposals for this team
+  const fetchProposals = async () => {
+    if (!teamId) return;
+    setProposalsLoading(true);
+    try {
+      // Sent proposals (team submitted to projects)
+      const { data: sentData, error: sentError } = await supabase
+        .from('project_proposals')
+        .select(`
+          *,
+          project:projects(id, title, client_id)
+        `)
+        .eq('team_id', teamId)
+        .order('created_at', { ascending: false });
+      
+      if (sentError) throw sentError;
+      setSentProposals(sentData || []);
+
+      // Received proposals (projects proposed to this team)
+      // For now, received proposals are those where team is involved
+      setReceivedProposals([]);
+    } catch (error) {
+      console.error('Error fetching proposals:', error);
+    } finally {
+      setProposalsLoading(false);
+    }
+  };
+
   const isLeader = user?.id === team?.leader_id;
   const isMember = isLeader || members.some(m => m.id === user?.id);
+
+  useEffect(() => {
+    if (teamId && isLeader) {
+      fetchProposals();
+    }
+  }, [teamId, isLeader]);
+
+  const getStatusIcon = (status: string | null) => {
+    switch (status) {
+      case 'accepted':
+        return <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
+      case 'rejected':
+        return <XCircle className="w-4 h-4 text-destructive" />;
+      case 'pending':
+        return <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />;
+      default:
+        return <AlertCircle className="w-4 h-4 text-muted-foreground" />;
+    }
+  };
+
+  const getStatusLabel = (status: string | null) => {
+    switch (status) {
+      case 'accepted': return '수락됨';
+      case 'rejected': return '거절됨';
+      case 'pending': return '대기중';
+      default: return status || '알 수 없음';
+    }
+  };
 
   const inviteLink = team ? `${window.location.origin}/teams/join/${team.id}` : '';
 
@@ -496,46 +559,123 @@ export default function TeamDetail() {
         </div>
       </ScrollReveal>
 
-      {/* Leader-only: Application Management Button */}
+      {/* Leader-only: Management Cards */}
       {isLeader && (
         <ScrollReveal animation="fade-up" delay={150}>
-          <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                    <ClipboardList className="w-5 h-5 text-primary" />
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Application Management */}
+            <Card className="border-primary/30 bg-primary/5">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <ClipboardList className="w-5 h-5 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">지원 관리</h3>
+                      <p className="text-sm text-muted-foreground">팀 지원서 확인</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold">지원 관리</h3>
-                    <p className="text-sm text-muted-foreground">팀 지원서를 확인하고 관리하세요</p>
-                  </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        확인
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <ClipboardList className="w-5 h-5" />
+                          지원서 관리
+                        </DialogTitle>
+                        <DialogDescription>
+                          팀 지원서를 검토하고 수락/거절하세요.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <TeamApplicationManagement 
+                        teamId={team.id} 
+                        onApplicationHandled={fetchTeamData}
+                      />
+                    </DialogContent>
+                  </Dialog>
                 </div>
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <Button variant="outline">
-                      지원서 확인
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2">
-                        <ClipboardList className="w-5 h-5" />
-                        지원서 관리
-                      </DialogTitle>
-                      <DialogDescription>
-                        팀 지원서를 검토하고 수락/거절하세요.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <TeamApplicationManagement 
-                      teamId={team.id} 
-                      onApplicationHandled={fetchTeamData}
-                    />
-                  </DialogContent>
-                </Dialog>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+
+            {/* Proposal List */}
+            <Card className="border-secondary/30 bg-secondary/5">
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-secondary/10 flex items-center justify-center">
+                      <Inbox className="w-5 h-5 text-secondary-foreground" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">제안 리스트</h3>
+                      <p className="text-sm text-muted-foreground">
+                        {sentProposals.length > 0 ? `${sentProposals.length}건의 제안` : '보낸 제안 확인'}
+                      </p>
+                    </div>
+                  </div>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        확인
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                      <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                          <Inbox className="w-5 h-5" />
+                          제안 리스트
+                        </DialogTitle>
+                        <DialogDescription>
+                          프로젝트에 보낸 제안 현황을 확인하세요.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4 mt-4">
+                        {proposalsLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                          </div>
+                        ) : sentProposals.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            보낸 제안이 없습니다
+                          </div>
+                        ) : (
+                          sentProposals.map((proposal) => (
+                            <Card 
+                              key={proposal.id}
+                              className="cursor-pointer hover:shadow-md transition-shadow"
+                              onClick={() => navigate(`/projects/${proposal.project_id}`)}
+                            >
+                              <CardContent className="p-4">
+                                <div className="flex items-center justify-between gap-4">
+                                  <div className="min-w-0">
+                                    <p className="font-medium truncate">
+                                      {proposal.project?.title || '프로젝트'}
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {proposal.proposed_budget ? `${(proposal.proposed_budget / 10000).toLocaleString()}만원` : '예산 미정'}
+                                      {proposal.proposed_timeline_weeks && ` · ${proposal.proposed_timeline_weeks}주`}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {getStatusIcon(proposal.status)}
+                                    <span className="text-sm">{getStatusLabel(proposal.status)}</span>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          ))
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </ScrollReveal>
       )}
 

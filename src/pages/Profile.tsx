@@ -191,6 +191,22 @@ export default function Profile() {
     enabled: !!user?.id,
   });
 
+  // Fetch my project requests (의뢰 내역)
+  const { data: myRequests = [] } = useQuery({
+    queryKey: ['my-requests', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('client_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
   // Withdraw application mutation
   const withdrawMutation = useMutation({
     mutationFn: async (applicationId: string) => {
@@ -626,6 +642,59 @@ export default function Profile() {
                       </div>
                     );
                   })
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 의뢰 내역 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-primary" />
+                  의뢰 내역
+                </CardTitle>
+                <CardDescription>
+                  내가 등록한 프로젝트 의뢰
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {myRequests.length === 0 ? (
+                  <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">아직 등록한 의뢰가 없습니다</p>
+                    <Link to="/projects">
+                      <Button variant="outline" size="sm">
+                        프로젝트 마켓 가기
+                      </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  myRequests.map((project: any) => (
+                    <Link 
+                      key={project.id}
+                      to={`/projects/${project.id}`}
+                      className="block p-4 rounded-lg hover:bg-muted/50 transition-colors border"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="font-semibold truncate">{project.title}</h3>
+                          <p className="text-sm text-muted-foreground line-clamp-1 mt-1">
+                            {project.description || '설명 없음'}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            {project.budget_min && project.budget_max && (
+                              <Badge variant="secondary">
+                                {(project.budget_min / 10000).toLocaleString()}~{(project.budget_max / 10000).toLocaleString()}만원
+                              </Badge>
+                            )}
+                            <Badge variant={project.status === 'open' ? 'default' : 'outline'}>
+                              {project.status === 'open' ? '모집중' : project.status === 'in_progress' ? '진행중' : project.status}
+                            </Badge>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
+                      </div>
+                    </Link>
+                  ))
                 )}
               </CardContent>
             </Card>
