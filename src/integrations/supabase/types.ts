@@ -752,7 +752,9 @@ export type Database = {
           created_at: string | null
           email: string
           experience_score: number | null
+          hobbies: string[] | null
           id: string
+          interests: string[] | null
           level: number | null
           main_role_type: Database["public"]["Enums"]["role_type"] | null
           name: string
@@ -776,7 +778,9 @@ export type Database = {
           created_at?: string | null
           email: string
           experience_score?: number | null
+          hobbies?: string[] | null
           id: string
+          interests?: string[] | null
           level?: number | null
           main_role_type?: Database["public"]["Enums"]["role_type"] | null
           name: string
@@ -800,7 +804,9 @@ export type Database = {
           created_at?: string | null
           email?: string
           experience_score?: number | null
+          hobbies?: string[] | null
           id?: string
+          interests?: string[] | null
           level?: number | null
           main_role_type?: Database["public"]["Enums"]["role_type"] | null
           name?: string

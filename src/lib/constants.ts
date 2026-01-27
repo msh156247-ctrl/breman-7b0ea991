@@ -168,7 +168,25 @@ export const SKILL_CATEGORIES = {
   security: { name: '보안', icon: '🛡️', color: 'from-red-500 to-rose-400' },
   data: { name: '데이터', icon: '📊', color: 'from-indigo-500 to-blue-400' },
   mobile: { name: '모바일', icon: '📱', color: 'from-teal-500 to-cyan-400' },
+  pm: { name: '기획/PM', icon: '📋', color: 'from-purple-500 to-violet-400' },
 } as const;
+
+// 취미/흥미 프리셋 옵션
+export const HOBBY_PRESETS = [
+  '게임', '독서', '영화/드라마', '음악', '운동/헬스', '요리', '여행', '사진촬영',
+  '그림/일러스트', '글쓰기', '악기연주', 'DIY/공예', '캠핑', '등산', '수영',
+  '자전거', '러닝', '요가/필라테스', '볼링', '당구', '골프', '테니스', '축구', '농구',
+  '보드게임', '퍼즐', '명상', '반려동물', '식물키우기', '카페투어', '맛집탐방',
+] as const;
+
+export const INTEREST_PRESETS = [
+  'AI/머신러닝', '블록체인', 'Web3', '메타버스', 'XR/VR/AR', 'IoT', '로봇공학',
+  '스타트업', '투자/재테크', '창업', '사이드프로젝트', '오픈소스', '해커톤',
+  '디자인시스템', 'UX리서치', '그로스해킹', '데이터분석', '보안/해킹',
+  '클라우드', '서버리스', '마이크로서비스', 'DevOps', 'MLOps',
+  '애자일/스크럼', '프로덕트매니지먼트', '테크리더십', '조직문화',
+  '글로벌서비스', 'B2B SaaS', '핀테크', '헬스케어', '에듀테크', '커머스',
+] as const;
 
 // 기술(Skill) 타입 - 언어/프레임워크/도구/라이브러리/방법론
 export const SKILL_TYPES = {
@@ -186,11 +204,11 @@ export const ROLE_TYPE_TO_SKILL_CATEGORIES: Record<RoleType, string[]> = {
   backend: ['backend'],
   frontend: ['frontend'],
   design: ['design'],
-  pm: ['frontend', 'backend', 'design', 'data'], // PM은 전반적 이해 필요
+  pm: ['pm', 'frontend', 'backend', 'design', 'data'], // PM은 전반적 이해 필요
   data: ['data', 'backend'],
   qa: ['qa', 'frontend', 'backend'],
   devops: ['devops', 'backend', 'security'],
-  marketing: ['design', 'data'],
+  marketing: ['design', 'data', 'pm'],
   mobile: ['mobile', 'frontend'],
   security: ['security', 'backend', 'devops'],
 };
