@@ -114,28 +114,7 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                     </div>
                     
                     <div className="flex-1 space-y-4">
-                      {/* Preferred Animal Skin */}
-                      <div className="space-y-1.5">
-                        <label className="text-xs text-muted-foreground">선호 성향 (선택사항)</label>
-                        <Select 
-                          value={slot.preferred_animal_skin || 'none'} 
-                          onValueChange={(v) => updateSlot(slotIndex, { preferred_animal_skin: v === 'none' ? null : v as AnimalSkin })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="선호 성향 선택" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="none">무관</SelectItem>
-                            {Object.entries(ANIMAL_SKINS).map(([key, value]) => (
-                              <SelectItem key={key} value={key}>
-                                {value.icon} {value.name} ({value.title})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {/* Role Type and Count */}
+                      {/* Role Type and Count - 직무 */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <label className="text-xs text-muted-foreground">직무</label>
@@ -176,7 +155,7 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                         </div>
                       </div>
 
-                      {/* Required Skills */}
+                      {/* Required Skills - 기술 */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <label className="text-xs text-muted-foreground">필요 기술 (선택)</label>
@@ -230,6 +209,27 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                             ))}
                           </div>
                         )}
+                      </div>
+
+                      {/* Preferred Animal Skin - 성향 */}
+                      <div className="space-y-1.5">
+                        <label className="text-xs text-muted-foreground">선호 성향 (선택사항)</label>
+                        <Select 
+                          value={slot.preferred_animal_skin || 'none'} 
+                          onValueChange={(v) => updateSlot(slotIndex, { preferred_animal_skin: v === 'none' ? null : v as AnimalSkin })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="선호 성향 선택" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">무관</SelectItem>
+                            {Object.entries(ANIMAL_SKINS).map(([key, value]) => (
+                              <SelectItem key={key} value={key}>
+                                {value.icon} {value.name} ({value.title})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
 
