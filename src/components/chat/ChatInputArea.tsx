@@ -11,6 +11,7 @@ interface ChatInputAreaProps {
   sending: boolean;
   userId: string;
   onSendMessage: (attachmentUrls: string[]) => Promise<void>;
+  onInputChange?: () => void;
 }
 
 export function ChatInputArea({
@@ -20,6 +21,7 @@ export function ChatInputArea({
   sending,
   userId,
   onSendMessage,
+  onInputChange,
 }: ChatInputAreaProps) {
   const {
     attachments,
@@ -55,6 +57,11 @@ export function ChatInputArea({
     }
   };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewMessage(e.target.value);
+    onInputChange?.();
+  };
+
   return (
     <div className="border-t bg-background">
       {AttachmentPreview}
@@ -64,7 +71,7 @@ export function ChatInputArea({
           ref={inputRef}
           placeholder="메시지를 입력하세요..."
           value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
           disabled={sending || uploading}
           className="flex-1"

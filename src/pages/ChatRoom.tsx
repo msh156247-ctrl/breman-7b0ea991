@@ -1,9 +1,12 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useBrowserNotification } from '@/hooks/useBrowserNotification';
+import { useTypingIndicator } from '@/hooks/useTypingIndicator';
 import { ChatInputArea } from '@/components/chat/ChatInputArea';
+import { ChatSearch } from '@/components/chat/ChatSearch';
+import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { MessageAttachments } from '@/components/chat/ChatAttachments';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,7 +24,8 @@ import {
   Check,
   CheckCheck,
   Pencil,
-  Trash2
+  Trash2,
+  Search
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -44,6 +48,7 @@ import { toast } from 'sonner';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface Message {
   id: string;
@@ -81,7 +86,7 @@ interface ConversationInfo {
 
 export default function ChatRoom() {
   const { conversationId } = useParams<{ conversationId: string }>();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
   const { showNotification, requestPermission } = useBrowserNotification();
   
@@ -97,8 +102,20 @@ export default function ChatRoom() {
   const [sending, setSending] = useState(false);
   const [participantCount, setParticipantCount] = useState(0);
   
+  // Search state
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const messageRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+
+  // Typing indicator
+  const { typingUsers, handleInputChange, stopTyping } = useTypingIndicator({
+    conversationId,
+    userId: user?.id,
+    userName: profile?.name,
+  });
 
   // Request notification permission on mount
   useEffect(() => {
@@ -191,6 +208,13 @@ export default function ChatRoom() {
   const scrollToBottom = () => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const scrollToMessage = (messageId: string) => {
+    const element = messageRefs.current.get(messageId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
   };
 
@@ -370,6 +394,7 @@ export default function ChatRoom() {
     setSending(true);
     const content = newMessage.trim();
     setNewMessage('');
+    stopTyping();
 
     try {
       const { error } = await supabase
@@ -452,6 +477,13 @@ export default function ChatRoom() {
     setEditContent('');
   };
 
+  const handleSearchHighlight = useCallback((messageId: string | null, _index: number, _total: number) => {
+    setHighlightedMessageId(messageId);
+    if (messageId) {
+      scrollToMessage(messageId);
+    }
+  }, []);
+
   const formatDateDivider = (date: Date) => {
     if (isToday(date)) return '오늘';
     if (isYesterday(date)) return '어제';
@@ -486,8 +518,15 @@ export default function ChatRoom() {
         !isSameDay(new Date(messages[index - 1].created_at), msgDate)
       );
 
+      const isHighlighted = msg.id === highlightedMessageId;
+
       return (
-        <div key={msg.id}>
+        <div 
+          key={msg.id}
+          ref={(el) => {
+            if (el) messageRefs.current.set(msg.id, el);
+          }}
+        >
           {showDateDivider && (
             <div className="flex justify-center my-4">
               <Badge variant="secondary" className="text-xs font-normal">
@@ -496,7 +535,11 @@ export default function ChatRoom() {
             </div>
           )}
 
-          <div className={`flex gap-2 mb-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
+          <div className={cn(
+            'flex gap-2 mb-2 transition-colors duration-300',
+            isOwn ? 'flex-row-reverse' : '',
+            isHighlighted && 'bg-accent rounded-lg p-2 -mx-2'
+          )}>
             {!isOwn && (
               <div className="w-8 shrink-0">
                 {showAvatar && (
@@ -654,7 +697,19 @@ export default function ChatRoom() {
           </div>
           <p className="text-xs text-muted-foreground">{conversationInfo?.subtitle}</p>
         </div>
+
+        <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(!isSearchOpen)}>
+          <Search className="h-5 w-5" />
+        </Button>
       </div>
+
+      {/* Search Bar */}
+      <ChatSearch
+        messages={messages}
+        onHighlight={handleSearchHighlight}
+        isOpen={isSearchOpen}
+        onClose={() => setIsSearchOpen(false)}
+      />
 
       {/* Messages */}
       <ScrollArea className="flex-1 p-4">
@@ -706,6 +761,9 @@ export default function ChatRoom() {
         </div>
       )}
 
+      {/* Typing Indicator */}
+      <TypingIndicator typingUsers={typingUsers} className="border-t" />
+
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteMessageId} onOpenChange={(open) => !open && setDeleteMessageId(null)}>
         <AlertDialogContent>
@@ -732,6 +790,7 @@ export default function ChatRoom() {
         sending={sending}
         userId={user?.id || ''}
         onSendMessage={handleSendMessage}
+        onInputChange={handleInputChange}
       />
     </div>
   );
