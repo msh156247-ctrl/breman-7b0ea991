@@ -135,8 +135,8 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                         </Select>
                       </div>
 
-                      {/* Role Type, Level, and Count */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      {/* Role Type and Count */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1.5">
                           <label className="text-xs text-muted-foreground">직무</label>
                           <Select 
@@ -150,25 +150,6 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                               {Object.entries(ROLE_TYPES).map(([key, value]) => (
                                 <SelectItem key={key} value={key}>
                                   {value.icon} {value.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        
-                        <div className="space-y-1.5">
-                          <label className="text-xs text-muted-foreground">최소 레벨</label>
-                          <Select 
-                            value={String(slot.min_level)} 
-                            onValueChange={(v) => updateSlot(slotIndex, { min_level: parseInt(v) })}
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((level) => (
-                                <SelectItem key={level} value={String(level)}>
-                                  Lv.{level}
                                 </SelectItem>
                               ))}
                             </SelectContent>
