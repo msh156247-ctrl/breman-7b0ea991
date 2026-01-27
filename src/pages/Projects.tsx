@@ -26,6 +26,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
+import { LevelBadge } from '@/components/ui/LevelBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -393,10 +394,7 @@ export default function Projects() {
                               </span>
                             )}
                             {team.avg_level && (
-                              <span className="flex items-center gap-1">
-                                <TrendingUp className="w-3.5 h-3.5" />
-                                Lv.{team.avg_level}
-                              </span>
+                              <LevelBadge level={team.avg_level} size="sm" />
                             )}
                           </div>
                         </div>
@@ -537,10 +535,7 @@ export default function Projects() {
                                       </span>
                                     )}
                                     {team.avg_level && (
-                                      <span className="flex items-center gap-1">
-                                        <TrendingUp className="w-3.5 h-3.5" />
-                                        Lv.{team.avg_level}
-                                      </span>
+                                      <LevelBadge level={team.avg_level} size="sm" />
                                     )}
                                     <span className="flex items-center gap-1">
                                       <CheckCircle className="w-3.5 h-3.5 text-emerald-500" />

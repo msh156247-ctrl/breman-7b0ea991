@@ -6,11 +6,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { RoleBadge } from '@/components/ui/RoleBadge';
-import { XPBar } from '@/components/ui/XPBar';
 import { StatusBadge } from '@/components/ui/StatusBadge';
+import { LevelBadge } from '@/components/ui/LevelBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useDashboardData } from '@/hooks/useDashboardData';
+import { useCalculatedLevel } from '@/hooks/useCalculatedLevel';
 import { AnnouncementsBanner, AnnouncementsWidget } from '@/components/dashboard/AnnouncementsWidget';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
@@ -20,11 +21,10 @@ export default function Dashboard() {
   const { profile } = useAuth();
   const { notifications, unreadCount } = useNotifications();
   const { myTeams, activeProjects, stats, loading } = useDashboardData();
+  const { getLevelBreakdownFromProfile } = useCalculatedLevel();
   
-  // Calculate XP for next level (simple formula)
-  const currentXP = profile?.xp || 0;
-  const level = profile?.level || 1;
-  const maxXP = level * 1000;
+  // Get level breakdown from profile
+  const levelBreakdown = profile ? getLevelBreakdownFromProfile(profile as any) : null;
 
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -83,8 +83,12 @@ export default function Dashboard() {
                   <TrendingUp className="w-5 h-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{level}</p>
-                  <p className="text-xs text-muted-foreground">레벨</p>
+                  {levelBreakdown ? (
+                    <LevelBadge level={levelBreakdown.level} size="sm" />
+                  ) : (
+                    <p className="text-2xl font-bold">{profile?.level || 1}</p>
+                  )}
+                  <p className="text-xs text-muted-foreground">직무 레벨</p>
                 </div>
               </div>
             </CardContent>
@@ -96,8 +100,8 @@ export default function Dashboard() {
                   <Star className="w-5 h-5 text-secondary" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{currentXP.toLocaleString()}</p>
-                  <p className="text-xs text-muted-foreground">XP</p>
+                  <p className="text-2xl font-bold">{levelBreakdown?.calculatedLevelScore.toFixed(0) || 0}</p>
+                  <p className="text-xs text-muted-foreground">점수</p>
                 </div>
               </div>
             </CardContent>
@@ -135,14 +139,30 @@ export default function Dashboard() {
         </div>
       </ScrollReveal>
 
-      {/* XP Progress */}
-      <ScrollReveal animation="fade-up" delay={150}>
-        <Card>
-          <CardContent className="p-4">
-            <XPBar current={currentXP} max={maxXP} level={level} />
-          </CardContent>
-        </Card>
-      </ScrollReveal>
+      {/* Level Progress Card - Replaces old XP Bar */}
+      {levelBreakdown && (
+        <ScrollReveal animation="fade-up" delay={150}>
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <LevelBadge level={levelBreakdown.level} score={levelBreakdown.calculatedLevelScore} showScore />
+                  <div className="text-sm text-muted-foreground">
+                    <span>기술: {levelBreakdown.skillScore.toFixed(0)}점</span>
+                    <span className="mx-2">·</span>
+                    <span>경험: {levelBreakdown.experienceScore.toFixed(0)}점</span>
+                  </div>
+                </div>
+                <Link to="/profile">
+                  <Button variant="ghost" size="sm">
+                    상세보기 <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </Link>
+              </div>
+            </CardContent>
+          </Card>
+        </ScrollReveal>
+      )}
 
       {/* Main grid */}
       <div className="grid lg:grid-cols-3 gap-6">
