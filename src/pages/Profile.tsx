@@ -19,6 +19,7 @@ import { SkillManagement } from '@/components/profile/SkillManagement';
 import { RoleTypeManagement } from '@/components/profile/RoleTypeManagement';
 import { AnimalSkinManagement } from '@/components/profile/AnimalSkinManagement';
 import { LevelBreakdownCard } from '@/components/profile/LevelBreakdownCard';
+import { ProfileEditDialog } from '@/components/profile/ProfileEditDialog';
 import { LevelBadge } from '@/components/ui/LevelBadge';
 import { useCalculatedLevel, type LevelBreakdown } from '@/hooks/useCalculatedLevel';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
@@ -98,6 +99,7 @@ export default function Profile() {
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<{ id: string; teamName: string; isPending: boolean } | null>(null);
   const [performanceExpanded, setPerformanceExpanded] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   
   const role = profile?.primary_role || 'horse';
   const animalSkin = (profile?.animal_skin as AnimalSkin) || 'horse';
@@ -226,7 +228,7 @@ export default function Profile() {
 
             {/* Edit button */}
             <div className="flex justify-end mb-4">
-              <Button variant="outline" size="sm">
+              <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
                 <Edit className="w-4 h-4 mr-2" />
                 프로필 수정
               </Button>
@@ -697,6 +699,12 @@ export default function Profile() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Profile Edit Dialog */}
+      <ProfileEditDialog 
+        open={editDialogOpen} 
+        onOpenChange={setEditDialogOpen}
+      />
 
       <BackToTop />
     </div>
