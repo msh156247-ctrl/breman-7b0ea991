@@ -1,16 +1,15 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, X, Trash2, Save, Loader2, ChevronUp, Sparkles, BookOpen, Calendar } from 'lucide-react';
+import { Plus, X, Trash2, Loader2, Sparkles, BookOpen, Calendar, CheckCircle2, Clock, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { SkillBadge } from '@/components/ui/SkillBadge';
-import { SKILL_TIERS, SKILL_CATEGORIES, ROLE_TYPE_TO_SKILL_CATEGORIES, type SkillTier, type RoleType } from '@/lib/constants';
+import { SKILL_TIERS, SKILL_CATEGORIES, SKILL_TYPES, ROLE_TYPE_TO_SKILL_CATEGORIES, type SkillTier, type RoleType, type SkillType } from '@/lib/constants';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import {
@@ -27,11 +26,19 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import { Badge } from '@/components/ui/badge';
 
 type Skill = {
   id: string;
   name: string;
   category: string | null;
+  type: SkillType | null;
 };
 
 type SkillExperience = {
@@ -49,6 +56,8 @@ type UserSkill = {
   level: number;
   tier: SkillTier;
   points: number | null;
+  is_verified: boolean;
+  years_of_experience: number;
   skill: Skill;
   experiences?: SkillExperience[];
 };
@@ -91,15 +100,23 @@ const XP_OPTIONS = [
   { value: 300, label: '전문가 활동', description: '강의, 멘토링, 오픈소스 기여' },
 ];
 
+// Years of experience options
+const YEARS_OPTIONS = [
+  { value: 0, label: '1년 미만' },
+  { value: 1, label: '1년' },
+  { value: 2, label: '2년' },
+  { value: 3, label: '3년' },
+  { value: 5, label: '5년 이상' },
+  { value: 10, label: '10년 이상' },
+];
+
 export function SkillManagement() {
   const { user, profile } = useAuth();
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isExpDialogOpen, setIsExpDialogOpen] = useState(false);
   const [selectedSkillId, setSelectedSkillId] = useState<string>('');
-  const [selectedLevel, setSelectedLevel] = useState<number>(1);
-  const [editingSkillId, setEditingSkillId] = useState<string | null>(null);
-  const [editingLevel, setEditingLevel] = useState<number>(1);
+  const [selectedYears, setSelectedYears] = useState<number>(0);
   const [expandedSkillId, setExpandedSkillId] = useState<string | null>(null);
   
   // Experience form state
@@ -115,6 +132,7 @@ export function SkillManagement() {
       const { data, error } = await supabase
         .from('skills')
         .select('*')
+        .order('type', { ascending: true })
         .order('category', { ascending: true })
         .order('name', { ascending: true });
       
@@ -137,7 +155,9 @@ export function SkillManagement() {
           level,
           tier,
           points,
-          skill:skills(id, name, category)
+          is_verified,
+          years_of_experience,
+          skill:skills(id, name, category, type)
         `)
         .eq('user_id', user.id);
       
@@ -195,40 +215,41 @@ export function SkillManagement() {
     return notOwned && isRelevant;
   });
 
-  // Group available skills by category
-  const groupedSkills = availableSkills.reduce((acc, skill) => {
+  // Group available skills by type then category
+  const groupedSkillsByType = availableSkills.reduce((acc, skill) => {
+    const type = skill.type || 'tool';
+    if (!acc[type]) acc[type] = {};
     const category = skill.category || 'other';
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(skill);
+    if (!acc[type][category]) acc[type][category] = [];
+    acc[type][category].push(skill);
     return acc;
-  }, {} as Record<string, Skill[]>);
+  }, {} as Record<string, Record<string, Skill[]>>);
 
-  // Add skill mutation
+  // Add skill mutation (without level - level is 0 until verified)
   const addSkillMutation = useMutation({
-    mutationFn: async ({ skillId, level }: { skillId: string; level: number }) => {
+    mutationFn: async ({ skillId, yearsOfExperience }: { skillId: string; yearsOfExperience: number }) => {
       if (!user?.id) throw new Error('로그인이 필요합니다');
-      
-      const tier = getTierFromLevel(level);
-      const initialPoints = LEVEL_XP_THRESHOLDS[level - 1] || 0;
       
       const { error } = await supabase
         .from('user_skills')
         .insert({
           user_id: user.id,
           skill_id: skillId,
-          level,
-          tier,
-          points: initialPoints,
+          level: 0, // Level starts at 0, set by verification
+          tier: 'bronze',
+          points: 0,
+          is_verified: false,
+          years_of_experience: yearsOfExperience,
         });
       
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-skills', user?.id] });
-      toast.success('기술이 추가되었습니다');
+      toast.success('기술이 추가되었습니다. 팀 리더의 검증 후 레벨이 부여됩니다.');
       setIsAddDialogOpen(false);
       setSelectedSkillId('');
-      setSelectedLevel(1);
+      setSelectedYears(0);
     },
     onError: (error) => {
       toast.error('기술 추가 실패: ' + error.message);
@@ -245,7 +266,6 @@ export function SkillManagement() {
     }) => {
       if (!user?.id) throw new Error('로그인이 필요합니다');
       
-      // Add experience
       const { error: expError } = await supabase
         .from('skill_experiences')
         .insert({
@@ -257,40 +277,11 @@ export function SkillManagement() {
         });
       
       if (expError) throw expError;
-      
-      // Calculate new total XP
-      const currentXP = totalXPBySkill[skillId] || 0;
-      const userSkill = userSkills.find(us => us.skill_id === skillId);
-      const basePoints = userSkill?.points || 0;
-      const newTotalXP = basePoints + currentXP + xpEarned;
-      const newLevel = getLevelFromXP(newTotalXP);
-      const newTier = getTierFromLevel(newLevel);
-      
-      // Update user skill level and points
-      const { error: updateError } = await supabase
-        .from('user_skills')
-        .update({ 
-          level: newLevel, 
-          tier: newTier,
-          points: newTotalXP,
-        })
-        .eq('skill_id', skillId)
-        .eq('user_id', user.id);
-      
-      if (updateError) throw updateError;
-      
-      return { newLevel, previousLevel: userSkill?.level || 1 };
     },
-    onSuccess: (result) => {
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-skills', user?.id] });
       queryClient.invalidateQueries({ queryKey: ['skill-experiences', user?.id] });
-      
-      if (result.newLevel > result.previousLevel) {
-        toast.success(`🎉 레벨 업! Lv.${result.previousLevel} → Lv.${result.newLevel}`);
-      } else {
-        toast.success('경험이 추가되었습니다');
-      }
-      
+      toast.success('경험이 추가되었습니다');
       setIsExpDialogOpen(false);
       setExpSkillId('');
       setExpTitle('');
@@ -302,23 +293,19 @@ export function SkillManagement() {
     },
   });
 
-  // Update skill mutation
-  const updateSkillMutation = useMutation({
-    mutationFn: async ({ id, level }: { id: string; level: number }) => {
-      const tier = getTierFromLevel(level);
-      const points = LEVEL_XP_THRESHOLDS[level - 1] || 0;
-      
+  // Update years of experience mutation
+  const updateYearsMutation = useMutation({
+    mutationFn: async ({ id, years }: { id: string; years: number }) => {
       const { error } = await supabase
         .from('user_skills')
-        .update({ level, tier, points })
+        .update({ years_of_experience: years })
         .eq('id', id);
       
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-skills', user?.id] });
-      toast.success('레벨이 업데이트되었습니다');
-      setEditingSkillId(null);
+      toast.success('경력 연수가 업데이트되었습니다');
     },
     onError: (error) => {
       toast.error('업데이트 실패: ' + error.message);
@@ -346,32 +333,15 @@ export function SkillManagement() {
 
   // Delete experience mutation
   const deleteExperienceMutation = useMutation({
-    mutationFn: async ({ expId, skillId, xpAmount }: { expId: string; skillId: string; xpAmount: number }) => {
+    mutationFn: async ({ expId }: { expId: string }) => {
       if (!user?.id) throw new Error('로그인이 필요합니다');
       
-      // Delete experience
       const { error: delError } = await supabase
         .from('skill_experiences')
         .delete()
         .eq('id', expId);
       
       if (delError) throw delError;
-      
-      // Recalculate XP and level
-      const userSkill = userSkills.find(us => us.skill_id === skillId);
-      const currentPoints = userSkill?.points || 0;
-      const newPoints = Math.max(0, currentPoints - xpAmount);
-      const newLevel = getLevelFromXP(newPoints);
-      const newTier = getTierFromLevel(newLevel);
-      
-      // Update user skill
-      const { error: updateError } = await supabase
-        .from('user_skills')
-        .update({ level: newLevel, tier: newTier, points: newPoints })
-        .eq('skill_id', skillId)
-        .eq('user_id', user.id);
-      
-      if (updateError) throw updateError;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-skills', user?.id] });
@@ -388,7 +358,7 @@ export function SkillManagement() {
       toast.error('기술을 선택해주세요');
       return;
     }
-    addSkillMutation.mutate({ skillId: selectedSkillId, level: selectedLevel });
+    addSkillMutation.mutate({ skillId: selectedSkillId, yearsOfExperience: selectedYears });
   };
 
   const handleAddExperience = () => {
@@ -404,34 +374,22 @@ export function SkillManagement() {
     });
   };
 
-  const handleStartEdit = (userSkill: UserSkill) => {
-    setEditingSkillId(userSkill.id);
-    setEditingLevel(userSkill.level);
-  };
-
-  const handleSaveEdit = () => {
-    if (editingSkillId) {
-      updateSkillMutation.mutate({ id: editingSkillId, level: editingLevel });
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingSkillId(null);
-    setEditingLevel(1);
-  };
-
   const openExpDialog = (skillId: string) => {
     setExpSkillId(skillId);
     setIsExpDialogOpen(true);
   };
 
-  // Group user skills by category
-  const userSkillsByCategory = userSkills.reduce((acc, us) => {
-    const category = us.skill?.category || 'other';
-    if (!acc[category]) acc[category] = [];
-    acc[category].push(us);
+  // Group user skills by type
+  const userSkillsByType = userSkills.reduce((acc, us) => {
+    const type = us.skill?.type || 'tool';
+    if (!acc[type]) acc[type] = [];
+    acc[type].push(us);
     return acc;
   }, {} as Record<string, UserSkill[]>);
+
+  // Count verified vs unverified
+  const verifiedCount = userSkills.filter(s => s.is_verified).length;
+  const unverifiedCount = userSkills.length - verifiedCount;
 
   if (isLoading) {
     return (
@@ -446,7 +404,23 @@ export function SkillManagement() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-2">
-        <CardTitle className="text-lg font-display">내 기술</CardTitle>
+        <div className="flex items-center gap-3">
+          <CardTitle className="text-lg font-display">내 기술</CardTitle>
+          {userSkills.length > 0 && (
+            <div className="flex items-center gap-2 text-xs">
+              <Badge variant="outline" className="gap-1">
+                <CheckCircle2 className="w-3 h-3 text-success" />
+                검증됨 {verifiedCount}
+              </Badge>
+              {unverifiedCount > 0 && (
+                <Badge variant="secondary" className="gap-1">
+                  <Clock className="w-3 h-3" />
+                  대기 {unverifiedCount}
+                </Badge>
+              )}
+            </div>
+          )}
+        </div>
         <div className="flex gap-2">
           {userSkills.length > 0 && (
             <Dialog open={isExpDialogOpen} onOpenChange={setIsExpDialogOpen}>
@@ -460,7 +434,7 @@ export function SkillManagement() {
                 <DialogHeader>
                   <DialogTitle>스킬 경험 추가</DialogTitle>
                   <DialogDescription>
-                    경험을 추가하면 XP가 쌓이고 레벨이 자동으로 올라갑니다.
+                    실제 경험을 기록하세요. 팀 지원 시 리더가 참고합니다.
                   </DialogDescription>
                 </DialogHeader>
                 
@@ -475,7 +449,11 @@ export function SkillManagement() {
                       <SelectContent>
                         {userSkills.map((us) => (
                           <SelectItem key={us.skill_id} value={us.skill_id}>
-                            {us.skill.name} (Lv.{us.level})
+                            <span className="flex items-center gap-2">
+                              {us.skill.type && SKILL_TYPES[us.skill.type]?.icon}
+                              {us.skill.name}
+                              {us.is_verified && <CheckCircle2 className="w-3 h-3 text-success" />}
+                            </span>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -505,7 +483,7 @@ export function SkillManagement() {
 
                   {/* XP selection */}
                   <div className="space-y-2">
-                    <label className="text-sm font-medium">경험 유형 (획득 XP)</label>
+                    <label className="text-sm font-medium">경험 유형</label>
                     <div className="grid grid-cols-1 gap-2">
                       {XP_OPTIONS.map((option) => (
                         <button
@@ -520,37 +498,12 @@ export function SkillManagement() {
                         >
                           <div className="flex items-center justify-between">
                             <span className="font-medium text-sm">{option.label}</span>
-                            <span className="text-xs font-bold text-primary">+{option.value} XP</span>
                           </div>
                           <p className="text-xs text-muted-foreground mt-0.5">{option.description}</p>
                         </button>
                       ))}
                     </div>
                   </div>
-
-                  {/* XP preview */}
-                  {expSkillId && (
-                    <div className="p-3 rounded-lg bg-muted/50">
-                      <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">획득 예정 XP</span>
-                        <span className="font-bold text-primary">+{expXP} XP</span>
-                      </div>
-                      {(() => {
-                        const userSkill = userSkills.find(us => us.skill_id === expSkillId);
-                        const currentPoints = userSkill?.points || 0;
-                        const newTotal = currentPoints + expXP;
-                        const newLevel = getLevelFromXP(newTotal);
-                        const willLevelUp = newLevel > (userSkill?.level || 1);
-                        
-                        return willLevelUp ? (
-                          <div className="mt-2 p-2 rounded bg-success/10 text-success text-xs font-medium flex items-center gap-1">
-                            <Sparkles className="w-3 h-3" />
-                            레벨 업 예정! Lv.{userSkill?.level} → Lv.{newLevel}
-                          </div>
-                        ) : null;
-                      })()}
-                    </div>
-                  )}
                 </div>
 
                 <DialogFooter>
@@ -578,32 +531,39 @@ export function SkillManagement() {
                 기술 추가
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-lg">
               <DialogHeader>
                 <DialogTitle>새 기술 추가</DialogTitle>
                 <DialogDescription>
-                  추가할 기술을 선택하고 현재 레벨을 설정하세요.
+                  기술과 경력 연수를 선택하세요. 레벨은 팀 리더의 검증 후 부여됩니다.
                 </DialogDescription>
               </DialogHeader>
               
               <div className="space-y-6 py-4">
-                {/* Skill selection */}
+                {/* Skill selection by type */}
                 <div className="space-y-2">
                   <label className="text-sm font-medium">기술 선택</label>
                   <Select value={selectedSkillId} onValueChange={setSelectedSkillId}>
                     <SelectTrigger>
                       <SelectValue placeholder="기술을 선택하세요" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(groupedSkills).map(([category, skills]) => (
-                        <div key={category}>
-                          <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">
-                            {SKILL_CATEGORIES[category as keyof typeof SKILL_CATEGORIES]?.name || category}
+                    <SelectContent className="max-h-80">
+                      {Object.entries(groupedSkillsByType).map(([type, categories]) => (
+                        <div key={type}>
+                          <div className="px-2 py-2 text-xs font-bold text-primary bg-primary/5 sticky top-0">
+                            {SKILL_TYPES[type as SkillType]?.icon} {SKILL_TYPES[type as SkillType]?.name || type}
                           </div>
-                          {skills.map((skill) => (
-                            <SelectItem key={skill.id} value={skill.id}>
-                              {skill.name}
-                            </SelectItem>
+                          {Object.entries(categories).map(([category, skills]) => (
+                            <div key={category}>
+                              <div className="px-4 py-1 text-xs text-muted-foreground">
+                                {SKILL_CATEGORIES[category as keyof typeof SKILL_CATEGORIES]?.name || category}
+                              </div>
+                              {skills.map((skill) => (
+                                <SelectItem key={skill.id} value={skill.id} className="pl-6">
+                                  {skill.name}
+                                </SelectItem>
+                              ))}
+                            </div>
                           ))}
                         </div>
                       ))}
@@ -611,37 +571,36 @@ export function SkillManagement() {
                   </Select>
                 </div>
 
-                {/* Level slider */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium">레벨</label>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold">{selectedLevel}</span>
-                      <span className="text-sm text-muted-foreground">/ 10</span>
+                {/* Years of experience */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">경력 연수</label>
+                  <Select value={selectedYears.toString()} onValueChange={(v) => setSelectedYears(parseInt(v))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="경력을 선택하세요" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {YEARS_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value.toString()}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Info box */}
+                <div className="p-3 rounded-lg bg-muted/50 text-sm">
+                  <div className="flex items-start gap-2">
+                    <Info className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                    <div className="text-muted-foreground">
+                      <p className="font-medium text-foreground mb-1">검증 기반 레벨 시스템</p>
+                      <ul className="list-disc list-inside space-y-1 text-xs">
+                        <li>기술 추가 시 레벨은 0으로 시작합니다</li>
+                        <li>팀에 지원하면 리더가 면접을 통해 검증합니다</li>
+                        <li>검증 받은 레벨(1~10)이 실제 레벨로 반영됩니다</li>
+                        <li>여러 팀에서 검증 받으면 평균 레벨이 적용됩니다</li>
+                      </ul>
                     </div>
-                  </div>
-                  <Slider
-                    value={[selectedLevel]}
-                    onValueChange={(v) => setSelectedLevel(v[0])}
-                    min={1}
-                    max={10}
-                    step={1}
-                    className="w-full"
-                  />
-                  <div className="flex justify-center">
-                    <SkillBadge 
-                      name={allSkills.find(s => s.id === selectedSkillId)?.name || '기술'} 
-                      tier={getTierFromLevel(selectedLevel)}
-                      level={selectedLevel}
-                      size="lg"
-                    />
-                  </div>
-                  <div className="flex justify-between text-xs text-muted-foreground px-1">
-                    <span>입문</span>
-                    <span>초급</span>
-                    <span>중급</span>
-                    <span>고급</span>
-                    <span>전문가</span>
                   </div>
                 </div>
               </div>
@@ -679,191 +638,172 @@ export function SkillManagement() {
           </div>
         ) : (
           <div className="space-y-6">
-            {Object.entries(userSkillsByCategory).map(([category, skills]) => (
-              <div key={category}>
-                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-lg">
-                    {SKILL_CATEGORIES[category as keyof typeof SKILL_CATEGORIES]?.icon || '📦'}
-                  </span>
-                  <h3 className="text-sm font-semibold text-muted-foreground">
-                    {SKILL_CATEGORIES[category as keyof typeof SKILL_CATEGORIES]?.name || category}
-                  </h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {skills.map((userSkill) => {
-                    const experiences = experiencesBySkill[userSkill.skill_id] || [];
-                    const totalXP = userSkill.points || 0;
-                    const xpProgress = getXPProgressInLevel(totalXP, userSkill.level);
-                    const isExpanded = expandedSkillId === userSkill.id;
-                    
-                    return (
-                      <Collapsible 
-                        key={userSkill.id}
-                        open={isExpanded}
-                        onOpenChange={(open) => setExpandedSkillId(open ? userSkill.id : null)}
-                      >
-                        <div 
-                          className="p-4 rounded-lg border border-border hover:border-primary/30 transition-colors group"
+            {Object.entries(SKILL_TYPES).map(([typeKey, typeData]) => {
+              const skills = userSkillsByType[typeKey];
+              if (!skills || skills.length === 0) return null;
+              
+              return (
+                <div key={typeKey}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="text-lg">{typeData.icon}</span>
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      {typeData.name}
+                    </h3>
+                    <span className="text-xs text-muted-foreground">({skills.length})</span>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {skills.map((userSkill) => {
+                      const experiences = experiencesBySkill[userSkill.skill_id] || [];
+                      const isExpanded = expandedSkillId === userSkill.id;
+                      
+                      return (
+                        <Collapsible 
+                          key={userSkill.id}
+                          open={isExpanded}
+                          onOpenChange={(open) => setExpandedSkillId(open ? userSkill.id : null)}
                         >
-                          {editingSkillId === userSkill.id ? (
-                            // Edit mode
-                            <div className="space-y-3">
-                              <div className="flex items-center justify-between">
-                                <SkillBadge 
-                                  name={userSkill.skill.name} 
-                                  tier={getTierFromLevel(editingLevel)}
-                                />
-                                <span className="text-lg font-bold">Lv.{editingLevel}</span>
-                              </div>
-                              <Slider
-                                value={[editingLevel]}
-                                onValueChange={(v) => setEditingLevel(v[0])}
-                                min={1}
-                                max={10}
-                                step={1}
-                                className="w-full"
-                              />
-                              <div className="flex gap-2">
-                                <Button 
-                                  size="sm" 
-                                  onClick={handleSaveEdit}
-                                  disabled={updateSkillMutation.isPending}
-                                  className="flex-1"
+                          <div 
+                            className={`p-4 rounded-lg border transition-colors group ${
+                              userSkill.is_verified 
+                                ? 'border-success/30 bg-success/5' 
+                                : 'border-border hover:border-primary/30'
+                            }`}
+                          >
+                            <div className="flex items-center justify-between mb-2">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <div>
+                                      <SkillBadge 
+                                        name={userSkill.skill.name} 
+                                        tier={userSkill.is_verified ? (userSkill.tier as SkillTier) : 'bronze'}
+                                        level={userSkill.is_verified ? userSkill.level : undefined}
+                                        isVerified={userSkill.is_verified}
+                                        yearsOfExperience={userSkill.years_of_experience}
+                                        skillType={userSkill.skill.type || undefined}
+                                      />
+                                    </div>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {userSkill.is_verified 
+                                      ? `검증됨 · Lv.${userSkill.level} · ${userSkill.years_of_experience}년 경력`
+                                      : '검증 대기중 - 팀 지원 시 리더가 검증합니다'
+                                    }
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7"
+                                  onClick={() => openExpDialog(userSkill.skill_id)}
+                                  title="경험 추가"
                                 >
-                                  {updateSkillMutation.isPending ? (
-                                    <Loader2 className="w-4 h-4 animate-spin" />
-                                  ) : (
-                                    <Save className="w-4 h-4" />
-                                  )}
+                                  <Sparkles className="w-3 h-3" />
                                 </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={handleCancelEdit}
-                                  className="flex-1"
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 text-destructive hover:text-destructive"
+                                  onClick={() => deleteSkillMutation.mutate(userSkill.id)}
                                 >
-                                  <X className="w-4 h-4" />
+                                  <Trash2 className="w-3 h-3" />
                                 </Button>
                               </div>
                             </div>
-                          ) : (
-                            // View mode
-                            <>
-                              <div className="flex items-center justify-between mb-2">
-                                <SkillBadge 
-                                  name={userSkill.skill.name} 
-                                  tier={userSkill.tier as SkillTier}
-                                />
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={() => openExpDialog(userSkill.skill_id)}
-                                    title="경험 추가"
-                                  >
-                                    <Sparkles className="w-3 h-3" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7"
-                                    onClick={() => handleStartEdit(userSkill)}
-                                  >
-                                    <ChevronUp className="w-3 h-3" />
-                                  </Button>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-7 w-7 text-destructive hover:text-destructive"
-                                    onClick={() => deleteSkillMutation.mutate(userSkill.id)}
-                                  >
-                                    <Trash2 className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                              
-                              {/* Level and XP progress */}
-                              <div className="space-y-1.5">
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="text-muted-foreground">
-                                    {totalXP} XP / {LEVEL_XP_THRESHOLDS[userSkill.level] || '∞'} XP
-                                  </span>
-                                  <span className="font-medium">Lv.{userSkill.level}</span>
-                                </div>
-                                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                  <div 
-                                    className={`h-full bg-gradient-to-r ${
-                                      SKILL_CATEGORIES[userSkill.skill.category as keyof typeof SKILL_CATEGORIES]?.color || 'from-primary to-accent'
-                                    }`}
-                                    style={{ width: `${Math.min((xpProgress.current / xpProgress.max) * 100, 100)}%` }}
-                                  />
-                                </div>
-                              </div>
-                              
-                              {/* Experience toggle */}
-                              {experiences.length > 0 && (
-                                <CollapsibleTrigger asChild>
-                                  <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="w-full mt-2 text-xs text-muted-foreground hover:text-foreground"
-                                  >
-                                    <BookOpen className="w-3 h-3 mr-1" />
-                                    경험 {experiences.length}개 {isExpanded ? '접기' : '보기'}
-                                  </Button>
-                                </CollapsibleTrigger>
-                              )}
-                            </>
-                          )}
-                        </div>
-                        
-                        {/* Experience list */}
-                        <CollapsibleContent>
-                          <div className="mt-2 space-y-2 pl-4 border-l-2 border-muted">
-                            {experiences.map((exp) => (
-                              <div 
-                                key={exp.id}
-                                className="p-3 rounded-lg bg-muted/30 group/exp"
+                            
+                            {/* Years of experience editor */}
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                              <span>경력:</span>
+                              <Select 
+                                value={userSkill.years_of_experience.toString()} 
+                                onValueChange={(v) => updateYearsMutation.mutate({ id: userSkill.id, years: parseInt(v) })}
                               >
-                                <div className="flex items-start justify-between gap-2">
-                                  <div className="flex-1 min-w-0">
-                                    <p className="font-medium text-sm truncate">{exp.title}</p>
-                                    {exp.description && (
-                                      <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
-                                        {exp.description}
-                                      </p>
-                                    )}
-                                    <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                      <span className="font-medium text-primary">+{exp.xp_earned} XP</span>
-                                      <span>·</span>
-                                      <Calendar className="w-3 h-3" />
-                                      <span>{format(new Date(exp.created_at), 'yyyy.MM.dd')}</span>
-                                    </div>
-                                  </div>
-                                  <Button
-                                    size="icon"
-                                    variant="ghost"
-                                    className="h-6 w-6 opacity-0 group-hover/exp:opacity-100 transition-opacity text-destructive hover:text-destructive"
-                                    onClick={() => deleteExperienceMutation.mutate({ 
-                                      expId: exp.id, 
-                                      skillId: exp.skill_id,
-                                      xpAmount: exp.xp_earned,
-                                    })}
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ))}
+                                <SelectTrigger className="h-6 w-24 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {YEARS_OPTIONS.map((option) => (
+                                    <SelectItem key={option.value} value={option.value.toString()}>
+                                      {option.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            {/* Status */}
+                            <div className="flex items-center gap-2 text-xs">
+                              {userSkill.is_verified ? (
+                                <Badge variant="default" className="gap-1 bg-success text-success-foreground">
+                                  <CheckCircle2 className="w-3 h-3" />
+                                  검증됨 Lv.{userSkill.level}
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  검증 대기
+                                </Badge>
+                              )}
+                            </div>
+                            
+                            {/* Experience toggle */}
+                            {experiences.length > 0 && (
+                              <CollapsibleTrigger asChild>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="w-full mt-2 text-xs text-muted-foreground hover:text-foreground"
+                                >
+                                  <BookOpen className="w-3 h-3 mr-1" />
+                                  경험 {experiences.length}개 {isExpanded ? '접기' : '보기'}
+                                </Button>
+                              </CollapsibleTrigger>
+                            )}
                           </div>
-                        </CollapsibleContent>
-                      </Collapsible>
-                    );
-                  })}
+                          
+                          {/* Experience list */}
+                          <CollapsibleContent>
+                            <div className="mt-2 space-y-2 pl-4 border-l-2 border-muted">
+                              {experiences.map((exp) => (
+                                <div 
+                                  key={exp.id}
+                                  className="p-3 rounded-lg bg-muted/30 group/exp"
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="flex-1 min-w-0">
+                                      <p className="font-medium text-sm truncate">{exp.title}</p>
+                                      {exp.description && (
+                                        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">
+                                          {exp.description}
+                                        </p>
+                                      )}
+                                      <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                        <Calendar className="w-3 h-3" />
+                                        <span>{format(new Date(exp.created_at), 'yyyy.MM.dd')}</span>
+                                      </div>
+                                    </div>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-6 w-6 opacity-0 group-hover/exp:opacity-100 transition-opacity text-destructive hover:text-destructive"
+                                      onClick={() => deleteExperienceMutation.mutate({ expId: exp.id })}
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </CardContent>
