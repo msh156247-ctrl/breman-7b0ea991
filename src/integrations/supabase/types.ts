@@ -748,15 +748,21 @@ export type Database = {
           animal_skin: Database["public"]["Enums"]["animal_skin"] | null
           avatar_url: string | null
           bio: string | null
+          calculated_level_score: number | null
           created_at: string | null
           email: string
+          experience_score: number | null
           id: string
           level: number | null
           main_role_type: Database["public"]["Enums"]["role_type"] | null
           name: string
+          portfolio_bonus: number | null
           primary_role: Database["public"]["Enums"]["user_role"] | null
+          project_bonus: number | null
           rating_avg: number | null
+          skill_score: number | null
           sub_role_types: Database["public"]["Enums"]["role_type"][] | null
+          team_rating_bonus: number | null
           updated_at: string | null
           user_type: Database["public"]["Enums"]["user_type"] | null
           verified: boolean | null
@@ -766,15 +772,21 @@ export type Database = {
           animal_skin?: Database["public"]["Enums"]["animal_skin"] | null
           avatar_url?: string | null
           bio?: string | null
+          calculated_level_score?: number | null
           created_at?: string | null
           email: string
+          experience_score?: number | null
           id: string
           level?: number | null
           main_role_type?: Database["public"]["Enums"]["role_type"] | null
           name: string
+          portfolio_bonus?: number | null
           primary_role?: Database["public"]["Enums"]["user_role"] | null
+          project_bonus?: number | null
           rating_avg?: number | null
+          skill_score?: number | null
           sub_role_types?: Database["public"]["Enums"]["role_type"][] | null
+          team_rating_bonus?: number | null
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type"] | null
           verified?: boolean | null
@@ -784,15 +796,21 @@ export type Database = {
           animal_skin?: Database["public"]["Enums"]["animal_skin"] | null
           avatar_url?: string | null
           bio?: string | null
+          calculated_level_score?: number | null
           created_at?: string | null
           email?: string
+          experience_score?: number | null
           id?: string
           level?: number | null
           main_role_type?: Database["public"]["Enums"]["role_type"] | null
           name?: string
+          portfolio_bonus?: number | null
           primary_role?: Database["public"]["Enums"]["user_role"] | null
+          project_bonus?: number | null
           rating_avg?: number | null
+          skill_score?: number | null
           sub_role_types?: Database["public"]["Enums"]["role_type"][] | null
+          team_rating_bonus?: number | null
           updated_at?: string | null
           user_type?: Database["public"]["Enums"]["user_type"] | null
           verified?: boolean | null
@@ -2077,6 +2095,7 @@ export type Database = {
       }
     }
     Functions: {
+      calculate_user_level: { Args: { user_id_input: string }; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
