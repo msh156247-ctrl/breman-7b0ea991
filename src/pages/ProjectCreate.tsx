@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ROLES, type UserRole } from '@/lib/constants';
+import { ROLE_TYPES, type RoleType } from '@/lib/constants';
 
 export default function ProjectCreate() {
   const navigate = useNavigate();
@@ -34,7 +34,7 @@ export default function ProjectCreate() {
     visibility: 'public',
   });
 
-  const [requiredRoles, setRequiredRoles] = useState<UserRole[]>([]);
+  const [requiredRoles, setRequiredRoles] = useState<RoleType[]>([]);
   
   const [requiredSkills, setRequiredSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState('');
@@ -43,13 +43,13 @@ export default function ProjectCreate() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const addRole = (role: UserRole) => {
+  const addRole = (role: RoleType) => {
     if (!requiredRoles.includes(role)) {
       setRequiredRoles(prev => [...prev, role]);
     }
   };
 
-  const removeRole = (role: UserRole) => {
+  const removeRole = (role: RoleType) => {
     setRequiredRoles(prev => prev.filter(r => r !== role));
   };
 
@@ -89,6 +89,11 @@ export default function ProjectCreate() {
     setIsSubmitting(true);
 
     try {
+      // Note: required_roles in DB expects user_role enum (animal types), not role_types
+      // For now, we store the role requirements in required_skills as text
+      const roleNames = requiredRoles.map(r => ROLE_TYPES[r].name);
+      const allRequirements = [...roleNames, ...requiredSkills];
+      
       const { data: project, error } = await supabase
         .from('projects')
         .insert({
@@ -98,9 +103,9 @@ export default function ProjectCreate() {
           budget_max: formData.budget_max ? parseInt(formData.budget_max) : null,
           timeline_weeks: formData.timeline_weeks ? parseInt(formData.timeline_weeks) : null,
           visibility: formData.visibility,
-          required_roles: requiredRoles.length > 0 ? requiredRoles : null,
+          required_roles: null,
           preferred_animal_skins: [],
-          required_skills: requiredSkills.length > 0 ? requiredSkills : null,
+          required_skills: allRequirements.length > 0 ? allRequirements : null,
           client_id: user.id,
           status: 'open',
         })
@@ -183,16 +188,16 @@ export default function ProjectCreate() {
                 <div>
                   <Label className="mb-2 block">필요 역할</Label>
                   <div className="flex flex-wrap gap-2">
-                    {Object.entries(ROLES).map(([key, role]) => (
+                    {Object.entries(ROLE_TYPES).map(([key, role]) => (
                       <button
                         key={key}
                         type="button"
-                        onClick={() => requiredRoles.includes(key as UserRole) 
-                          ? removeRole(key as UserRole) 
-                          : addRole(key as UserRole)
+                        onClick={() => requiredRoles.includes(key as RoleType) 
+                          ? removeRole(key as RoleType) 
+                          : addRole(key as RoleType)
                         }
                         className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-all ${
-                          requiredRoles.includes(key as UserRole)
+                          requiredRoles.includes(key as RoleType)
                             ? 'bg-primary text-primary-foreground'
                             : 'bg-muted hover:bg-muted/80'
                         }`}
