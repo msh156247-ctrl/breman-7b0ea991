@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Plus, Briefcase, Clock, DollarSign, Users, Loader2, ArrowUpDown, Timer } from 'lucide-react';
+import { Search, Plus, Briefcase, Clock, DollarSign, Users, Loader2, ArrowUpDown, Timer, Sparkles } from 'lucide-react';
 import { formatDistanceToNow, isPast, differenceInDays } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { Button } from '@/components/ui/button';
@@ -9,12 +9,17 @@ import { Card, CardContent } from '@/components/ui/card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PROJECT_STATUS, type UserRole } from '@/lib/constants';
+import { PROJECT_STATUS, ANIMAL_SKINS, type UserRole, type AnimalSkin } from '@/lib/constants';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ProjectWithClient {
   id: string;
@@ -27,6 +32,7 @@ interface ProjectWithClient {
   timeline_weeks: number | null;
   required_skills: string[] | null;
   required_roles: UserRole[] | null;
+  preferred_animal_skins: AnimalSkin[] | null;
   created_at: string | null;
   deadline: string | null;
   client?: {
@@ -75,6 +81,7 @@ function formatBudget(min: number | null, max: number | null): string {
 export default function Projects() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [animalSkinFilter, setAnimalSkinFilter] = useState<string>('all');
   const [sortOption, setSortOption] = useState<string>('newest');
   const [projects, setProjects] = useState<ProjectWithClient[]>([]);
   const [loading, setLoading] = useState(true);
@@ -118,6 +125,7 @@ export default function Projects() {
             ...project,
             status: project.status as ProjectWithClient['status'],
             required_roles: project.required_roles as UserRole[] | null,
+            preferred_animal_skins: project.preferred_animal_skins as AnimalSkin[] | null,
             deadline: project.deadline,
             client,
             proposalCount: proposalCount || 0,
@@ -140,7 +148,10 @@ export default function Projects() {
       
       const matchesStatus = statusFilter === 'all' || project.status === statusFilter;
       
-      return matchesSearch && matchesStatus;
+      const matchesAnimalSkin = animalSkinFilter === 'all' || 
+        project.preferred_animal_skins?.includes(animalSkinFilter as AnimalSkin);
+      
+      return matchesSearch && matchesStatus && matchesAnimalSkin;
     })
     .sort((a, b) => {
       switch (sortOption) {
@@ -204,10 +215,10 @@ export default function Projects() {
         </Tabs>
       </ScrollReveal>
 
-      {/* Search and Sort */}
+      {/* Filters and Sort */}
       <ScrollReveal animation="fade-up" delay={150}>
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
               placeholder="프로젝트 또는 기술 스택 검색..."
@@ -216,6 +227,23 @@ export default function Projects() {
               className="pl-9"
             />
           </div>
+          <Select value={animalSkinFilter} onValueChange={setAnimalSkinFilter}>
+            <SelectTrigger className="w-36">
+              <Sparkles className="w-3.5 h-3.5 mr-1.5" />
+              <SelectValue placeholder="성향" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">전체 성향</SelectItem>
+              {(Object.entries(ANIMAL_SKINS) as [AnimalSkin, typeof ANIMAL_SKINS[AnimalSkin]][]).map(([key, skin]) => (
+                <SelectItem key={key} value={key}>
+                  <span className="flex items-center gap-2">
+                    <span>{skin.icon}</span>
+                    <span>{skin.name}</span>
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={sortOption} onValueChange={setSortOption}>
             <SelectTrigger className="w-32">
               <ArrowUpDown className="w-3.5 h-3.5 mr-1.5" />
@@ -284,6 +312,28 @@ export default function Projects() {
                               {skill}
                             </span>
                           ))}
+                        </div>
+                      )}
+
+                      {/* Preferred animal skins */}
+                      {project.preferred_animal_skins && project.preferred_animal_skins.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                          <span className="text-xs text-muted-foreground">선호 성향:</span>
+                          {project.preferred_animal_skins.map((skin) => {
+                            const skinData = ANIMAL_SKINS[skin];
+                            if (!skinData) return null;
+                            return (
+                              <Tooltip key={skin}>
+                                <TooltipTrigger asChild>
+                                  <span className="text-lg cursor-help">{skinData.icon}</span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="font-medium">{skinData.name}</p>
+                                  <p className="text-xs text-muted-foreground">{skinData.title}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            );
+                          })}
                         </div>
                       )}
 
