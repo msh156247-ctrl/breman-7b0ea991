@@ -127,6 +127,7 @@ export type Database = {
       }
       contracts: {
         Row: {
+          client_reviewed: boolean | null
           created_at: string | null
           escrow_status: Database["public"]["Enums"]["escrow_status"] | null
           fee_rate: number | null
@@ -134,10 +135,12 @@ export type Database = {
           project_id: string | null
           status: Database["public"]["Enums"]["contract_status"] | null
           team_id: string | null
+          team_reviewed: boolean | null
           total_amount: number | null
           updated_at: string | null
         }
         Insert: {
+          client_reviewed?: boolean | null
           created_at?: string | null
           escrow_status?: Database["public"]["Enums"]["escrow_status"] | null
           fee_rate?: number | null
@@ -145,10 +148,12 @@ export type Database = {
           project_id?: string | null
           status?: Database["public"]["Enums"]["contract_status"] | null
           team_id?: string | null
+          team_reviewed?: boolean | null
           total_amount?: number | null
           updated_at?: string | null
         }
         Update: {
+          client_reviewed?: boolean | null
           created_at?: string | null
           escrow_status?: Database["public"]["Enums"]["escrow_status"] | null
           fee_rate?: number | null
@@ -156,6 +161,7 @@ export type Database = {
           project_id?: string | null
           status?: Database["public"]["Enums"]["contract_status"] | null
           team_id?: string | null
+          team_reviewed?: boolean | null
           total_amount?: number | null
           updated_at?: string | null
         }
@@ -2391,6 +2397,7 @@ export type Database = {
       project_status:
         | "open"
         | "matched"
+        | "negotiating"
         | "in_progress"
         | "completed"
         | "cancelled"
@@ -2579,6 +2586,7 @@ export const Constants = {
       project_status: [
         "open",
         "matched",
+        "negotiating",
         "in_progress",
         "completed",
         "cancelled",
