@@ -402,29 +402,29 @@ export default function Profile() {
         </div>
       </ScrollReveal>
 
-      {/* Unified 4 Tabs: 프로필 / 활동 / 평판 / 성과 */}
+      {/* Unified 4 Tabs: 직무 / 활동 / 성과 / 평판 */}
       <ScrollReveal animation="fade-up" delay={200}>
         <Tabs defaultValue="profile" className="w-full">
           <TabsList className="w-full grid grid-cols-4">
             <TabsTrigger value="profile" className="gap-1.5">
-              <User className="w-4 h-4" />
-              <span className="hidden sm:inline">기본 정보</span>
+              <Briefcase className="w-4 h-4" />
+              <span className="hidden sm:inline">직무</span>
             </TabsTrigger>
             <TabsTrigger value="activity" className="gap-1.5">
               <Activity className="w-4 h-4" />
               <span className="hidden sm:inline">활동</span>
             </TabsTrigger>
-            <TabsTrigger value="reputation" className="gap-1.5">
-              <Medal className="w-4 h-4" />
-              <span className="hidden sm:inline">평판</span>
-            </TabsTrigger>
             <TabsTrigger value="performance" className="gap-1.5">
               <TrendingUp className="w-4 h-4" />
               <span className="hidden sm:inline">성과</span>
             </TabsTrigger>
+            <TabsTrigger value="reputation" className="gap-1.5">
+              <Medal className="w-4 h-4" />
+              <span className="hidden sm:inline">평판</span>
+            </TabsTrigger>
           </TabsList>
 
-          {/* 기본 정보 Tab: 직무 + 스킬 + 성향 */}
+          {/* 직무 Tab: 직무 + 스킬 + 성향 */}
           <TabsContent value="profile" className="mt-6 space-y-6">
             <RoleTypeManagement />
             <SkillManagement />
@@ -488,7 +488,7 @@ export default function Profile() {
             </Card>
           </TabsContent>
 
-          {/* 활동 Tab: 팀 + 지원 현황 */}
+          {/* 활동 Tab: 팀 (공지/구직/프로젝트) + 지원 현황 */}
           <TabsContent value="activity" className="mt-6 space-y-6">
             {/* 소속 팀 */}
             <Card>
@@ -506,19 +506,35 @@ export default function Profile() {
                     <Link 
                       key={team.id}
                       to={`/teams/${team.id}`}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors border"
+                      className="block p-4 rounded-lg hover:bg-muted/50 transition-colors border"
                     >
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl">
-                        {team.emblem}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{team.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <RoleBadge role={team.role} size="sm" showName={false} />
-                          <span className="text-xs text-muted-foreground">{team.members}명</span>
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl shrink-0">
+                          {team.emblem}
                         </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{team.name}</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <RoleBadge role={team.role} size="sm" showName={false} />
+                            <span className="text-xs text-muted-foreground">{team.members}명</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                       </div>
-                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                      {/* 팀 상태 정보 */}
+                      <div className="mt-3 pt-3 border-t flex flex-wrap gap-2 text-xs">
+                        <Badge variant="outline" className="gap-1">
+                          <span className="w-2 h-2 rounded-full bg-accent" />
+                          구직중
+                        </Badge>
+                        <Badge variant="outline" className="gap-1">
+                          <Code className="w-3 h-3" />
+                          프로젝트 1건 진행
+                        </Badge>
+                        <Badge variant="secondary" className="gap-1">
+                          📢 최근 공지 2건
+                        </Badge>
+                      </div>
                     </Link>
                   ))
                 )}
@@ -600,8 +616,35 @@ export default function Profile() {
             </Card>
           </TabsContent>
 
-          {/* 평판 Tab: 리뷰 + 배지 */}
+          {/* 평판 Tab: 배지 + 리뷰 */}
           <TabsContent value="reputation" className="mt-6 space-y-6">
+            {/* 획득한 배지 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Award className="w-5 h-5 text-tier-gold" />
+                  획득한 배지
+                </CardTitle>
+                <CardDescription>
+                  활동을 통해 획득한 업적 배지
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                  {userBadges.map((badge) => (
+                    <div 
+                      key={badge.id}
+                      className="p-4 rounded-lg border border-border text-center hover:border-primary/30 transition-colors"
+                    >
+                      <div className="text-4xl mb-2">{badge.icon}</div>
+                      <p className="font-medium text-sm mb-1">{badge.name}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{badge.description}</p>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
             {/* 받은 리뷰 */}
             <Card>
               <CardHeader>
@@ -638,33 +681,6 @@ export default function Profile() {
                     </div>
                   ))
                 )}
-              </CardContent>
-            </Card>
-
-            {/* 획득한 배지 */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  <Award className="w-5 h-5 text-tier-gold" />
-                  획득한 배지
-                </CardTitle>
-                <CardDescription>
-                  활동을 통해 획득한 업적 배지
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                  {userBadges.map((badge) => (
-                    <div 
-                      key={badge.id}
-                      className="p-4 rounded-lg border border-border text-center hover:border-primary/30 transition-colors"
-                    >
-                      <div className="text-4xl mb-2">{badge.icon}</div>
-                      <p className="font-medium text-sm mb-1">{badge.name}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-2">{badge.description}</p>
-                    </div>
-                  ))}
-                </div>
               </CardContent>
             </Card>
           </TabsContent>
