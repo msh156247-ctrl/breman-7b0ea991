@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Edit, Calendar, Star, Users, Briefcase, Award, 
-  ChevronRight, Trophy, Code, ClipboardList, X, RefreshCw
+  ChevronRight, Trophy, Code, ClipboardList, X, RefreshCw,
+  User, Activity, Medal, TrendingUp
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { RoleBadge } from '@/components/ui/RoleBadge';
@@ -23,6 +24,7 @@ import { useCalculatedLevel, type LevelBreakdown } from '@/hooks/useCalculatedLe
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { useToast } from '@/hooks/use-toast';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -33,6 +35,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 
 const userTeams = [
   { id: '1', name: '스타트업 드림팀', emblem: '🚀', role: 'horse' as const, members: 4 },
@@ -87,8 +94,10 @@ export default function Profile() {
   const { profile, user } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const isMobile = useIsMobile();
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<{ id: string; teamName: string; isPending: boolean } | null>(null);
+  const [performanceExpanded, setPerformanceExpanded] = useState(false);
   
   const role = profile?.primary_role || 'horse';
   const animalSkin = (profile?.animal_skin as AnimalSkin) || 'horse';
@@ -190,10 +199,8 @@ export default function Profile() {
     });
     
     if (isPending) {
-      // 대기 상태면 바로 취소
       withdrawMutation.mutate(app.id);
     } else {
-      // 면접 진행 중이면 확인 다이얼로그
       setWithdrawDialogOpen(true);
     }
   };
@@ -353,13 +360,6 @@ export default function Profile() {
         </Card>
       </ScrollReveal>
 
-      {/* Level Breakdown Detail - New section */}
-      {levelBreakdown && (
-        <ScrollReveal animation="fade-up" delay={50}>
-          <LevelBreakdownCard breakdown={levelBreakdown} showDetails />
-        </ScrollReveal>
-      )}
-
       {/* Stats cards */}
       <ScrollReveal animation="fade-up" delay={100}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -394,221 +394,285 @@ export default function Profile() {
         </div>
       </ScrollReveal>
 
-      {/* Tabs */}
+      {/* Unified 4 Tabs: 프로필 / 활동 / 평판 / 성과 */}
       <ScrollReveal animation="fade-up" delay={200}>
-        <Tabs defaultValue="roles" className="w-full">
-          <TabsList className="w-full md:w-auto flex-wrap">
-            <TabsTrigger value="roles">직무</TabsTrigger>
-            <TabsTrigger value="skills">스킬</TabsTrigger>
-            <TabsTrigger value="personality">성향</TabsTrigger>
-            <TabsTrigger value="applications">지원 현황</TabsTrigger>
-            <TabsTrigger value="teams">팀</TabsTrigger>
-            <TabsTrigger value="badges">배지</TabsTrigger>
-            <TabsTrigger value="experience">경력</TabsTrigger>
-            <TabsTrigger value="reviews">리뷰</TabsTrigger>
+        <Tabs defaultValue="profile" className="w-full">
+          <TabsList className="w-full grid grid-cols-4">
+            <TabsTrigger value="profile" className="gap-1.5">
+              <User className="w-4 h-4" />
+              <span className="hidden sm:inline">프로필</span>
+            </TabsTrigger>
+            <TabsTrigger value="activity" className="gap-1.5">
+              <Activity className="w-4 h-4" />
+              <span className="hidden sm:inline">활동</span>
+            </TabsTrigger>
+            <TabsTrigger value="reputation" className="gap-1.5">
+              <Medal className="w-4 h-4" />
+              <span className="hidden sm:inline">평판</span>
+            </TabsTrigger>
+            <TabsTrigger value="performance" className="gap-1.5">
+              <TrendingUp className="w-4 h-4" />
+              <span className="hidden sm:inline">성과</span>
+            </TabsTrigger>
           </TabsList>
 
-        {/* Roles Tab - 직무 (1st) */}
-        <TabsContent value="roles" className="mt-6">
-          <RoleTypeManagement />
-        </TabsContent>
+          {/* 프로필 Tab: 직무 + 스킬 + 성향 */}
+          <TabsContent value="profile" className="mt-6 space-y-6">
+            <RoleTypeManagement />
+            <SkillManagement />
+            <AnimalSkinManagement />
+          </TabsContent>
 
-        {/* Skills Tab - 스킬 (2nd) */}
-        <TabsContent value="skills" className="mt-6">
-          <SkillManagement />
-        </TabsContent>
-
-        {/* Personality (Animal Skin) Tab - 성향 (3rd) */}
-        <TabsContent value="personality" className="mt-6">
-          <AnimalSkinManagement />
-        </TabsContent>
-
-        {/* Applications Tab */}
-        <TabsContent value="applications" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-display flex items-center gap-2">
-                <ClipboardList className="w-5 h-5 text-primary" />
-                팀 지원 현황
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {myApplications.length === 0 ? (
-                <p className="text-muted-foreground text-center py-8">아직 지원한 팀이 없습니다</p>
-              ) : (
-                myApplications.map((app: any) => {
-                  const statusInfo = APPLICATION_STATUS[app.status as keyof typeof APPLICATION_STATUS];
-                  const roleTypeInfo = app.role_type ? ROLE_TYPES[app.role_type as RoleType] : null;
-                  const canWithdraw = app.status === 'pending' || app.status === 'accepted';
-                  const isWithdrawn = app.status === 'withdrawn';
-                  const isRejected = app.status === 'rejected';
-                  
-                  return (
-                    <div 
-                      key={app.id}
+          {/* 활동 Tab: 팀 + 지원 현황 */}
+          <TabsContent value="activity" className="mt-6 space-y-6">
+            {/* 소속 팀 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Users className="w-5 h-5 text-primary" />
+                  소속 팀
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {userTeams.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">소속된 팀이 없습니다</p>
+                ) : (
+                  userTeams.map((team) => (
+                    <Link 
+                      key={team.id}
+                      to={`/teams/${team.id}`}
                       className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors border"
                     >
-                      <Link 
-                        to={`/teams/${app.team?.id}`}
-                        className="flex items-center gap-4 flex-1 min-w-0"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl shrink-0">
-                          {app.team?.emblem_url || '🎯'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{app.team?.name}</p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {roleTypeInfo && (
-                              <span className="text-xs px-2 py-0.5 rounded bg-muted">
-                                {roleTypeInfo.icon} {roleTypeInfo.name}
-                              </span>
-                            )}
-                            <span className="text-xs text-muted-foreground">
-                              {new Date(app.created_at).toLocaleDateString('ko-KR')}
-                            </span>
-                          </div>
-                        </div>
-                      </Link>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <Badge 
-                          variant={app.status === 'accepted' ? 'default' : app.status === 'rejected' || app.status === 'withdrawn' ? 'destructive' : 'secondary'}
-                        >
-                          {statusInfo?.name || app.status}
-                        </Badge>
-                        {canWithdraw && !isWithdrawn && !isRejected && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleWithdraw(app);
-                            }}
-                            disabled={withdrawMutation.isPending}
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                        )}
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl">
+                        {team.emblem}
                       </div>
-                    </div>
-                  );
-                })
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{team.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <RoleBadge role={team.role} size="sm" showName={false} />
+                          <span className="text-xs text-muted-foreground">{team.members}명</span>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                    </Link>
+                  ))
+                )}
+              </CardContent>
+            </Card>
 
-        {/* Teams Tab */}
-        <TabsContent value="teams" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-display">소속 팀</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {userTeams.map((team) => (
-                <Link 
-                  key={team.id}
-                  to={`/teams/${team.id}`}
-                  className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl">
-                    {team.emblem}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{team.name}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                      <RoleBadge role={team.role} size="sm" showName={false} />
-                      <span className="text-xs text-muted-foreground">{team.members}명</span>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                </Link>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
+            {/* 지원 현황 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <ClipboardList className="w-5 h-5 text-primary" />
+                  팀 지원 현황
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {myApplications.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">아직 지원한 팀이 없습니다</p>
+                ) : (
+                  myApplications.map((app: any) => {
+                    const statusInfo = APPLICATION_STATUS[app.status as keyof typeof APPLICATION_STATUS];
+                    const roleTypeInfo = app.role_type ? ROLE_TYPES[app.role_type as RoleType] : null;
+                    const canWithdraw = app.status === 'pending' || app.status === 'accepted';
+                    const isWithdrawn = app.status === 'withdrawn';
+                    const isRejected = app.status === 'rejected';
+                    
+                    return (
+                      <div 
+                        key={app.id}
+                        className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors border"
+                      >
+                        <Link 
+                          to={`/teams/${app.team?.id}`}
+                          className="flex items-center gap-4 flex-1 min-w-0"
+                        >
+                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl shrink-0">
+                            {app.team?.emblem_url || '🎯'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{app.team?.name}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              {roleTypeInfo && (
+                                <span className="text-xs px-2 py-0.5 rounded bg-muted">
+                                  {roleTypeInfo.icon} {roleTypeInfo.name}
+                                </span>
+                              )}
+                              <span className="text-xs text-muted-foreground">
+                                {new Date(app.created_at).toLocaleDateString('ko-KR')}
+                              </span>
+                            </div>
+                          </div>
+                        </Link>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge 
+                            variant={app.status === 'accepted' ? 'default' : app.status === 'rejected' || app.status === 'withdrawn' ? 'destructive' : 'secondary'}
+                          >
+                            {statusInfo?.name || app.status}
+                          </Badge>
+                          {canWithdraw && !isWithdrawn && !isRejected && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                handleWithdraw(app);
+                              }}
+                              disabled={withdrawMutation.isPending}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Badges Tab */}
-        <TabsContent value="badges" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-display">획득한 배지</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {userBadges.map((badge) => (
-                  <div 
-                    key={badge.id}
-                    className="p-4 rounded-lg border border-border text-center hover:border-primary/30 transition-colors"
-                  >
-                    <div className="text-4xl mb-2">{badge.icon}</div>
-                    <p className="font-medium text-sm mb-1">{badge.name}</p>
-                    <p className="text-xs text-muted-foreground line-clamp-2">{badge.description}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Experience Tab */}
-        <TabsContent value="experience" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-display">경력</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {userExperiences.map((exp) => (
-                <div 
-                  key={exp.id}
-                  className="p-4 rounded-lg border border-border"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-                    <div>
-                      <p className="font-medium">{exp.role}</p>
-                      <p className="text-sm text-muted-foreground">{exp.company}</p>
+          {/* 평판 Tab: 리뷰 + 배지 */}
+          <TabsContent value="reputation" className="mt-6 space-y-6">
+            {/* 받은 리뷰 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Star className="w-5 h-5 text-secondary" />
+                  받은 리뷰
+                </CardTitle>
+                <CardDescription>
+                  프로젝트 완료 후 클라이언트와 동료로부터 받은 피드백
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {userReviews.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">아직 받은 리뷰가 없습니다</p>
+                ) : (
+                  userReviews.map((review) => (
+                    <div 
+                      key={review.id}
+                      className="p-4 rounded-lg border border-border"
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-2">
+                        <div>
+                          <p className="font-medium">{review.project}</p>
+                          <p className="text-sm text-muted-foreground">{review.from}</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {[...Array(review.rating)].map((_, i) => (
+                            <Star key={i} className="w-4 h-4 fill-secondary text-secondary" />
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-sm">{review.comment}</p>
+                      <p className="text-xs text-muted-foreground mt-2">{review.date}</p>
                     </div>
-                    <span className="text-xs text-muted-foreground">{exp.period}</span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">{exp.description}</p>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* 획득한 배지 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Award className="w-5 h-5 text-tier-gold" />
+                  획득한 배지
+                </CardTitle>
+                <CardDescription>
+                  활동을 통해 획득한 업적 배지
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                  {userBadges.map((badge) => (
+                    <div 
+                      key={badge.id}
+                      className="p-4 rounded-lg border border-border text-center hover:border-primary/30 transition-colors"
+                    >
+                      <div className="text-4xl mb-2">{badge.icon}</div>
+                      <p className="font-medium text-sm mb-1">{badge.name}</p>
+                      <p className="text-xs text-muted-foreground line-clamp-2">{badge.description}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-        {/* Reviews Tab */}
-        <TabsContent value="reviews" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg font-display">받은 리뷰</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {userReviews.map((review) => (
-                <div 
-                  key={review.id}
-                  className="p-4 rounded-lg border border-border"
-                >
-                  <div className="flex items-start justify-between gap-2 mb-2">
-                    <div>
-                      <p className="font-medium">{review.project}</p>
-                      <p className="text-sm text-muted-foreground">{review.from}</p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      {[...Array(review.rating)].map((_, i) => (
-                        <Star key={i} className="w-4 h-4 fill-secondary text-secondary" />
-                      ))}
-                    </div>
-                  </div>
-                  <p className="text-sm">{review.comment}</p>
-                  <p className="text-xs text-muted-foreground mt-2">{review.date}</p>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </TabsContent>
+          {/* 성과 Tab: 경력 + 레벨 상세 (모바일 축약) */}
+          <TabsContent value="performance" className="mt-6 space-y-6">
+            {/* 레벨 상세 분석 */}
+            {levelBreakdown && (
+              isMobile ? (
+                <Collapsible open={performanceExpanded} onOpenChange={setPerformanceExpanded}>
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <CollapsibleTrigger asChild>
+                        <button className="flex items-center justify-between w-full text-left">
+                          <div>
+                            <CardTitle className="text-lg font-display flex items-center gap-2">
+                              <TrendingUp className="w-5 h-5 text-primary" />
+                              레벨 분석
+                            </CardTitle>
+                            <CardDescription className="mt-1">
+                              Lv.{levelBreakdown.level} ({levelBreakdown.calculatedLevelScore.toFixed(1)}점)
+                            </CardDescription>
+                          </div>
+                          <ChevronRight className={`w-5 h-5 text-muted-foreground transition-transform ${performanceExpanded ? 'rotate-90' : ''}`} />
+                        </button>
+                      </CollapsibleTrigger>
+                    </CardHeader>
+                    <CollapsibleContent>
+                      <CardContent className="pt-0">
+                        <LevelBreakdownCard breakdown={levelBreakdown} showDetails />
+                      </CardContent>
+                    </CollapsibleContent>
+                  </Card>
+                </Collapsible>
+              ) : (
+                <LevelBreakdownCard breakdown={levelBreakdown} showDetails />
+              )
+            )}
 
+            {/* 경력 */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg font-display flex items-center gap-2">
+                  <Briefcase className="w-5 h-5 text-primary" />
+                  경력
+                </CardTitle>
+                <CardDescription>
+                  이전 직장 및 프로젝트 경험
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {userExperiences.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-8">등록된 경력이 없습니다</p>
+                ) : (
+                  userExperiences.map((exp) => (
+                    <div 
+                      key={exp.id}
+                      className="p-4 rounded-lg border border-border"
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
+                        <div>
+                          <p className="font-medium">{exp.role}</p>
+                          <p className="text-sm text-muted-foreground">{exp.company}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">{exp.period}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground">{exp.description}</p>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
         </Tabs>
       </ScrollReveal>
 
