@@ -170,6 +170,17 @@ export const SKILL_CATEGORIES = {
   mobile: { name: '모바일', icon: '📱', color: 'from-teal-500 to-cyan-400' },
 } as const;
 
+// 기술(Skill) 타입 - 언어/프레임워크/도구/라이브러리/방법론
+export const SKILL_TYPES = {
+  language: { name: '언어', icon: '📝', description: 'Python, JavaScript, Go 등 프로그래밍 언어' },
+  framework: { name: '프레임워크', icon: '🏗️', description: 'React, Django, Spring 등 개발 프레임워크' },
+  tool: { name: '도구', icon: '🔧', description: 'Docker, Git, AWS 등 개발 도구' },
+  library: { name: '라이브러리', icon: '📚', description: 'Redux, Prisma, TailwindCSS 등 라이브러리' },
+  methodology: { name: '방법론', icon: '📋', description: 'Agile, TDD, CI/CD 등 개발 방법론' },
+} as const;
+
+export type SkillType = keyof typeof SKILL_TYPES;
+
 // 직무(Role Type)와 스킬 카테고리 매핑
 export const ROLE_TYPE_TO_SKILL_CATEGORIES: Record<RoleType, string[]> = {
   backend: ['backend'],

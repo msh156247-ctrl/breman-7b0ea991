@@ -1463,24 +1463,86 @@ export type Database = {
           },
         ]
       }
+      skill_verifications: {
+        Row: {
+          created_at: string | null
+          id: string
+          note: string | null
+          team_id: string | null
+          user_skill_id: string
+          verified_level: number | null
+          verifier_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          team_id?: string | null
+          user_skill_id: string
+          verified_level?: number | null
+          verifier_id: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          note?: string | null
+          team_id?: string | null
+          user_skill_id?: string
+          verified_level?: number | null
+          verifier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "skill_verifications_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_verifications_user_skill_id_fkey"
+            columns: ["user_skill_id"]
+            isOneToOne: false
+            referencedRelation: "user_skills"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_verifications_verifier_id_fkey"
+            columns: ["verifier_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "skill_verifications_verifier_id_fkey"
+            columns: ["verifier_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       skills: {
         Row: {
           category: string | null
           created_at: string | null
           id: string
           name: string
+          type: Database["public"]["Enums"]["skill_type"] | null
         }
         Insert: {
           category?: string | null
           created_at?: string | null
           id?: string
           name: string
+          type?: Database["public"]["Enums"]["skill_type"] | null
         }
         Update: {
           category?: string | null
           created_at?: string | null
           id?: string
           name?: string
+          type?: Database["public"]["Enums"]["skill_type"] | null
         }
         Relationships: []
       }
@@ -2000,27 +2062,42 @@ export type Database = {
       user_skills: {
         Row: {
           id: string
+          is_verified: boolean | null
           level: number | null
           points: number | null
           skill_id: string | null
           tier: Database["public"]["Enums"]["skill_tier"] | null
           user_id: string | null
+          verification_note: string | null
+          verified_at: string | null
+          verified_by: string | null
+          years_of_experience: number | null
         }
         Insert: {
           id?: string
+          is_verified?: boolean | null
           level?: number | null
           points?: number | null
           skill_id?: string | null
           tier?: Database["public"]["Enums"]["skill_tier"] | null
           user_id?: string | null
+          verification_note?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          years_of_experience?: number | null
         }
         Update: {
           id?: string
+          is_verified?: boolean | null
           level?: number | null
           points?: number | null
           skill_id?: string | null
           tier?: Database["public"]["Enums"]["skill_tier"] | null
           user_id?: string | null
+          verification_note?: string | null
+          verified_at?: string | null
+          verified_by?: string | null
+          years_of_experience?: number | null
         }
         Relationships: [
           {
@@ -2040,6 +2117,20 @@ export type Database = {
           {
             foreignKeyName: "user_skills_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_skills_verified_by_fkey"
+            columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_skills_verified_by_fkey"
+            columns: ["verified_by"]
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
@@ -2158,6 +2249,7 @@ export type Database = {
         | "security"
       siege_status: "registering" | "ongoing" | "ended" | "results"
       skill_tier: "bronze" | "silver" | "gold" | "platinum" | "diamond"
+      skill_type: "language" | "framework" | "tool" | "library" | "methodology"
       submission_kind: "test" | "final"
       team_status: "active" | "inactive" | "recruiting"
       user_role: "horse" | "dog" | "cat" | "rooster"
@@ -2347,6 +2439,7 @@ export const Constants = {
       ],
       siege_status: ["registering", "ongoing", "ended", "results"],
       skill_tier: ["bronze", "silver", "gold", "platinum", "diamond"],
+      skill_type: ["language", "framework", "tool", "library", "methodology"],
       submission_kind: ["test", "final"],
       team_status: ["active", "inactive", "recruiting"],
       user_role: ["horse", "dog", "cat", "rooster"],
