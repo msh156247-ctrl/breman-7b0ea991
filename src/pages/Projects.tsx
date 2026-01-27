@@ -323,22 +323,16 @@ export default function Projects() {
       </ScrollReveal>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-flex">
           <TabsTrigger value="recommendations" className="gap-2">
             <Users className="w-4 h-4" />
             <span className="hidden sm:inline">팀 추천</span>
+            <span className="sm:hidden">추천</span>
           </TabsTrigger>
           <TabsTrigger value="request" className="gap-2">
             <Send className="w-4 h-4" />
             <span className="hidden sm:inline">의뢰하기</span>
-          </TabsTrigger>
-          <TabsTrigger value="my-requests" className="gap-2">
-            <FileText className="w-4 h-4" />
-            <span className="hidden sm:inline">의뢰 내역</span>
-          </TabsTrigger>
-          <TabsTrigger value="proposals" className="gap-2">
-            <Inbox className="w-4 h-4" />
-            <span className="hidden sm:inline">제안 리스트</span>
+            <span className="sm:hidden">의뢰</span>
           </TabsTrigger>
         </TabsList>
 
@@ -611,162 +605,6 @@ export default function Projects() {
           )}
         </TabsContent>
 
-        {/* 의뢰 내역 */}
-        <TabsContent value="my-requests" className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold">내가 등록한 의뢰</h2>
-            <Button onClick={() => navigate('/projects/create')}>
-              <Plus className="w-4 h-4 mr-2" />
-              새 의뢰
-            </Button>
-          </div>
-
-          {requestsLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : myRequests.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center text-muted-foreground">
-                아직 등록한 의뢰가 없습니다
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="space-y-4">
-              {myRequests.map((project, index) => (
-                <ScrollReveal key={project.id} animation="fade-up" delay={index * 50}>
-                  <Card 
-                    className="cursor-pointer hover:shadow-md transition-shadow"
-                    onClick={() => navigate(`/projects/${project.id}`)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold truncate">{project.title}</h3>
-                          <p className="text-sm text-muted-foreground line-clamp-1 mt-1">
-                            {project.description || '설명 없음'}
-                          </p>
-                          <div className="flex items-center gap-2 mt-2">
-                            {project.budget_min && project.budget_max && (
-                              <Badge variant="secondary">
-                                {project.budget_min.toLocaleString()}~{project.budget_max.toLocaleString()}원
-                              </Badge>
-                            )}
-                            <Badge variant={project.status === 'open' ? 'default' : 'outline'}>
-                              {project.status === 'open' ? '모집중' : project.status}
-                            </Badge>
-                          </div>
-                        </div>
-                        <ArrowRight className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                </ScrollReveal>
-              ))}
-            </div>
-          )}
-        </TabsContent>
-
-        {/* 제안 리스트 */}
-        <TabsContent value="proposals" className="space-y-6">
-          {/* 받은 제안 */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold">받은 제안</h2>
-            {receivedLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              </div>
-            ) : receivedProposals.length === 0 ? (
-              <Card>
-                <CardContent className="py-8 text-center text-muted-foreground">
-                  받은 제안이 없습니다
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {receivedProposals.map((proposal, index) => (
-                  <ScrollReveal key={proposal.id} animation="fade-up" delay={index * 50}>
-                    <Card 
-                      className="cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={() => navigate(`/projects/${proposal.project_id}`)}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <Avatar className="h-10 w-10 rounded-lg">
-                              <AvatarImage src={proposal.team?.emblem_url || undefined} />
-                              <AvatarFallback className="rounded-lg">
-                                {proposal.team?.name?.[0] || 'T'}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="min-w-0">
-                              <p className="font-medium truncate">
-                                {proposal.team?.name}이(가) 제안
-                              </p>
-                              <p className="text-sm text-muted-foreground truncate">
-                                {proposal.project?.title}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {getStatusIcon(proposal.status)}
-                            <span className="text-sm">{getStatusLabel(proposal.status)}</span>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </ScrollReveal>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* 보낸 제안 (팀 리더만) */}
-          {isTeamLeader && (
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold">보낸 제안</h2>
-              {sentLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              ) : sentProposals.length === 0 ? (
-                <Card>
-                  <CardContent className="py-8 text-center text-muted-foreground">
-                    보낸 제안이 없습니다
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-3">
-                  {sentProposals.map((proposal, index) => (
-                    <ScrollReveal key={proposal.id} animation="fade-up" delay={index * 50}>
-                      <Card 
-                        className="cursor-pointer hover:shadow-md transition-shadow"
-                        onClick={() => navigate(`/projects/${proposal.project_id}`)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="min-w-0">
-                              <p className="font-medium truncate">
-                                {proposal.project?.title}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {proposal.team?.name}에서 제안함
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              {getStatusIcon(proposal.status)}
-                              <span className="text-sm">{getStatusLabel(proposal.status)}</span>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    </ScrollReveal>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </TabsContent>
       </Tabs>
 
       <BackToTop />
