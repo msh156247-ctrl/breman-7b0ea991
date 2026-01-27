@@ -2,7 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Info, Zap, Briefcase, Image, FolderKanban, Star } from 'lucide-react';
+import { Info, Zap, Briefcase, Image, FolderKanban, Star, Award } from 'lucide-react';
 import { LevelBreakdown, getLevelInfo, LEVEL_THRESHOLDS } from '@/hooks/useCalculatedLevel';
 import { cn } from '@/lib/utils';
 
@@ -36,7 +36,7 @@ export function LevelBreakdownCard({ breakdown, showDetails = true, className }:
               <TooltipContent className="max-w-xs">
                 <p className="text-sm">
                   기술 숙련도(60%)와 경험(40%)을 기반으로 자동 계산됩니다.
-                  포트폴리오, 프로젝트 기록, 팀 평가가 보정 점수로 반영됩니다.
+                  포트폴리오, 프로젝트 기록, 팀 평가, 자격증이 보정 점수로 반영됩니다.
                 </p>
               </TooltipContent>
             </Tooltip>
@@ -95,7 +95,7 @@ export function LevelBreakdownCard({ breakdown, showDetails = true, className }:
             {/* Bonus Scores */}
             <div className="pt-2">
               <h5 className="text-xs font-medium text-muted-foreground mb-2">보정 점수</h5>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <BonusItem
                   icon={<Image className="h-3 w-3" />}
                   label="포트폴리오"
@@ -110,6 +110,11 @@ export function LevelBreakdownCard({ breakdown, showDetails = true, className }:
                   icon={<Star className="h-3 w-3" />}
                   label="팀 평가"
                   value={breakdown.teamRatingBonus}
+                />
+                <BonusItem
+                  icon={<Award className="h-3 w-3" />}
+                  label="자격증"
+                  value={breakdown.certificationBonus}
                 />
               </div>
             </div>

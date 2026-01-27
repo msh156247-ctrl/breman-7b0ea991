@@ -8,6 +8,7 @@ export interface LevelBreakdown {
   portfolioBonus: number;
   projectBonus: number;
   teamRatingBonus: number;
+  certificationBonus: number;
   level: number;
 }
 
@@ -64,6 +65,7 @@ export function useCalculatedLevel() {
           portfolioBonus: Number(result.portfolio_bonus) || 0,
           projectBonus: Number(result.project_bonus) || 0,
           teamRatingBonus: Number(result.team_rating_bonus) || 0,
+          certificationBonus: Number(result.certification_bonus) || 0,
           level: Number(result.level) || 1,
         };
       }
@@ -86,6 +88,7 @@ export function useCalculatedLevel() {
     portfolio_bonus?: number | null;
     project_bonus?: number | null;
     team_rating_bonus?: number | null;
+    certification_bonus?: number | null;
     level?: number | null;
   }): LevelBreakdown => {
     return {
@@ -95,6 +98,7 @@ export function useCalculatedLevel() {
       portfolioBonus: Number(profile.portfolio_bonus) || 0,
       projectBonus: Number(profile.project_bonus) || 0,
       teamRatingBonus: Number(profile.team_rating_bonus) || 0,
+      certificationBonus: Number(profile.certification_bonus) || 0,
       level: Number(profile.level) || 1,
     };
   }, []);

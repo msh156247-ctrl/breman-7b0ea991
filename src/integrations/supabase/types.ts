@@ -98,6 +98,33 @@ export type Database = {
         }
         Relationships: []
       }
+      certifications: {
+        Row: {
+          category: string | null
+          created_at: string | null
+          id: string
+          issuing_organization: string
+          name: string
+          score_bonus: number | null
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          issuing_organization: string
+          name: string
+          score_bonus?: number | null
+        }
+        Update: {
+          category?: string | null
+          created_at?: string | null
+          id?: string
+          issuing_organization?: string
+          name?: string
+          score_bonus?: number | null
+        }
+        Relationships: []
+      }
       contracts: {
         Row: {
           created_at: string | null
@@ -749,11 +776,14 @@ export type Database = {
           avatar_url: string | null
           bio: string | null
           calculated_level_score: number | null
+          career_verified: boolean | null
+          certification_bonus: number | null
           created_at: string | null
           email: string
           experience_score: number | null
           hobbies: string[] | null
           id: string
+          identity_verified: boolean | null
           interests: string[] | null
           level: number | null
           main_role_type: Database["public"]["Enums"]["role_type"] | null
@@ -775,11 +805,14 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           calculated_level_score?: number | null
+          career_verified?: boolean | null
+          certification_bonus?: number | null
           created_at?: string | null
           email: string
           experience_score?: number | null
           hobbies?: string[] | null
           id: string
+          identity_verified?: boolean | null
           interests?: string[] | null
           level?: number | null
           main_role_type?: Database["public"]["Enums"]["role_type"] | null
@@ -801,11 +834,14 @@ export type Database = {
           avatar_url?: string | null
           bio?: string | null
           calculated_level_score?: number | null
+          career_verified?: boolean | null
+          certification_bonus?: number | null
           created_at?: string | null
           email?: string
           experience_score?: number | null
           hobbies?: string[] | null
           id?: string
+          identity_verified?: boolean | null
           interests?: string[] | null
           level?: number | null
           main_role_type?: Database["public"]["Enums"]["role_type"] | null
@@ -2044,6 +2080,70 @@ export type Database = {
           },
         ]
       }
+      user_certifications: {
+        Row: {
+          acquired_date: string | null
+          certificate_file_url: string | null
+          certificate_number: string | null
+          certification_id: string
+          created_at: string | null
+          expiry_date: string | null
+          id: string
+          is_verified: boolean | null
+          user_id: string
+          verified_at: string | null
+          verified_by: string | null
+        }
+        Insert: {
+          acquired_date?: string | null
+          certificate_file_url?: string | null
+          certificate_number?: string | null
+          certification_id: string
+          created_at?: string | null
+          expiry_date?: string | null
+          id?: string
+          is_verified?: boolean | null
+          user_id: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Update: {
+          acquired_date?: string | null
+          certificate_file_url?: string | null
+          certificate_number?: string | null
+          certification_id?: string
+          created_at?: string | null
+          expiry_date?: string | null
+          id?: string
+          is_verified?: boolean | null
+          user_id?: string
+          verified_at?: string | null
+          verified_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_certifications_certification_id_fkey"
+            columns: ["certification_id"]
+            isOneToOne: false
+            referencedRelation: "certifications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_certifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_certifications_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -2137,6 +2237,60 @@ export type Database = {
           {
             foreignKeyName: "user_skills_verified_by_fkey"
             columns: ["verified_by"]
+            isOneToOne: false
+            referencedRelation: "public_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      verification_requests: {
+        Row: {
+          admin_note: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string | null
+          submitted_documents: string[] | null
+          user_id: string
+          verification_type: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          submitted_documents?: string[] | null
+          user_id: string
+          verification_type: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string | null
+          submitted_documents?: string[] | null
+          user_id?: string
+          verification_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "verification_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "verification_requests_user_id_fkey"
+            columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "public_profiles"
             referencedColumns: ["id"]
