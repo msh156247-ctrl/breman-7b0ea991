@@ -48,10 +48,7 @@ import {
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
 
-const userTeams = [
-  { id: '1', name: '스타트업 드림팀', emblem: '🚀', role: 'horse' as const, members: 4 },
-  { id: '2', name: '웹개발 마스터즈', emblem: '💻', role: 'rooster' as const, members: 5 },
-];
+// userTeams will be fetched from database
 
 const userBadges = [
   { id: '1', name: '첫 프로젝트 완료', icon: '🎯', description: '첫 프로젝트를 성공적으로 완료했습니다', earnedAt: '2024-01-10' },
@@ -135,6 +132,30 @@ export default function Profile() {
       }
     }
   };
+
+  // Fetch user team memberships
+  const { data: userTeams = [] } = useQuery({
+    queryKey: ['user-teams', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('team_memberships')
+        .select(`
+          id, role,
+          team:teams(id, name, emblem_url, status, recruitment_method)
+        `)
+        .eq('user_id', user.id);
+      if (error) throw error;
+      return data.map((m: any) => ({
+        id: m.team?.id,
+        name: m.team?.name,
+        emblem: m.team?.emblem_url || '🎯',
+        role: m.role,
+        status: m.team?.status,
+      }));
+    },
+    enabled: !!user?.id,
+  });
 
   // Fetch user skills for stats
   const { data: userSkills = [] } = useQuery({
@@ -516,24 +537,18 @@ export default function Profile() {
                           <p className="font-medium truncate">{team.name}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <RoleBadge role={team.role} size="sm" showName={false} />
-                            <span className="text-xs text-muted-foreground">{team.members}명</span>
                           </div>
                         </div>
                         <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
                       </div>
                       {/* 팀 상태 정보 */}
                       <div className="mt-3 pt-3 border-t flex flex-wrap gap-2 text-xs">
-                        <Badge variant="outline" className="gap-1">
-                          <span className="w-2 h-2 rounded-full bg-accent" />
-                          구직중
-                        </Badge>
-                        <Badge variant="outline" className="gap-1">
-                          <Code className="w-3 h-3" />
-                          프로젝트 1건 진행
-                        </Badge>
-                        <Badge variant="secondary" className="gap-1">
-                          📢 최근 공지 2건
-                        </Badge>
+                        {team.status === 'recruiting' && (
+                          <Badge variant="outline" className="gap-1">
+                            <span className="w-2 h-2 rounded-full bg-accent" />
+                            구직중
+                          </Badge>
+                        )}
                       </div>
                     </Link>
                   ))
