@@ -279,11 +279,9 @@ export default function Landing() {
                   <div className="flex flex-wrap gap-2">
                     {skin.metrics.map((metric) => (
                       <Tooltip key={metric}>
-                        <TooltipTrigger asChild>
-                          <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground cursor-help flex items-center gap-1 hover:bg-muted/80 transition-colors">
-                            📊 {metric}
-                            <Info className="w-3 h-3" />
-                          </span>
+                        <TooltipTrigger className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground cursor-help flex items-center gap-1 hover:bg-muted/80 transition-colors">
+                          📊 {metric}
+                          <Info className="w-3 h-3" />
                         </TooltipTrigger>
                         <TooltipContent side="top" className="max-w-xs">
                           <p className="font-semibold mb-2">{metric}</p>
