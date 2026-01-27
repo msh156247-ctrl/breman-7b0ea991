@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 
@@ -38,32 +38,37 @@ const animationStyles: Record<string, { hidden: string; visible: string }> = {
   },
 };
 
-export function ScrollReveal({
-  children,
-  className,
-  animation = 'fade-up',
-  delay = 0,
-  duration = 600,
-  threshold = 0.1,
-}: ScrollRevealProps) {
-  const { ref, isVisible } = useScrollReveal<HTMLDivElement>({ threshold });
+export const ScrollReveal = forwardRef<HTMLDivElement, ScrollRevealProps>(
+  function ScrollReveal(
+    {
+      children,
+      className,
+      animation = 'fade-up',
+      delay = 0,
+      duration = 600,
+      threshold = 0.1,
+    },
+    _ref
+  ) {
+    const { ref, isVisible } = useScrollReveal<HTMLDivElement>({ threshold });
 
-  const { hidden, visible } = animationStyles[animation];
+    const { hidden, visible } = animationStyles[animation];
 
-  return (
-    <div
-      ref={ref}
-      className={cn(
-        'transition-all ease-out',
-        isVisible ? visible : hidden,
-        className
-      )}
-      style={{
-        transitionDuration: `${duration}ms`,
-        transitionDelay: `${delay}ms`,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+    return (
+      <div
+        ref={ref}
+        className={cn(
+          'transition-all ease-out',
+          isVisible ? visible : hidden,
+          className
+        )}
+        style={{
+          transitionDuration: `${duration}ms`,
+          transitionDelay: `${delay}ms`,
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+);
