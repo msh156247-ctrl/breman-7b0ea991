@@ -402,7 +402,7 @@ export default function Profile() {
           <TabsList className="w-full grid grid-cols-4">
             <TabsTrigger value="profile" className="gap-1.5">
               <User className="w-4 h-4" />
-              <span className="hidden sm:inline">프로필</span>
+              <span className="hidden sm:inline">기본 정보</span>
             </TabsTrigger>
             <TabsTrigger value="activity" className="gap-1.5">
               <Activity className="w-4 h-4" />
