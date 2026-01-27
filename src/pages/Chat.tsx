@@ -14,7 +14,8 @@ import {
   Users, 
   UsersRound, 
   Search,
-  Plus
+  Plus,
+  UserPlus
 } from 'lucide-react';
 import { format, isToday, isYesterday } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -281,8 +282,8 @@ export default function Chat() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">채팅</h1>
         <Button onClick={() => setShowNewChatDialog(true)} size="sm">
-          <Plus className="h-4 w-4 mr-2" />
-          새 채팅
+          <UserPlus className="h-4 w-4 mr-2" />
+          새 채팅 / 친구
         </Button>
       </div>
 
@@ -324,14 +325,26 @@ export default function Chat() {
         ) : filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
             <MessageCircle className="h-12 w-12 text-muted-foreground/50 mb-4" />
-            <p className="text-muted-foreground">채팅이 없습니다</p>
-            <Button 
-              variant="link" 
-              onClick={() => setShowNewChatDialog(true)}
-              className="mt-2"
-            >
-              새 채팅 시작하기
-            </Button>
+            <p className="text-muted-foreground mb-2">채팅이 없습니다</p>
+            <p className="text-sm text-muted-foreground mb-4">
+              팀에 가입하거나 친구를 추가해서 채팅을 시작해보세요
+            </p>
+            <div className="flex gap-2">
+              <Button 
+                variant="default" 
+                onClick={() => setShowNewChatDialog(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                새 채팅 / 친구 추가
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate('/teams')}
+              >
+                <Users className="h-4 w-4 mr-2" />
+                팀 둘러보기
+              </Button>
+            </div>
           </div>
         ) : (
           <div className="space-y-1">
