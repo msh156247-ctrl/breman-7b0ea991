@@ -1,11 +1,11 @@
 import { Link } from 'react-router-dom';
-import { ArrowRight, Users, Briefcase, Eye, Trophy, Star, Zap, Shield, Info } from 'lucide-react';
+import { ArrowRight, Users, Briefcase, Eye, Trophy, Star, Zap, Shield, Info, Sparkles, Target, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
-import { ROLES, METRIC_DESCRIPTIONS } from '@/lib/constants';
+import { ANIMAL_SKINS, ROLE_TYPES, SKILL_CATEGORIES, METRIC_DESCRIPTIONS } from '@/lib/constants';
 
 export default function Landing() {
   return (
@@ -76,23 +76,117 @@ export default function Landing() {
             </div>
           </div>
 
-          {/* Animal roles showcase */}
-          <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-            {Object.entries(ROLES).map(([key, role], index) => (
-              <div 
-                key={key}
-                className="group relative p-6 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 animate-fade-up cursor-pointer"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <div className="text-5xl mb-4 group-hover:scale-125 group-hover:rotate-6 transition-all duration-300 ease-out">
-                  {role.icon}
+          {/* Animal Skins - 성향 */}
+          <div className="mt-20">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <Sparkles className="w-5 h-5 text-primary" />
+              <h3 className="font-display font-bold text-xl text-center">성향 (브레맨 캐릭터)</h3>
+            </div>
+            <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
+              협업 스타일과 성격을 나타내는 브레맨 동물 캐릭터
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+              {Object.entries(ANIMAL_SKINS).map(([key, skin], index) => (
+                <div 
+                  key={key}
+                  className="group relative p-6 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 animate-fade-up cursor-pointer"
+                  style={{ animationDelay: `${index * 100}ms` }}
+                >
+                  <div className="text-5xl mb-4 group-hover:scale-125 group-hover:rotate-6 transition-all duration-300 ease-out">
+                    {skin.icon}
+                  </div>
+                  <h3 className="font-display font-bold text-lg mb-1 group-hover:text-primary transition-colors">{skin.name}</h3>
+                  <p className="text-xs text-primary font-medium mb-2">{skin.title}</p>
+                  <p className="text-sm text-muted-foreground group-hover:text-foreground/80 transition-colors line-clamp-2">{skin.description}</p>
+                  <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${skin.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
+                  <div className={`absolute -inset-0.5 rounded-2xl bg-gradient-to-br ${skin.gradient} opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500 -z-10`} />
                 </div>
-                <h3 className="font-display font-bold text-lg mb-1 group-hover:text-primary transition-colors">{role.name}</h3>
-                <p className="text-sm text-muted-foreground group-hover:text-foreground/80 transition-colors">{role.description}</p>
-                <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${role.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
-                <div className={`absolute -inset-0.5 rounded-2xl bg-gradient-to-br ${role.gradient} opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500 -z-10`} />
+              ))}
+            </div>
+          </div>
+
+          {/* Role Types - 포지션 & 기술 */}
+          <div className="mt-20">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <Target className="w-5 h-5 text-primary" />
+              <h3 className="font-display font-bold text-xl text-center">포지션 & 기술</h3>
+            </div>
+            <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
+              전문 직무 영역과 기술 스택을 선택하여 역량을 표현하세요
+            </p>
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              {Object.entries(ROLE_TYPES).map(([key, roleType], index) => (
+                <div 
+                  key={key}
+                  className="group p-4 rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg animate-fade-up text-center"
+                  style={{ animationDelay: `${index * 50}ms` }}
+                >
+                  <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">
+                    {roleType.icon}
+                  </div>
+                  <h4 className="font-semibold text-sm mb-1 group-hover:text-primary transition-colors">{roleType.name}</h4>
+                  <p className="text-xs text-muted-foreground line-clamp-2">{roleType.description}</p>
+                </div>
+              ))}
+            </div>
+            
+            {/* Skill Categories */}
+            <div className="mt-8 flex flex-wrap justify-center gap-3">
+              {Object.entries(SKILL_CATEGORIES).map(([key, category]) => (
+                <span 
+                  key={key}
+                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r ${category.color} text-primary-foreground text-sm font-medium shadow-sm`}
+                >
+                  {category.icon} {category.name}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Experience - 경험 */}
+          <div className="mt-20">
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <TrendingUp className="w-5 h-5 text-primary" />
+              <h3 className="font-display font-bold text-xl text-center">경험 & 성장</h3>
+            </div>
+            <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
+              프로젝트 경험을 기록하고 XP를 쌓아 레벨업하세요
+            </p>
+            <div className="grid md:grid-cols-3 gap-6">
+              <div className="p-6 rounded-2xl bg-card border border-border text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl">🥉</span>
+                </div>
+                <h4 className="font-display font-bold text-lg mb-2">브론즈 ~ 실버</h4>
+                <p className="text-sm text-muted-foreground">
+                  Lv.1~4 • 기초 스킬 학습 단계
+                  <br />
+                  프로젝트 참여로 경험 축적
+                </p>
               </div>
-            ))}
+              <div className="p-6 rounded-2xl bg-card border border-border text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl">🥇</span>
+                </div>
+                <h4 className="font-display font-bold text-lg mb-2">골드 ~ 플래티넘</h4>
+                <p className="text-sm text-muted-foreground">
+                  Lv.5~7 • 숙련된 실무 역량
+                  <br />
+                  팀 리딩 및 멘토링 가능
+                </p>
+              </div>
+              <div className="p-6 rounded-2xl bg-card border border-border text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-2xl">💎</span>
+                </div>
+                <h4 className="font-display font-bold text-lg mb-2">다이아몬드</h4>
+                <p className="text-sm text-muted-foreground">
+                  Lv.8~10 • 최고 전문가 등급
+                  <br />
+                  업계 인정받는 전문성
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -130,36 +224,36 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Roles Detail */}
+      {/* Roles Detail - 성향 상세 */}
       <section id="roles" className="py-20 px-4">
         <div className="container mx-auto max-w-6xl">
           <ScrollReveal animation="fade-up" className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
-              당신의 <span className="gradient-text">역할</span>을 선택하세요
+              당신의 <span className="gradient-text">성향</span>을 선택하세요
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              브레멘 음악대의 동물들처럼, 각자의 특기를 살려 팀에 기여하세요.
+              브레멘 음악대의 동물들처럼, 협업 스타일로 팀에 기여하세요.
             </p>
           </ScrollReveal>
 
           <div className="grid md:grid-cols-2 gap-8">
-            {Object.entries(ROLES).map(([key, role], index) => (
+            {Object.entries(ANIMAL_SKINS).map(([key, skin], index) => (
               <ScrollReveal key={key} animation={index % 2 === 0 ? 'fade-right' : 'fade-left'} delay={index * 100}>
                 <div className="group relative p-6 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden h-full">
                 {/* Animated background gradient */}
-                <div className={`absolute inset-0 bg-gradient-to-br ${role.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
+                <div className={`absolute inset-0 bg-gradient-to-br ${skin.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
                 
                 {/* Header */}
                 <div className="relative flex items-start gap-4 mb-5">
-                  <div className={`flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${role.gradient} flex items-center justify-center text-4xl shadow-md group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg transition-all duration-300`}>
-                    {role.icon}
+                  <div className={`flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${skin.gradient} flex items-center justify-center text-4xl shadow-md group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg transition-all duration-300`}>
+                    {skin.icon}
                   </div>
                   <div className="flex-1">
                     <h3 className="font-display font-bold text-xl group-hover:text-primary transition-colors duration-300">
-                      {role.name} <span className="text-muted-foreground font-normal text-base">({role.nameEn})</span>
+                      {skin.name} <span className="text-muted-foreground font-normal text-base">({skin.nameEn})</span>
                     </h3>
-                    <p className="text-sm font-medium text-primary">{role.title}</p>
-                    <p className="text-sm text-muted-foreground mt-1">{role.description}</p>
+                    <p className="text-sm font-medium text-primary">{skin.title}</p>
+                    <p className="text-sm text-muted-foreground mt-1">{skin.description}</p>
                   </div>
                 </div>
 
@@ -168,10 +262,10 @@ export default function Landing() {
                 <div className="mb-4">
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">키워드</h4>
                   <div className="flex flex-wrap gap-2">
-                    {role.keywords.map((keyword) => (
+                    {skin.keywords.map((keyword) => (
                       <span 
                         key={keyword} 
-                        className={`text-xs px-2.5 py-1 rounded-full bg-gradient-to-r ${role.gradient} text-primary-foreground font-medium`}
+                        className={`text-xs px-2.5 py-1 rounded-full bg-gradient-to-r ${skin.gradient} text-primary-foreground font-medium`}
                       >
                         {keyword}
                       </span>
@@ -183,7 +277,7 @@ export default function Landing() {
                 <div className="pt-4 border-t border-border">
                   <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">성장 지표</h4>
                   <div className="flex flex-wrap gap-2">
-                    {role.metrics.map((metric) => (
+                    {skin.metrics.map((metric) => (
                       <Tooltip key={metric}>
                         <TooltipTrigger asChild>
                           <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground cursor-help flex items-center gap-1 hover:bg-muted/80 transition-colors">
