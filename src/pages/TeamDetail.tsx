@@ -496,124 +496,160 @@ export default function TeamDetail() {
         </div>
       </ScrollReveal>
 
+      {/* Leader-only: Application Management Button */}
+      {isLeader && (
+        <ScrollReveal animation="fade-up" delay={150}>
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <ClipboardList className="w-5 h-5 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">지원 관리</h3>
+                    <p className="text-sm text-muted-foreground">팀 지원서를 확인하고 관리하세요</p>
+                  </div>
+                </div>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline">
+                      지원서 확인
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2">
+                        <ClipboardList className="w-5 h-5" />
+                        지원서 관리
+                      </DialogTitle>
+                      <DialogDescription>
+                        팀 지원서를 검토하고 수락/거절하세요.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <TeamApplicationManagement 
+                      teamId={team.id} 
+                      onApplicationHandled={fetchTeamData}
+                    />
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </CardContent>
+          </Card>
+        </ScrollReveal>
+      )}
+
       {/* Content tabs */}
-      <ScrollReveal animation="fade-up" delay={150}>
-        <Tabs defaultValue="members" className="space-y-6">
-          <TabsList className="bg-muted/50 flex-wrap h-auto gap-1">
-            <TabsTrigger value="members">멤버</TabsTrigger>
-            <TabsTrigger value="services">서비스 오퍼</TabsTrigger>
-            {isLeader && <TabsTrigger value="applications">지원 관리</TabsTrigger>}
-            {isLeader && <TabsTrigger value="manage">멤버 관리</TabsTrigger>}
-            <TabsTrigger value="board">공지사항</TabsTrigger>
-            <TabsTrigger value="openings">모집 포지션</TabsTrigger>
+      <ScrollReveal animation="fade-up" delay={isLeader ? 200 : 150}>
+        <Tabs defaultValue="intro" className="space-y-6">
+          <TabsList className="w-full grid grid-cols-4 md:grid-cols-4">
+            <TabsTrigger value="intro" className="gap-1.5">
+              <Users className="w-4 h-4" />
+              <span className="hidden sm:inline">팀 소개</span>
+              <span className="sm:hidden">소개</span>
+            </TabsTrigger>
+            <TabsTrigger value="openings" className="gap-1.5">
+              <UserPlus className="w-4 h-4" />
+              <span className="hidden sm:inline">모집 포지션</span>
+              <span className="sm:hidden">모집</span>
+            </TabsTrigger>
+            {isMember && (
+              <TabsTrigger value="board" className="gap-1.5">
+                <MessageSquare className="w-4 h-4" />
+                <span className="hidden sm:inline">공지사항</span>
+                <span className="sm:hidden">공지</span>
+              </TabsTrigger>
+            )}
+            {isMember && (
+              <TabsTrigger value="services" className="gap-1.5">
+                <Briefcase className="w-4 h-4" />
+                <span className="hidden sm:inline">서비스 오퍼</span>
+                <span className="sm:hidden">서비스</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
-          {/* Members Tab */}
-          <TabsContent value="members" className="space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Users className="w-5 h-5 text-primary" />
-              팀 멤버 ({members.length}명)
-            </h2>
-            {members.length > 0 ? (
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {members.map((member) => (
-                  <Card key={member.id} className="hover:shadow-md transition-shadow">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl overflow-hidden">
-                          {member.avatar_url ? (
-                            <img src={member.avatar_url} alt={member.name} className="w-full h-full object-cover" />
-                          ) : (
-                            member.name.charAt(0)
-                          )}
-                        </div>
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold">{member.name}</span>
-                            {member.isLeader && (
-                              <Crown className="w-4 h-4 text-secondary" aria-label="팀 리더" />
+          {/* Team Introduction Tab - includes members */}
+          <TabsContent value="intro" className="space-y-6">
+            {/* Team Description */}
+            {team.description && (
+              <div className="space-y-3">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  팀 소개
+                </h2>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-foreground/80 whitespace-pre-wrap">{team.description}</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Members */}
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Users className="w-5 h-5 text-primary" />
+                팀 멤버 ({members.length}명)
+              </h2>
+              {members.length > 0 ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {members.map((member) => (
+                    <Card key={member.id} className="hover:shadow-md transition-shadow">
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-4">
+                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl overflow-hidden">
+                            {member.avatar_url ? (
+                              <img src={member.avatar_url} alt={member.name} className="w-full h-full object-cover" />
+                            ) : (
+                              member.name.charAt(0)
                             )}
                           </div>
-                          <RoleBadge role={member.role} level={member.level} size="sm" />
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold">{member.name}</span>
+                              {member.isLeader && (
+                                <Crown className="w-4 h-4 text-secondary" aria-label="팀 리더" />
+                              )}
+                            </div>
+                            <RoleBadge role={member.role} level={member.level} size="sm" />
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <Card className="bg-muted/30">
-                <CardContent className="p-8 text-center">
-                  <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
-                  <p className="text-muted-foreground">아직 팀원이 없습니다</p>
-                </CardContent>
-              </Card>
-            )}
-          </TabsContent>
-
-          {/* Service Offers Tab */}
-          <TabsContent value="services" className="space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Briefcase className="w-5 h-5 text-primary" />
-              서비스 오퍼
-            </h2>
-            <TeamServiceOfferList teamId={team.id} isLeader={isLeader} />
-          </TabsContent>
-
-          {/* Application Management Tab (Leader only) */}
-          {isLeader && (
-            <TabsContent value="applications" className="space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <ClipboardList className="w-5 h-5 text-primary" />
-                지원서 관리
-              </h2>
-              <TeamApplicationManagement 
-                teamId={team.id} 
-                onApplicationHandled={fetchTeamData}
-              />
-            </TabsContent>
-          )}
-
-          {/* Member Management Tab (Leader only) */}
-          {isLeader && team.leader_id && (
-            <TabsContent value="manage" className="space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <UserCog className="w-5 h-5 text-primary" />
-                멤버 관리
-              </h2>
-              <TeamMemberManagement
-                teamId={team.id}
-                leaderId={team.leader_id}
-                members={members}
-                onMemberUpdated={fetchTeamData}
-              />
-            </TabsContent>
-          )}
-
-          {/* Announcements Tab */}
-          <TabsContent value="board" className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-primary" />
-                팀 공지사항
-              </h2>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleNavigateToChat}
-              >
-                <ExternalLink className="w-4 h-4 mr-2" />
-                팀 채팅
-              </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-8 text-center">
+                    <Users className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
+                    <p className="text-muted-foreground">아직 팀원이 없습니다</p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
-            <TeamAnnouncementBoard teamId={team.id} isLeader={isLeader} isMember={isMember || true} />
+
+            {/* Member Management for Leader */}
+            {isLeader && team.leader_id && (
+              <div className="space-y-4 pt-4 border-t">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <UserCog className="w-5 h-5 text-primary" />
+                  멤버 관리
+                </h2>
+                <TeamMemberManagement
+                  teamId={team.id}
+                  leaderId={team.leader_id}
+                  members={members}
+                  onMemberUpdated={fetchTeamData}
+                />
+              </div>
+            )}
           </TabsContent>
 
           {/* Open Positions Tab */}
           <TabsContent value="openings" className="space-y-4">
             <h2 className="text-lg font-semibold flex items-center gap-2">
               <UserPlus className="w-5 h-5 text-success" />
-              포지션 ({openSlots.length}개)
+              모집 포지션 ({openSlots.length}개)
             </h2>
             {openSlots.length > 0 ? (
               <div className="grid md:grid-cols-2 gap-4">
@@ -709,6 +745,38 @@ export default function TeamDetail() {
               </Card>
             )}
           </TabsContent>
+
+          {/* Announcements Tab - Members only */}
+          {isMember && (
+            <TabsContent value="board" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                  팀 공지사항
+                </h2>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleNavigateToChat}
+                >
+                  <ExternalLink className="w-4 h-4 mr-2" />
+                  팀 채팅
+                </Button>
+              </div>
+              <TeamAnnouncementBoard teamId={team.id} isLeader={isLeader} isMember={isMember} />
+            </TabsContent>
+          )}
+
+          {/* Service Offers Tab - Members only */}
+          {isMember && (
+            <TabsContent value="services" className="space-y-4">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Briefcase className="w-5 h-5 text-primary" />
+                서비스 오퍼
+              </h2>
+              <TeamServiceOfferList teamId={team.id} isLeader={isLeader} />
+            </TabsContent>
+          )}
         </Tabs>
       </ScrollReveal>
 
