@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ROLES, ANIMAL_SKINS, type UserRole, type AnimalSkin } from '@/lib/constants';
+import { ROLES, type UserRole } from '@/lib/constants';
 
 export default function ProjectCreate() {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ export default function ProjectCreate() {
   });
 
   const [requiredRoles, setRequiredRoles] = useState<UserRole[]>([]);
-  const [preferredAnimalSkins, setPreferredAnimalSkins] = useState<AnimalSkin[]>([]);
+  
   const [requiredSkills, setRequiredSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState('');
 
@@ -53,13 +53,6 @@ export default function ProjectCreate() {
     setRequiredRoles(prev => prev.filter(r => r !== role));
   };
 
-  const toggleAnimalSkin = (skin: AnimalSkin) => {
-    if (preferredAnimalSkins.includes(skin)) {
-      setPreferredAnimalSkins(prev => prev.filter(s => s !== skin));
-    } else {
-      setPreferredAnimalSkins(prev => [...prev, skin]);
-    }
-  };
 
   const addSkill = () => {
     if (newSkill.trim() && !requiredSkills.includes(newSkill.trim())) {
@@ -106,7 +99,7 @@ export default function ProjectCreate() {
           timeline_weeks: formData.timeline_weeks ? parseInt(formData.timeline_weeks) : null,
           visibility: formData.visibility,
           required_roles: requiredRoles.length > 0 ? requiredRoles : null,
-          preferred_animal_skins: preferredAnimalSkins.length > 0 ? preferredAnimalSkins : [],
+          preferred_animal_skins: [],
           required_skills: requiredSkills.length > 0 ? requiredSkills : null,
           client_id: user.id,
           status: 'open',
@@ -311,32 +304,8 @@ export default function ProjectCreate() {
                 </p>
               </div>
 
-              {/* Optional: 협업 스타일 (Personality) */}
+              {/* 공개 범위 */}
               <div className="space-y-4 pt-4 border-t border-border">
-                <div>
-                  <Label className="text-muted-foreground">선호 협업 스타일 (선택사항)</Label>
-                  <p className="text-xs text-muted-foreground mt-1 mb-3">
-                    프로젝트에 맞는 작업 성향을 가진 팀을 찾는 데 도움이 됩니다.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {Object.entries(ANIMAL_SKINS).map(([key, skin]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => toggleAnimalSkin(key as AnimalSkin)}
-                        className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-1.5 transition-all ${
-                          preferredAnimalSkins.includes(key as AnimalSkin)
-                            ? 'bg-secondary text-secondary-foreground'
-                            : 'bg-muted hover:bg-muted/80'
-                        }`}
-                      >
-                        <span>{skin.icon}</span>
-                        <span>{skin.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
                 <div>
                   <Label htmlFor="visibility">공개 범위</Label>
                   <Select
