@@ -79,7 +79,7 @@ export default function TeamDetail() {
   const { teamId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   
   const [team, setTeam] = useState<Team | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
@@ -90,12 +90,53 @@ export default function TeamDetail() {
   const [applyDialogOpen, setApplyDialogOpen] = useState(false);
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>('');
+  const [selectedRoleType, setSelectedRoleType] = useState<string>('');
   const [applicationText, setApplicationText] = useState('');
   
   // Proposal states
   const [sentProposals, setSentProposals] = useState<any[]>([]);
   const [receivedProposals, setReceivedProposals] = useState<any[]>([]);
   const [proposalsLoading, setProposalsLoading] = useState(false);
+  
+  // Auto-select based on profile when dialog opens
+  useEffect(() => {
+    if (applyDialogOpen && profile && openSlots.length > 0) {
+      // Find matching slot based on user's main role type
+      const userRoleType = profile.main_role_type as RoleType | null;
+      const userAnimalSkin = profile.animal_skin as AnimalSkin | null;
+      const userPrimaryRole = profile.primary_role as UserRole | null;
+      
+      // Find best matching slot
+      const availableSlots = openSlots.filter(s => s.current_count < s.max_count);
+      
+      if (availableSlots.length > 0) {
+        // Priority 1: Match by role_type
+        let matchedSlot = userRoleType 
+          ? availableSlots.find(s => s.role_type === userRoleType)
+          : null;
+        
+        // Priority 2: Match by animal_skin preference
+        if (!matchedSlot && userAnimalSkin) {
+          matchedSlot = availableSlots.find(s => s.preferred_animal_skin === userAnimalSkin);
+        }
+        
+        // Priority 3: Match by primary_role
+        if (!matchedSlot && userPrimaryRole) {
+          matchedSlot = availableSlots.find(s => s.role === userPrimaryRole);
+        }
+        
+        // Fallback: First available slot
+        if (!matchedSlot) {
+          matchedSlot = availableSlots[0];
+        }
+        
+        if (matchedSlot) {
+          setSelectedRole(matchedSlot.role);
+          setSelectedRoleType(matchedSlot.role_type || '');
+        }
+      }
+    }
+  }, [applyDialogOpen, profile, openSlots]);
   useEffect(() => {
     if (teamId) {
       fetchTeamData();
@@ -282,14 +323,26 @@ export default function TeamDetail() {
     }
 
     try {
+      const insertData: {
+        team_id: string;
+        user_id: string;
+        desired_role: UserRole;
+        role_type?: RoleType | null;
+        intro: string;
+      } = {
+        team_id: team.id,
+        user_id: user.id,
+        desired_role: selectedRole as UserRole,
+        intro: applicationText,
+      };
+      
+      if (selectedRoleType) {
+        insertData.role_type = selectedRoleType as RoleType;
+      }
+
       const { error } = await supabase
         .from('team_applications')
-        .insert({
-          team_id: team.id,
-          user_id: user.id,
-          desired_role: selectedRole as UserRole,
-          intro: applicationText,
-        });
+        .insert(insertData);
 
       if (error) throw error;
 
@@ -299,6 +352,7 @@ export default function TeamDetail() {
       });
       setApplyDialogOpen(false);
       setSelectedRole('');
+      setSelectedRoleType('');
       setApplicationText('');
     } catch (error) {
       console.error('Error applying to team:', error);
@@ -493,45 +547,87 @@ export default function TeamDetail() {
                         지원하기
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>팀 지원하기</DialogTitle>
                         <DialogDescription>
                           {team.name}에 지원하시겠습니까?
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="space-y-4 mt-4">
+                      
+                      {/* 모집 포지션 리스트 */}
+                      <div className="mt-4 space-y-4">
                         <div>
-                          <label className="text-sm font-medium mb-2 block">지원할 역할</label>
-                          <Select value={selectedRole} onValueChange={setSelectedRole}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="역할 선택" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {openSlots.map((slot) => {
-                                const isFilled = slot.current_count >= slot.max_count;
-                                return (
-                                  <SelectItem 
-                                    key={slot.id} 
-                                    value={slot.role}
-                                    disabled={isFilled}
-                                    className={isFilled ? "opacity-50" : ""}
-                                  >
-                                    <span className="flex items-center gap-2">
-                                      <span>{ROLES[slot.role].icon} {ROLES[slot.role].name}</span>
-                                      <span className={`text-xs ${isFilled ? "text-muted-foreground" : "text-muted-foreground"}`}>
-                                        ({slot.current_count}/{slot.max_count})
-                                      </span>
-                                      {isFilled && (
-                                        <span className="text-xs text-destructive/70 ml-1">모집완료</span>
+                          <label className="text-sm font-medium mb-3 block">모집 포지션 선택</label>
+                          <div className="grid gap-2">
+                            {openSlots.map((slot) => {
+                              const isFilled = slot.current_count >= slot.max_count;
+                              const isSelected = selectedRole === slot.role && selectedRoleType === (slot.role_type || '');
+                              const roleTypeInfo = slot.role_type ? ROLE_TYPES[slot.role_type] : null;
+                              const skinInfo = slot.preferred_animal_skin ? ANIMAL_SKINS[slot.preferred_animal_skin] : null;
+                              
+                              return (
+                                <button
+                                  key={slot.id}
+                                  type="button"
+                                  disabled={isFilled}
+                                  onClick={() => {
+                                    setSelectedRole(slot.role);
+                                    setSelectedRoleType(slot.role_type || '');
+                                  }}
+                                  className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
+                                    isFilled 
+                                      ? 'opacity-50 cursor-not-allowed bg-muted'
+                                      : isSelected 
+                                        ? 'border-primary bg-primary/5' 
+                                        : 'border-border hover:border-primary/30'
+                                  }`}
+                                >
+                                  <div className="flex items-start gap-3">
+                                    <div className="flex items-center gap-1.5">
+                                      {skinInfo && <span className="text-lg">{skinInfo.icon}</span>}
+                                      <span className="text-xl">{ROLES[slot.role].icon}</span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className="font-medium">{ROLES[slot.role].name}</span>
+                                        {roleTypeInfo && (
+                                          <Badge variant="secondary" className="text-xs">
+                                            {roleTypeInfo.icon} {roleTypeInfo.name}
+                                          </Badge>
+                                        )}
+                                        <span className={`text-xs px-1.5 py-0.5 rounded ${isFilled ? 'bg-muted text-muted-foreground' : 'bg-primary/10 text-primary'}`}>
+                                          {slot.current_count}/{slot.max_count}명
+                                        </span>
+                                        {isFilled && (
+                                          <span className="text-xs text-destructive">모집완료</span>
+                                        )}
+                                      </div>
+                                      {(slot.required_skills && slot.required_skills.length > 0) && (
+                                        <div className="flex flex-wrap gap-1 mt-1.5">
+                                          {slot.required_skills.slice(0, 3).map((skill, i) => (
+                                            <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                                              {skill}
+                                            </span>
+                                          ))}
+                                          {slot.required_skills.length > 3 && (
+                                            <span className="text-xs text-muted-foreground">+{slot.required_skills.length - 3}</span>
+                                          )}
+                                        </div>
                                       )}
-                                    </span>
-                                  </SelectItem>
-                                );
-                              })}
-                            </SelectContent>
-                          </Select>
+                                    </div>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          {profile && (
+                            <p className="text-xs text-muted-foreground mt-2">
+                              💡 프로필 설정 기반으로 적합한 포지션이 자동 선택됩니다
+                            </p>
+                          )}
                         </div>
+                        
                         <div>
                           <label className="text-sm font-medium mb-2 block">자기소개</label>
                           <Textarea 
@@ -546,7 +642,7 @@ export default function TeamDetail() {
                         <Button variant="outline" onClick={() => setApplyDialogOpen(false)}>
                           취소
                         </Button>
-                        <Button onClick={handleApply} className="bg-gradient-primary">
+                        <Button onClick={handleApply} className="bg-gradient-primary" disabled={!selectedRole}>
                           지원 제출
                         </Button>
                       </DialogFooter>

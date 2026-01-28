@@ -23,6 +23,7 @@ import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { supabase } from '@/integrations/supabase/client';
 import { useRealtimeTeams } from '@/hooks/useRealtime';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 
 interface SlotInfo {
@@ -57,6 +58,7 @@ interface TeamWithSlots {
 }
 
 export default function Teams() {
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
   const [roleFilter, setRoleFilter] = useState<string>('all');
@@ -65,6 +67,7 @@ export default function Teams() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortOption, setSortOption] = useState<string>('newest');
   const [teams, setTeams] = useState<TeamWithSlots[]>([]);
+  const [appliedTeamIds, setAppliedTeamIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [hasUpdates, setHasUpdates] = useState(false);
 
@@ -125,9 +128,33 @@ export default function Teams() {
     }
   }, []);
 
+  // Fetch applied team IDs
+  const fetchAppliedTeams = useCallback(async () => {
+    if (!user?.id) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('team_applications')
+        .select('team_id')
+        .eq('user_id', user.id)
+        .in('status', ['pending', 'accepted']);
+      
+      if (error) throw error;
+      
+      const ids = new Set(data?.map(app => app.team_id).filter(Boolean) as string[]);
+      setAppliedTeamIds(ids);
+    } catch (error) {
+      console.error('Error fetching applied teams:', error);
+    }
+  }, [user?.id]);
+
   useEffect(() => {
     fetchTeams();
   }, [fetchTeams]);
+
+  useEffect(() => {
+    fetchAppliedTeams();
+  }, [fetchAppliedTeams]);
 
   // Real-time updates
   useRealtimeTeams(() => {
@@ -160,6 +187,11 @@ export default function Teams() {
       return matchesSearch && matchesRole && matchesRoleType && matchesAnimalSkin && matchesStatus;
     })
     .sort((a, b) => {
+      // 지원한 팀 우선 정렬
+      const aApplied = appliedTeamIds.has(a.id) ? 1 : 0;
+      const bApplied = appliedTeamIds.has(b.id) ? 1 : 0;
+      if (bApplied !== aApplied) return bApplied - aApplied;
+      
       switch (sortOption) {
         case 'level':
           return (b.avg_level || 1) - (a.avg_level || 1);
@@ -290,8 +322,16 @@ export default function Teams() {
         {filteredTeams.map((team, index) => (
           <ScrollReveal key={team.id} animation="fade-up" delay={150 + index * 50}>
             <Link to={`/teams/${team.id}`}>
-              <Card className="h-full hover:shadow-md transition-all hover:border-primary/30 cursor-pointer">
+              <Card className={`h-full hover:shadow-md transition-all hover:border-primary/30 cursor-pointer ${appliedTeamIds.has(team.id) ? 'ring-2 ring-primary/50 bg-primary/5' : ''}`}>
                 <CardContent className="p-5">
+                  {/* Applied badge */}
+                  {appliedTeamIds.has(team.id) && (
+                    <div className="mb-3 -mt-1">
+                      <Badge variant="default" className="text-xs">
+                        ✓ 지원함
+                      </Badge>
+                    </div>
+                  )}
                   {/* Header */}
                   <div className="flex items-start gap-4 mb-4">
                     <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-3xl flex-shrink-0">
