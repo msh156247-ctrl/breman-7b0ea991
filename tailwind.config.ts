@@ -15,7 +15,7 @@ export default {
   	extend: {
   		fontFamily: {
   			sans: [
-  				'Inter',
+  				'Lato',
   				'ui-sans-serif',
   				'system-ui',
   				'-apple-system',
@@ -33,7 +33,7 @@ export default {
   				'sans-serif'
   			],
   			serif: [
-  				'Lora',
+  				'EB Garamond',
   				'ui-serif',
   				'Georgia',
   				'Cambria',
@@ -42,7 +42,7 @@ export default {
   				'serif'
   			],
   			mono: [
-  				'Space Mono',
+  				'Fira Code',
   				'ui-monospace',
   				'SFMono-Regular',
   				'Menlo',
@@ -220,7 +220,7 @@ export default {
   					boxShadow: '0 0 50px hsl(var(--primary) / 0.5)'
   				}
   			},
-  			'wiggle': {
+  			wiggle: {
   				'0%, 100%': {
   					transform: 'rotate(0deg)'
   				},
@@ -231,7 +231,7 @@ export default {
   					transform: 'rotate(3deg)'
   				}
   			},
-  			'shimmer': {
+  			shimmer: {
   				'0%': {
   					backgroundPosition: '-200% 0'
   				},
@@ -239,7 +239,7 @@ export default {
   					backgroundPosition: '200% 0'
   				}
   			},
-  			'glow': {
+  			glow: {
   				'0%, 100%': {
   					filter: 'drop-shadow(0 0 8px hsl(var(--primary) / 0.5))'
   				},
@@ -258,9 +258,9 @@ export default {
   			'slide-in-right': 'slide-in-right 0.5s ease-out',
   			'bounce-soft': 'bounce-soft 2s ease-in-out infinite',
   			'pulse-glow': 'pulse-glow 2s ease-in-out infinite',
-  			'wiggle': 'wiggle 0.5s ease-in-out',
-  			'shimmer': 'shimmer 1.5s infinite',
-  			'glow': 'glow 2s ease-in-out infinite'
+  			wiggle: 'wiggle 0.5s ease-in-out',
+  			shimmer: 'shimmer 1.5s infinite',
+  			glow: 'glow 2s ease-in-out infinite'
   		}
   	}
   },
