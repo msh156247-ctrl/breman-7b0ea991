@@ -4,7 +4,6 @@ import {
   LayoutDashboard, 
   Users, 
   Briefcase, 
-  Route,
   Menu,
   Shield,
   X,
@@ -34,7 +33,6 @@ const NAV_ITEMS = [
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
   { href: '/teams', label: '팀', icon: Users },
   { href: '/projects', label: '프로젝트', icon: Briefcase },
-  { href: '/tracks', label: 'Tracks', icon: Route },
 ];
 
 export function AppShell() {
