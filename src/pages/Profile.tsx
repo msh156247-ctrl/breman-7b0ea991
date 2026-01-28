@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   Edit, Calendar, Star, Users, Briefcase, Award, 
   ChevronRight, Trophy, Code, ClipboardList, X, RefreshCw,
-  User, Activity, Medal, TrendingUp, Sparkles
+  User, Activity, Medal, TrendingUp, Sparkles, Crown
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -155,6 +155,22 @@ export default function Profile() {
         role: m.role,
         status: m.team?.status,
       }));
+    },
+    enabled: !!user?.id,
+  });
+
+  // Fetch teams I created (as leader)
+  const { data: myCreatedTeams = [] } = useQuery({
+    queryKey: ['my-created-teams', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('teams')
+        .select('id, name, emblem_url, status, rating_avg, avg_level')
+        .eq('leader_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data;
     },
     enabled: !!user?.id,
   });
@@ -529,6 +545,58 @@ export default function Profile() {
 
           {/* 활동 Tab: 팀 (공지/구직/프로젝트) + 지원 현황 */}
           <TabsContent value="activity" className="mt-6 space-y-6">
+            {/* 내가 만든 팀 */}
+            {myCreatedTeams.length > 0 && (
+              <Card className="border-primary/30">
+                <CardHeader>
+                  <CardTitle className="text-lg font-display flex items-center gap-2">
+                    <Crown className="w-5 h-5 text-primary" />
+                    내가 만든 팀
+                  </CardTitle>
+                  <CardDescription>
+                    팀 리더로 관리 중인 팀
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {myCreatedTeams.map((team: any) => (
+                    <Link 
+                      key={team.id}
+                      to={`/teams/${team.id}`}
+                      className="block p-4 rounded-lg hover:bg-muted/50 transition-colors border border-primary/20 bg-primary/5"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/30 to-accent/30 flex items-center justify-center text-2xl shrink-0">
+                          {team.emblem_url || '🎯'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="font-medium truncate">{team.name}</p>
+                            <Badge variant="outline" className="text-xs bg-primary/10 border-primary/30">
+                              <Crown className="w-3 h-3 mr-1" />
+                              리더
+                            </Badge>
+                          </div>
+                          <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
+                            {team.rating_avg > 0 && (
+                              <span className="flex items-center gap-1">
+                                <Star className="w-3.5 h-3.5 text-yellow-500" />
+                                {team.rating_avg?.toFixed(1)}
+                              </span>
+                            )}
+                            <span>Lv.{team.avg_level || 1}</span>
+                            {team.status === 'recruiting' && (
+                              <Badge variant="secondary" className="text-xs">모집중</Badge>
+                            )}
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                      </div>
+                    </Link>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
             {/* 소속 팀 */}
             <Card>
               <CardHeader>
