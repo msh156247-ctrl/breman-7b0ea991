@@ -358,10 +358,10 @@ export default function Profile() {
                 </div>
               )}
 
-              {/* Animal Skin (성향) - 3rd */}
+              {/* Animal Skin (성향) - 3rd - 인라인 수정 가능 */}
               <div className="flex items-center gap-3 mb-3 p-3 rounded-lg bg-muted/30 border border-border/50">
                 <span className="text-3xl">{animalSkinData.icon}</span>
-                <div>
+                <div className="flex-1 min-w-0">
                   <span className="font-bold text-lg">{animalSkinData.name}</span>
                   <span className="text-sm text-muted-foreground ml-2">({animalSkinData.title})</span>
                   <div className="flex flex-wrap gap-1 mt-1">
@@ -372,7 +372,69 @@ export default function Profile() {
                     ))}
                   </div>
                 </div>
+                <Select
+                  value={animalSkin}
+                  onValueChange={async (value: AnimalSkin) => {
+                    if (!user) return;
+                    try {
+                      const { error } = await supabase
+                        .from('profiles')
+                        .update({ animal_skin: value })
+                        .eq('id', user.id);
+                      if (error) throw error;
+                      await refreshProfile();
+                      toast({ title: '성향이 변경되었습니다' });
+                    } catch (error) {
+                      toast({ title: '변경 실패', variant: 'destructive' });
+                    }
+                  }}
+                >
+                  <SelectTrigger className="w-[130px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.entries(ANIMAL_SKINS) as [AnimalSkin, typeof ANIMAL_SKINS[AnimalSkin]][]).map(([key, skin]) => (
+                      <SelectItem key={key} value={key}>
+                        <span className="flex items-center gap-2">
+                          {skin.icon} {skin.name}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              {/* 취미 & 관심분야 표시 */}
+              {((profile as any)?.hobbies?.length > 0 || (profile as any)?.interests?.length > 0) && (
+                <div className="flex flex-wrap gap-3 mb-3">
+                  {(profile as any)?.hobbies?.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground">취미:</span>
+                      {(profile as any).hobbies.slice(0, 5).map((hobby: string) => (
+                        <span key={hobby} className="text-xs px-2 py-0.5 rounded-full bg-secondary/50 text-secondary-foreground">
+                          {hobby}
+                        </span>
+                      ))}
+                      {(profile as any).hobbies.length > 5 && (
+                        <span className="text-xs text-muted-foreground">+{(profile as any).hobbies.length - 5}</span>
+                      )}
+                    </div>
+                  )}
+                  {(profile as any)?.interests?.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="text-xs text-muted-foreground">관심:</span>
+                      {(profile as any).interests.slice(0, 5).map((interest: string) => (
+                        <span key={interest} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                          {interest}
+                        </span>
+                      ))}
+                      {(profile as any).interests.length > 5 && (
+                        <span className="text-xs text-muted-foreground">+{(profile as any).interests.length - 5}</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               <p className="text-muted-foreground mb-4 max-w-2xl">
                 {profile?.bio || '아직 소개가 없습니다. 프로필을 수정해서 자기소개를 추가해보세요!'}
@@ -484,68 +546,10 @@ export default function Profile() {
             </TabsTrigger>
           </TabsList>
 
-          {/* 직무 Tab: 직무 + 스킬 + 성향 */}
+          {/* 직무 Tab: 직무 + 스킬 */}
           <TabsContent value="profile" className="mt-6 space-y-6">
             <RoleTypeManagement />
             <SkillManagement />
-            
-            {/* 성향 - 간소화 표시 */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-primary" />
-                  협업 성향
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-4">
-                  {(() => {
-                    const currentSkin = profile?.animal_skin as AnimalSkin || 'horse';
-                    const skinInfo = ANIMAL_SKINS[currentSkin];
-                    return (
-                      <>
-                        <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${skinInfo?.gradient || 'from-primary/20 to-accent/20'} flex items-center justify-center text-2xl shrink-0`}>
-                          {skinInfo?.icon || '🐴'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium">{skinInfo?.name || '말'}</p>
-                          <p className="text-sm text-muted-foreground">{skinInfo?.title || ''}</p>
-                        </div>
-                        <Select
-                          value={currentSkin}
-                          onValueChange={async (value: AnimalSkin) => {
-                            if (!user) return;
-                            try {
-                              const { error } = await supabase
-                                .from('profiles')
-                                .update({ animal_skin: value })
-                                .eq('id', user.id);
-                              if (error) throw error;
-                              await refreshProfile();
-                              toast({ title: '성향이 변경되었습니다' });
-                            } catch (error) {
-                              toast({ title: '변경 실패', variant: 'destructive' });
-                            }
-                          }}
-                        >
-                          <SelectTrigger className="w-[140px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(Object.entries(ANIMAL_SKINS) as [AnimalSkin, typeof ANIMAL_SKINS[AnimalSkin]][]).map(([key, skin]) => (
-                              <SelectItem key={key} value={key}>
-                                <span className="flex items-center gap-2">
-                                  {skin.icon} {skin.name}
-                                </span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </>
-                    );
-                  })()}</div>
-              </CardContent>
-            </Card>
           </TabsContent>
 
           {/* 활동 Tab: 팀 (공지/구직/프로젝트) + 지원 현황 */}
