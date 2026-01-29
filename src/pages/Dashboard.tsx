@@ -45,29 +45,13 @@ export default function Dashboard() {
       
       {/* Welcome section */}
       <ScrollReveal animation="fade-up">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-display font-bold">
-              안녕하세요, {profile?.name || '사용자'}님! 👋
-            </h1>
-            <p className="text-muted-foreground mt-1">
-              오늘도 함께 성장해요.
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Link to="/teams/create">
-              <Button variant="outline" size="sm">
-                <Users className="w-4 h-4 mr-2" />
-                팀 만들기
-              </Button>
-            </Link>
-            <Link to="/projects">
-              <Button size="sm" className="bg-gradient-primary">
-                <Briefcase className="w-4 h-4 mr-2" />
-                프로젝트 찾기
-              </Button>
-            </Link>
-          </div>
+        <div>
+          <h1 className="text-2xl md:text-3xl font-display font-bold">
+            안녕하세요, {profile?.name || '사용자'}님! 👋
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            오늘도 함께 성장해요.
+          </p>
         </div>
       </ScrollReveal>
 
