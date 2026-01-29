@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Users, Briefcase, Eye, Trophy, Star, Zap, Shield, Info, Sparkles, Target, TrendingUp } from "lucide-react";
+import { ArrowRight, Users, Briefcase, Eye, Trophy, Star, Zap, Shield, Info, Sparkles, Target, TrendingUp, Award } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
@@ -143,40 +143,83 @@ export default function Landing() {
               <h3 className="font-display font-bold text-xl text-center">경험 & 성장</h3>
             </div>
             <p className="text-center text-muted-foreground mb-8 max-w-2xl mx-auto">
-              프로젝트 경험을 기록하고 XP를 쌓아 레벨업하세요
+              프로젝트 경험을 기록하고 객관적 검증을 통해 전문성을 인정받으세요
             </p>
             <div className="grid md:grid-cols-3 gap-6">
-              <div className="p-6 rounded-2xl bg-card border border-border text-center">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🥉</span>
+              <div className="p-6 rounded-2xl bg-card border border-border">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                    <Zap className="w-6 h-6 text-primary" />
+                  </div>
+                  <h4 className="font-display font-bold text-lg">기술 점수 (60%)</h4>
                 </div>
-                <h4 className="font-display font-bold text-lg mb-2">브론즈 ~ 실버</h4>
-                <p className="text-sm text-muted-foreground">
-                  Lv.1~4 • 기초 스킬 학습 단계
-                  <br />
-                  프로젝트 참여로 경험 축적
+                <p className="text-sm text-muted-foreground mb-3">
+                  등록한 스킬들의 숙련도를 기반으로 산출됩니다.
                 </p>
+                <ul className="text-xs text-muted-foreground space-y-1.5">
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-0.5">•</span>
+                    <span>팀 리더의 객관적 검증을 통해 스킬 레벨 부여</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-0.5">•</span>
+                    <span>언어, 프레임워크, 도구, 라이브러리, 방법론 세분화</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary mt-0.5">•</span>
+                    <span>공인 자격증 등록 시 추가 보너스 점수 적용</span>
+                  </li>
+                </ul>
               </div>
-              <div className="p-6 rounded-2xl bg-card border border-border text-center">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🥇</span>
+              <div className="p-6 rounded-2xl bg-card border border-border">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-success/20 to-emerald-400/20 flex items-center justify-center">
+                    <Briefcase className="w-6 h-6 text-success" />
+                  </div>
+                  <h4 className="font-display font-bold text-lg">경험 점수 (40%)</h4>
                 </div>
-                <h4 className="font-display font-bold text-lg mb-2">골드 ~ 플래티넘</h4>
-                <p className="text-sm text-muted-foreground">
-                  Lv.5~7 • 숙련된 실무 역량
-                  <br />팀 리딩 및 멘토링 가능
+                <p className="text-sm text-muted-foreground mb-3">
+                  실제 프로젝트 참여와 협업 경험을 반영합니다.
                 </p>
+                <ul className="text-xs text-muted-foreground space-y-1.5">
+                  <li className="flex items-start gap-2">
+                    <span className="text-success mt-0.5">•</span>
+                    <span>완료한 프로젝트 수와 기여도</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-success mt-0.5">•</span>
+                    <span>팀원으로부터 받은 평가 및 피드백</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-success mt-0.5">•</span>
+                    <span>Showcase에 기록된 성과와 회고</span>
+                  </li>
+                </ul>
               </div>
-              <div className="p-6 rounded-2xl bg-card border border-border text-center">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">💎</span>
+              <div className="p-6 rounded-2xl bg-card border border-border">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-secondary/20 to-amber-400/20 flex items-center justify-center">
+                    <Award className="w-6 h-6 text-secondary" />
+                  </div>
+                  <h4 className="font-display font-bold text-lg">보정 점수</h4>
                 </div>
-                <h4 className="font-display font-bold text-lg mb-2">다이아몬드</h4>
-                <p className="text-sm text-muted-foreground">
-                  Lv.8~10 • 최고 전문가 등급
-                  <br />
-                  업계 인정받는 전문성
+                <p className="text-sm text-muted-foreground mb-3">
+                  추가 활동에 따라 레벨에 보너스가 적용됩니다.
                 </p>
+                <ul className="text-xs text-muted-foreground space-y-1.5">
+                  <li className="flex items-start gap-2">
+                    <span className="text-secondary mt-0.5">•</span>
+                    <span>포트폴리오 등록 및 품질</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-secondary mt-0.5">•</span>
+                    <span>프로젝트 완료 기록</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-secondary mt-0.5">•</span>
+                    <span>팀 평가 및 공인 자격증</span>
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
