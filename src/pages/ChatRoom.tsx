@@ -672,7 +672,7 @@ export default function ChatRoom() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)]">
+    <div className="flex flex-col h-[calc(100dvh-4rem)] -m-4 lg:-m-6">
       {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b bg-background">
         <Button variant="ghost" size="icon" onClick={() => navigate('/chat')}>
@@ -712,10 +712,18 @@ export default function ChatRoom() {
       />
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
-        {renderMessages()}
+      <div className="flex-1 overflow-y-auto p-4">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <MessageCircle className="h-12 w-12 mb-2 opacity-50" />
+            <p className="text-sm">아직 메시지가 없습니다</p>
+            <p className="text-xs">첫 번째 메시지를 보내보세요!</p>
+          </div>
+        ) : (
+          renderMessages()
+        )}
         <div ref={scrollRef} />
-      </ScrollArea>
+      </div>
 
       {/* Edit Message Preview */}
       {editingMessage && (

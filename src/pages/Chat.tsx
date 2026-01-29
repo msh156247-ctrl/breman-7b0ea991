@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   MessageCircle, 
   Users, 
@@ -278,9 +277,9 @@ export default function Chat() {
   };
 
   return (
-    <div className="container mx-auto py-6 px-4 max-w-4xl">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">채팅</h1>
+    <div className="flex flex-col h-[calc(100dvh-4rem)] -m-4 lg:-m-6 max-w-4xl mx-auto">
+      <div className="flex items-center justify-between p-4 border-b bg-background">
+        <h1 className="text-xl font-bold">채팅</h1>
         <Button onClick={() => setShowNewChatDialog(true)} size="sm">
           <UserPlus className="h-4 w-4 mr-2" />
           새 채팅 / 친구
@@ -288,7 +287,7 @@ export default function Chat() {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'direct' | 'team')} className="mb-4">
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'all' | 'direct' | 'team')} className="px-4 pt-2">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="all" className="flex items-center gap-2">
             <MessageCircle className="h-4 w-4" />
@@ -306,8 +305,8 @@ export default function Chat() {
       </Tabs>
 
       {/* Search */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="relative px-4 py-2">
+        <Search className="absolute left-7 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="채팅 검색..."
           value={searchQuery}
@@ -317,7 +316,7 @@ export default function Chat() {
       </div>
 
       {/* Conversation List */}
-      <ScrollArea className="h-[calc(100vh-280px)]">
+      <div className="flex-1 overflow-y-auto">
         {loading ? (
           <div className="flex items-center justify-center py-12">
             <div className="animate-pulse text-muted-foreground">로딩중...</div>
@@ -401,7 +400,7 @@ export default function Chat() {
             ))}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       <NewChatDialog 
         open={showNewChatDialog} 
