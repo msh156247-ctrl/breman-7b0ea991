@@ -151,7 +151,7 @@ export default function Landing() {
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
                     <Zap className="w-6 h-6 text-primary" />
                   </div>
-                  <h4 className="font-display font-bold text-lg">기술 점수</h4>
+                  <h4 className="font-display font-bold text-lg">기술 점수 (60%)</h4>
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">
                   등록한 스킬들의 숙련도를 기반으로 산출됩니다.
@@ -176,7 +176,7 @@ export default function Landing() {
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-success/20 to-emerald-400/20 flex items-center justify-center">
                     <Briefcase className="w-6 h-6 text-success" />
                   </div>
-                  <h4 className="font-display font-bold text-lg">경험 점수</h4>
+                  <h4 className="font-display font-bold text-lg">경험 점수 (40%)</h4>
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">
                   실제 프로젝트 참여와 협업 경험을 반영합니다.
@@ -192,7 +192,7 @@ export default function Landing() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-success mt-0.5">•</span>
-                    <span>쇼케이스에 기록된 성과</span>
+                    <span>Showcase에 기록된 성과와 회고</span>
                   </li>
                 </ul>
               </div>
@@ -233,7 +233,9 @@ export default function Landing() {
             <h2 className="text-3xl md:text-4xl font-display font-bold mb-4">
               왜 <span className="gradient-text">브래맨</span>인가요?
             </h2>
-            <p className="text-muted-foreground max-w-xl mx-auto">게임 요소와 체계적인 팀 매칭으로 최고의 협업 경험을 제공합니다.</p>
+            <p className="text-muted-foreground max-w-xl mx-auto">
+              게이미피케이션 요소와 체계적인 팀 매칭으로 최고의 협업 경험을 제공합니다.
+            </p>
           </ScrollReveal>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
