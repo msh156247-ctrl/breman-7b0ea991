@@ -149,7 +149,7 @@ export default function ChatRoom() {
       fetchMessages();
       markAsRead();
 
-      // Realtime subscription for new messages
+      // Realtime subscription for messages (INSERT, UPDATE, DELETE)
       const channel = supabase
         .channel(`chat-${conversationId}`)
         .on(
@@ -188,6 +188,43 @@ export default function ChatRoom() {
                 }
               });
             }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${conversationId}`
+          },
+          async (payload) => {
+            const updatedMsg = payload.new as Message;
+            // Fetch sender info for updated message
+            const { data: sender } = await supabase
+              .from('profiles')
+              .select('name, avatar_url')
+              .eq('id', updatedMsg.sender_id)
+              .single();
+
+            setMessages(prev => prev.map(msg => 
+              msg.id === updatedMsg.id 
+                ? { ...updatedMsg, sender: sender || msg.sender, read_by_count: msg.read_by_count }
+                : msg
+            ));
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'DELETE',
+            schema: 'public',
+            table: 'messages',
+            filter: `conversation_id=eq.${conversationId}`
+          },
+          (payload) => {
+            const deletedMsg = payload.old as { id: string };
+            setMessages(prev => prev.filter(msg => msg.id !== deletedMsg.id));
           }
         )
         .on(
@@ -706,9 +743,9 @@ export default function ChatRoom() {
   }
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-background lg:relative lg:h-[calc(100dvh-4rem)] lg:-m-6">
+    <div className="fixed inset-0 flex flex-col bg-background lg:relative lg:h-[calc(100dvh-4rem)] lg:-m-6" style={{ WebkitTransform: 'translateZ(0)' }}>
       {/* Header - Fixed at top */}
-      <div className="sticky top-0 z-10 flex items-center justify-between p-3 border-b bg-background shrink-0">
+      <header className="flex-none z-10 flex items-center justify-between p-3 border-b bg-background">
         {/* Left: Back button + Chat info */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
           <Button variant="ghost" size="icon" className="shrink-0 h-9 w-9" onClick={() => navigate('/chat')}>
@@ -775,7 +812,7 @@ export default function ChatRoom() {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-      </div>
+      </header>
 
       {/* Search Bar */}
       <ChatSearch
@@ -785,18 +822,20 @@ export default function ChatRoom() {
         onClose={() => setIsSearchOpen(false)}
       />
 
-      {/* Messages - Scrollable area */}
-      <div className="flex-1 overflow-y-auto p-4 overscroll-contain">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <MessageCircle className="h-12 w-12 mb-2 opacity-50" />
-            <p className="text-sm">아직 메시지가 없습니다</p>
-            <p className="text-xs">첫 번째 메시지를 보내보세요!</p>
-          </div>
-        ) : (
-          renderMessages()
-        )}
+      {/* Messages - Scrollable area with flex-col-reverse for bottom-to-top scroll */}
+      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col-reverse p-4 overscroll-contain">
         <div ref={scrollRef} />
+        <div className="flex flex-col">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-20">
+              <MessageCircle className="h-12 w-12 mb-2 opacity-50" />
+              <p className="text-sm">아직 메시지가 없습니다</p>
+              <p className="text-xs">첫 번째 메시지를 보내보세요!</p>
+            </div>
+          ) : (
+            renderMessages()
+          )}
+        </div>
       </div>
 
       {/* Edit Message Preview */}
