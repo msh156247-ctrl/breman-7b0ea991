@@ -9,6 +9,8 @@ import { ThemeProvider } from "next-themes";
 import Landing from "./pages/Landing";
 import Roles from "./pages/Roles";
 import Auth from "./pages/Auth";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import Onboarding from "./pages/Onboarding";
 import Dashboard from "./pages/Dashboard";
 import Chat from "./pages/Chat";
@@ -70,6 +72,8 @@ function AppRoutes() {
       <Route path="/roles" element={<Roles />} />
       <Route path="/role-quiz" element={<RoleQuiz />} />
       <Route path="/auth" element={<Auth />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/onboarding" element={
         <ProtectedRoute>
           <Onboarding />

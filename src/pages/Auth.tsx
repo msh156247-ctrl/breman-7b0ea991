@@ -3,7 +3,7 @@ import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Eye, EyeOff, Loader2, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, Loader2, ArrowLeft, Mail, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,8 +16,9 @@ const loginSchema = z.object({
   password: z.string().min(6, '비밀번호는 최소 6자 이상이어야 합니다'),
 });
 
-const signupSchema = loginSchema.extend({
-  name: z.string().min(2, '이름은 최소 2자 이상이어야 합니다').max(50, '이름은 50자를 초과할 수 없습니다'),
+const signupSchema = z.object({
+  email: z.string().email('올바른 이메일을 입력해주세요'),
+  password: z.string().min(6, '비밀번호는 최소 6자 이상이어야 합니다'),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: '비밀번호가 일치하지 않습니다',
@@ -35,6 +36,8 @@ export default function Auth() {
   );
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
+  const [signupEmail, setSignupEmail] = useState('');
   const { signIn, signUp, user } = useAuth();
 
   useEffect(() => {
@@ -50,33 +53,91 @@ export default function Auth() {
 
   const signupForm = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { email: '', password: '', confirmPassword: '', name: '' },
+    defaultValues: { email: '', password: '', confirmPassword: '' },
   });
 
   const handleLogin = async (data: LoginFormData) => {
     setLoading(true);
     const { error } = await signIn(data.email, data.password);
     if (error) {
-      toast.error(error.message === 'Invalid login credentials' 
-        ? '이메일 또는 비밀번호가 올바르지 않습니다' 
-        : error.message
-      );
-    }
-    setLoading(false);
-  };
-
-  const handleSignup = async (data: SignupFormData) => {
-    setLoading(true);
-    const { error } = await signUp(data.email, data.password, data.name);
-    if (error) {
-      if (error.message.includes('already registered')) {
-        toast.error('이미 등록된 이메일입니다');
+      if (error.message === 'Email not confirmed') {
+        toast.error('이메일 인증이 필요합니다. 메일함을 확인해주세요.');
+      } else if (error.message === 'Invalid login credentials') {
+        toast.error('이메일 또는 비밀번호가 올바르지 않습니다');
       } else {
         toast.error(error.message);
       }
     }
     setLoading(false);
   };
+
+  const handleSignup = async (data: SignupFormData) => {
+    setLoading(true);
+    // 이름 없이 회원가입 - 이메일의 @ 앞부분을 기본 이름으로 사용
+    const defaultName = data.email.split('@')[0];
+    const { error } = await signUp(data.email, data.password, defaultName);
+    if (error) {
+      if (error.message.includes('already registered')) {
+        toast.error('이미 등록된 이메일입니다');
+      } else {
+        toast.error(error.message);
+      }
+    } else {
+      setSignupEmail(data.email);
+      setSignupSuccess(true);
+    }
+    setLoading(false);
+  };
+
+  // 회원가입 완료 후 이메일 확인 안내 화면
+  if (signupSuccess) {
+    return (
+      <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
+        <div className="fixed top-4 right-4 z-50">
+          <ThemeToggle />
+        </div>
+
+        <div className="w-full max-w-md">
+          <div className="bg-card rounded-2xl border border-border p-8 shadow-lg text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-6">
+              <Mail className="w-8 h-8 text-primary" />
+            </div>
+            
+            <h1 className="text-2xl font-display font-bold mb-2">이메일을 확인해주세요</h1>
+            <p className="text-muted-foreground mb-6">
+              <span className="font-medium text-foreground">{signupEmail}</span>
+              <br />
+              위 주소로 인증 메일을 발송했습니다.
+            </p>
+
+            <div className="bg-muted/50 rounded-lg p-4 mb-6 text-sm text-muted-foreground">
+              <div className="flex items-start gap-3">
+                <CheckCircle className="w-5 h-5 text-primary mt-0.5 shrink-0" />
+                <div className="text-left">
+                  <p className="font-medium text-foreground mb-1">인증 후 로그인하세요</p>
+                  <p>메일의 인증 링크를 클릭한 후 로그인하면 서비스를 이용할 수 있습니다.</p>
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              onClick={() => {
+                setSignupSuccess(false);
+                setMode('login');
+              }}
+              className="w-full bg-gradient-primary"
+            >
+              로그인 페이지로 이동
+            </Button>
+
+            <p className="mt-4 text-xs text-muted-foreground">
+              메일이 도착하지 않았나요? 스팸함을 확인해보세요.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-hero flex items-center justify-center p-4">
@@ -170,22 +231,18 @@ export default function Auth() {
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 로그인
               </Button>
+
+              <div className="text-center">
+                <Link 
+                  to="/forgot-password" 
+                  className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                >
+                  비밀번호를 잊으셨나요?
+                </Link>
+              </div>
             </form>
           ) : (
             <form onSubmit={signupForm.handleSubmit(handleSignup)} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">이름</Label>
-                <Input
-                  id="name"
-                  type="text"
-                  placeholder="홍길동"
-                  {...signupForm.register('name')}
-                />
-                {signupForm.formState.errors.name && (
-                  <p className="text-sm text-destructive">{signupForm.formState.errors.name.message}</p>
-                )}
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="signup-email">이메일</Label>
                 <Input
@@ -238,6 +295,10 @@ export default function Auth() {
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 회원가입
               </Button>
+
+              <p className="text-xs text-center text-muted-foreground">
+                가입 후 이메일 인증이 필요합니다
+              </p>
             </form>
           )}
 
