@@ -56,7 +56,11 @@ export default function ResetPassword() {
     });
 
     if (error) {
-      toast.error('비밀번호 변경에 실패했습니다: ' + error.message);
+      if (error.message.includes('same password') || error.message.includes('different from the old')) {
+        toast.error('새 비밀번호는 기존 비밀번호와 달라야 합니다.');
+      } else {
+        toast.error('비밀번호 변경에 실패했습니다: ' + error.message);
+      }
     } else {
       setSuccess(true);
     }
