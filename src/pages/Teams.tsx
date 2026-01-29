@@ -61,9 +61,7 @@ export default function Teams() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [searchQuery, setSearchQuery] = useState(searchParams.get('search') || '');
-  const [roleFilter, setRoleFilter] = useState<string>('all');
   const [roleTypeFilter, setRoleTypeFilter] = useState<string>('all');
-  const [animalSkinFilter, setAnimalSkinFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [sortOption, setSortOption] = useState<string>('newest');
   const [teams, setTeams] = useState<TeamWithSlots[]>([]);
@@ -173,18 +171,12 @@ export default function Teams() {
         team.slogan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         team.description?.toLowerCase().includes(searchQuery.toLowerCase());
       
-      const matchesRole = roleFilter === 'all' || 
-        team.slots.some(s => s.role === roleFilter && s.isOpen && s.currentCount < s.maxCount);
-      
       const matchesRoleType = roleTypeFilter === 'all' || 
         team.slots.some(s => s.roleType === roleTypeFilter && s.isOpen && s.currentCount < s.maxCount);
       
-      const matchesAnimalSkin = animalSkinFilter === 'all' || 
-        team.slots.some(s => s.preferredAnimalSkin === animalSkinFilter && s.isOpen && s.currentCount < s.maxCount);
-      
       const matchesStatus = statusFilter === 'all' || team.status === statusFilter;
       
-      return matchesSearch && matchesRole && matchesRoleType && matchesAnimalSkin && matchesStatus;
+      return matchesSearch && matchesRoleType && matchesStatus;
     })
     .sort((a, b) => {
       // 지원한 팀 우선 정렬
@@ -241,19 +233,6 @@ export default function Teams() {
               className="pl-9"
             />
           </div>
-          <Select value={roleFilter} onValueChange={setRoleFilter}>
-            <SelectTrigger className="w-full sm:w-36">
-              <SelectValue placeholder="역할" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">모든 역할</SelectItem>
-              {Object.entries(ROLES).map(([key, role]) => (
-                <SelectItem key={key} value={key}>
-                  {role.icon} {role.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={roleTypeFilter} onValueChange={setRoleTypeFilter}>
             <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="직무" />
@@ -264,21 +243,6 @@ export default function Teams() {
                 <SelectItem key={key} value={key}>
                   <span className="flex items-center gap-2">
                     {roleType.icon} {roleType.name}
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={animalSkinFilter} onValueChange={setAnimalSkinFilter}>
-            <SelectTrigger className="w-full sm:w-36">
-              <SelectValue placeholder="성향" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">모든 성향</SelectItem>
-              {Object.entries(ANIMAL_SKINS).map(([key, skin]) => (
-                <SelectItem key={key} value={key}>
-                  <span className="flex items-center gap-2">
-                    {skin.icon} {skin.name}
                   </span>
                 </SelectItem>
               ))}
@@ -300,7 +264,7 @@ export default function Teams() {
       {/* Results count and sort */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {searchQuery || roleFilter !== 'all' || roleTypeFilter !== 'all' || animalSkinFilter !== 'all' || statusFilter !== 'all'
+          {searchQuery || roleTypeFilter !== 'all' || statusFilter !== 'all'
             ? `검색 결과 ${filteredTeams.length}개 팀`
             : `총 ${teams.length}개 팀`}
         </p>
