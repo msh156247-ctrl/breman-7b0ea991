@@ -151,7 +151,11 @@ export default function ChatRoom() {
 
       // Realtime subscription for messages (INSERT, UPDATE, DELETE)
       const channel = supabase
-        .channel(`chat-${conversationId}`)
+        .channel(`chat-${conversationId}`, {
+          config: {
+            broadcast: { self: true },
+          },
+        })
         .on(
           'postgres_changes',
           {
@@ -161,6 +165,7 @@ export default function ChatRoom() {
             filter: `conversation_id=eq.${conversationId}`
           },
           async (payload) => {
+            console.log('🔔 New message received:', payload);
             const newMsg = payload.new as Message;
             // Fetch sender info
             const { data: sender } = await supabase
@@ -169,7 +174,11 @@ export default function ChatRoom() {
               .eq('id', newMsg.sender_id)
               .single();
 
-            setMessages(prev => [...prev, { ...newMsg, sender: sender || undefined, read_by_count: 0 }]);
+            setMessages(prev => {
+              // Prevent duplicates
+              if (prev.some(m => m.id === newMsg.id)) return prev;
+              return [...prev, { ...newMsg, sender: sender || undefined, read_by_count: 0 }];
+            });
             scrollToBottom();
             // Mark as read immediately when receiving new messages
             markAsRead();
@@ -199,6 +208,7 @@ export default function ChatRoom() {
             filter: `conversation_id=eq.${conversationId}`
           },
           async (payload) => {
+            console.log('📝 Message updated:', payload);
             const updatedMsg = payload.new as Message;
             // Fetch sender info for updated message
             const { data: sender } = await supabase
@@ -223,6 +233,7 @@ export default function ChatRoom() {
             filter: `conversation_id=eq.${conversationId}`
           },
           (payload) => {
+            console.log('🗑️ Message deleted:', payload);
             const deletedMsg = payload.old as { id: string };
             setMessages(prev => prev.filter(msg => msg.id !== deletedMsg.id));
           }
@@ -240,7 +251,14 @@ export default function ChatRoom() {
             fetchReadCounts();
           }
         )
-        .subscribe();
+        .subscribe((status) => {
+          console.log('📡 Realtime subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('✅ Successfully subscribed to chat channel');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('❌ Failed to subscribe to chat channel');
+          }
+        });
 
       return () => {
         supabase.removeChannel(channel);
@@ -464,25 +482,66 @@ export default function ChatRoom() {
 
     setSending(true);
     const content = newMessage.trim();
+    const currentReplyTo = replyTo;
     setNewMessage('');
+    setReplyTo(null);
     stopTyping();
 
+    // Optimistic UI: Add message immediately
+    const tempId = `temp-${Date.now()}`;
+    const optimisticMessage: Message = {
+      id: tempId,
+      conversation_id: conversationId,
+      sender_id: user.id,
+      sender_team_id: null,
+      content: content || (hasAttachments ? '📎 첨부파일' : ''),
+      reply_to_id: currentReplyTo?.id || null,
+      attachments: attachmentUrls,
+      created_at: new Date().toISOString(),
+      sender: {
+        name: profile?.name || '나',
+        avatar_url: profile?.avatar_url || null,
+      },
+      reply_to: currentReplyTo ? {
+        content: currentReplyTo.content,
+        sender_name: currentReplyTo.sender?.name || '사용자'
+      } : undefined,
+      read_by_count: 0,
+    };
+
+    setMessages(prev => [...prev, optimisticMessage]);
+    scrollToBottom();
+
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('messages')
         .insert({
           conversation_id: conversationId,
           sender_id: user.id,
           content: content || (hasAttachments ? '📎 첨부파일' : ''),
-          reply_to_id: replyTo?.id || null,
+          reply_to_id: currentReplyTo?.id || null,
           attachments: attachmentUrls.length > 0 ? attachmentUrls : null
-        });
+        })
+        .select()
+        .single();
 
       if (error) throw error;
-      setReplyTo(null);
+
+      // Replace temp message with real one
+      if (data) {
+        setMessages(prev => prev.map(msg => 
+          msg.id === tempId 
+            ? { ...optimisticMessage, id: data.id, created_at: data.created_at }
+            : msg
+        ));
+      }
     } catch (error) {
       console.error('Error sending message:', error);
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempId));
       setNewMessage(content);
+      setReplyTo(currentReplyTo);
+      toast.error('메시지 전송에 실패했습니다.');
     } finally {
       setSending(false);
       inputRef.current?.focus();
