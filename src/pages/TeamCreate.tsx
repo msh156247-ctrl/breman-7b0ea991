@@ -18,8 +18,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { TeamPositionSlotEditor, type PositionSlot } from '@/components/team/TeamPositionSlotEditor';
-
-const EMOJIS = ['🚀', '💻', '🎨', '🔒', '⚡', '🌟', '🎯', '💡', '🔥', '🏆', '💪', '🎮'];
+import { TeamEmblemUpload } from '@/components/team/TeamEmblemUpload';
 
 export default function TeamCreate() {
   const navigate = useNavigate();
@@ -140,25 +139,10 @@ export default function TeamCreate() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Info */}
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="emblem">팀 엠블럼</Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {EMOJIS.map(emoji => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => handleChange('emblem', emoji)}
-                        className={`w-12 h-12 text-2xl rounded-lg border-2 transition-all ${
-                          formData.emblem === emoji
-                            ? 'border-primary bg-primary/10'
-                            : 'border-muted hover:border-muted-foreground'
-                        }`}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <TeamEmblemUpload
+                  currentEmblem={formData.emblem}
+                  onEmblemChange={(emblem) => handleChange('emblem', emblem)}
+                />
 
                 <div>
                   <Label htmlFor="name">팀 이름 *</Label>

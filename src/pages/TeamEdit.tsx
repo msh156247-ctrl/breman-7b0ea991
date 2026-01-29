@@ -29,9 +29,8 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { TeamPositionSlotEditor, type PositionSlot } from '@/components/team/TeamPositionSlotEditor';
+import { TeamEmblemUpload } from '@/components/team/TeamEmblemUpload';
 import type { RoleType } from '@/lib/constants';
-
-const EMOJIS = ['🚀', '💻', '🎨', '🔒', '⚡', '🌟', '🎯', '💡', '🔥', '🏆', '💪', '🎮'];
 
 interface RequiredSkillLevel {
   skillName: string;
@@ -327,25 +326,12 @@ export default function TeamEdit() {
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Basic Info */}
               <div className="space-y-4">
-                <div>
-                  <Label htmlFor="emblem">팀 엠블럼</Label>
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {EMOJIS.map(emoji => (
-                      <button
-                        key={emoji}
-                        type="button"
-                        onClick={() => handleChange('emblem', emoji)}
-                        className={`w-12 h-12 text-2xl rounded-lg border-2 transition-all ${
-                          formData.emblem === emoji
-                            ? 'border-primary bg-primary/10'
-                            : 'border-muted hover:border-muted-foreground'
-                        }`}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <TeamEmblemUpload
+                  teamId={teamId}
+                  currentEmblem={formData.emblem}
+                  onEmblemChange={(emblem) => handleChange('emblem', emblem)}
+                  isEditing={true}
+                />
 
                 <div>
                   <Label htmlFor="name">팀 이름 *</Label>
