@@ -28,7 +28,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import { TeamPositionSlotEditor, type PositionSlot } from '@/components/team/TeamPositionSlotEditor';
+import { TeamPositionSlotEditor, type PositionSlot, type PositionQuestion } from '@/components/team/TeamPositionSlotEditor';
 import { TeamEmblemUpload } from '@/components/team/TeamEmblemUpload';
 import type { RoleType } from '@/lib/constants';
 
@@ -104,6 +104,10 @@ export default function TeamEdit() {
           if (Array.isArray(slot.required_skill_levels)) {
             requiredSkillLevels = slot.required_skill_levels as unknown as RequiredSkillLevel[];
           }
+          let questions: PositionQuestion[] = [];
+          if (Array.isArray(slot.questions)) {
+            questions = slot.questions as unknown as PositionQuestion[];
+          }
           return {
             id: slot.id,
             role_type: slot.role_type as RoleType | null,
@@ -111,6 +115,7 @@ export default function TeamEdit() {
             max_count: slot.max_count || 1,
             current_count: slot.current_count || 0,
             required_skill_levels: requiredSkillLevels,
+            questions,
             is_open: slot.is_open ?? true,
           };
         }));
@@ -186,6 +191,7 @@ export default function TeamEdit() {
             min_level: slot.min_level,
             max_count: slot.max_count,
             required_skill_levels: JSON.parse(JSON.stringify(slot.required_skill_levels)),
+            questions: JSON.parse(JSON.stringify(slot.questions || [])),
           })
           .eq('id', slot.id!);
 
@@ -205,6 +211,7 @@ export default function TeamEdit() {
               max_count: slot.max_count,
               current_count: 0,
               required_skill_levels: JSON.parse(JSON.stringify(slot.required_skill_levels)),
+              questions: JSON.parse(JSON.stringify(slot.questions || [])),
               is_open: true,
             }))
           );

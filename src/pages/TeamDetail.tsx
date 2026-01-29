@@ -41,6 +41,13 @@ import { TeamMemberManagement } from '@/components/team/TeamMemberManagement';
 import { TeamApplicationManagement } from '@/components/team/TeamApplicationManagement';
 import { TeamServiceOfferList } from '@/components/team/TeamServiceOfferList';
 import { TeamNotificationsWidget } from '@/components/team/TeamNotificationsWidget';
+import { TeamApplicationDialog } from '@/components/team/TeamApplicationDialog';
+
+interface PositionQuestion {
+  id: string;
+  question: string;
+  required: boolean;
+}
 
 interface Team {
   id: string;
@@ -71,7 +78,8 @@ interface OpenSlot {
   preferred_animal_skin: AnimalSkin | null;
   min_level: number;
   required_skills: string[] | null;
-  required_skill_levels: { skillName: string; minLevel: number }[] | null;
+  required_skill_levels: { skillName: string; minLevel: number }[];
+  questions: PositionQuestion[];
   current_count: number;
   max_count: number;
 }
@@ -215,17 +223,28 @@ export default function TeamDetail() {
         .select('*')
         .eq('team_id', teamId);
 
-      setOpenSlots((slotsData || []).map(slot => ({
-        id: slot.id,
-        role: slot.role as UserRole,
-        role_type: slot.role_type as RoleType | null,
-        preferred_animal_skin: slot.preferred_animal_skin as AnimalSkin | null,
-        min_level: slot.min_level || 1,
-        required_skills: slot.required_skills,
-        required_skill_levels: slot.required_skill_levels as { skillName: string; minLevel: number }[] | null,
-        current_count: slot.current_count || 0,
-        max_count: slot.max_count || 1,
-      })));
+      setOpenSlots((slotsData || []).map(slot => {
+        let questions: PositionQuestion[] = [];
+        if (Array.isArray(slot.questions)) {
+          questions = slot.questions as unknown as PositionQuestion[];
+        }
+        let requiredSkillLevels: { skillName: string; minLevel: number }[] = [];
+        if (Array.isArray(slot.required_skill_levels)) {
+          requiredSkillLevels = slot.required_skill_levels as unknown as { skillName: string; minLevel: number }[];
+        }
+        return {
+          id: slot.id,
+          role: slot.role as UserRole,
+          role_type: slot.role_type as RoleType | null,
+          preferred_animal_skin: slot.preferred_animal_skin as AnimalSkin | null,
+          min_level: slot.min_level || 1,
+          required_skills: slot.required_skills,
+          required_skill_levels: requiredSkillLevels,
+          questions,
+          current_count: slot.current_count || 0,
+          max_count: slot.max_count || 1,
+        };
+      }));
 
     } catch (error) {
       console.error('Error fetching team data:', error);

@@ -1,15 +1,23 @@
 import { useState, useEffect } from 'react';
-import { Plus, X, GripVertical, Trash2 } from 'lucide-react';
+import { Plus, X, GripVertical, Trash2, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ROLE_TYPES, ANIMAL_SKINS, ROLE_TYPE_TO_SKILL_CATEGORIES, SKILL_CATEGORIES, type RoleType, type AnimalSkin } from '@/lib/constants';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-
 interface RequiredSkillLevel {
   skillName: string;
   minLevel: number;
+}
+
+export interface PositionQuestion {
+  id: string;
+  question: string;
+  required: boolean;
 }
 
 export interface PositionSlot {
@@ -20,6 +28,7 @@ export interface PositionSlot {
   max_count: number;
   current_count: number;
   required_skill_levels: RequiredSkillLevel[];
+  questions: PositionQuestion[];
   is_open?: boolean;
   _isNew?: boolean;
   _toDelete?: boolean;
@@ -71,11 +80,37 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
       max_count: 1,
       current_count: 0,
       required_skill_levels: [],
+      questions: [],
       is_open: true,
       _isNew: true,
     }]);
   };
 
+  const addQuestion = (slotIndex: number) => {
+    const slot = slots[slotIndex];
+    if (slot.questions.length >= 5) return; // 최대 5개 제한
+    updateSlot(slotIndex, {
+      questions: [...slot.questions, { 
+        id: crypto.randomUUID(), 
+        question: '', 
+        required: false 
+      }]
+    });
+  };
+
+  const updateQuestion = (slotIndex: number, questionIndex: number, updates: Partial<PositionQuestion>) => {
+    const slot = slots[slotIndex];
+    const newQuestions = [...slot.questions];
+    newQuestions[questionIndex] = { ...newQuestions[questionIndex], ...updates };
+    updateSlot(slotIndex, { questions: newQuestions });
+  };
+
+  const removeQuestion = (slotIndex: number, questionIndex: number) => {
+    const slot = slots[slotIndex];
+    updateSlot(slotIndex, {
+      questions: slot.questions.filter((_, i) => i !== questionIndex)
+    });
+  };
   const updateSlot = (index: number, updates: Partial<PositionSlot>) => {
     const newSlots = [...slots];
     // If role_type changed, clear skills
@@ -294,6 +329,72 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                           </SelectContent>
                         </Select>
                       </div>
+
+                      {/* Position Questions - 지원자 질문 */}
+                      <Collapsible>
+                        <div className="flex items-center justify-between">
+                          <CollapsibleTrigger className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground">
+                            <HelpCircle className="w-3.5 h-3.5" />
+                            <span>지원자 질문 ({slot.questions.length}/5)</span>
+                            <ChevronDown className="w-3 h-3" />
+                          </CollapsibleTrigger>
+                          {slot.questions.length < 5 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 text-xs"
+                              onClick={() => addQuestion(slotIndex)}
+                            >
+                              <Plus className="w-3 h-3 mr-1" />
+                              질문 추가
+                            </Button>
+                          )}
+                        </div>
+                        
+                        <CollapsibleContent className="mt-2 space-y-2">
+                          {slot.questions.length === 0 ? (
+                            <p className="text-xs text-muted-foreground py-2">
+                              지원자에게 물어볼 질문을 추가하세요. (예: 원하는 업무 방식, 경험 등)
+                            </p>
+                          ) : (
+                            slot.questions.map((q, qIndex) => (
+                              <div key={q.id} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
+                                <div className="flex-1 space-y-2">
+                                  <Input
+                                    placeholder={`질문 ${qIndex + 1}`}
+                                    value={q.question}
+                                    onChange={(e) => updateQuestion(slotIndex, qIndex, { question: e.target.value })}
+                                    className="h-8 text-sm"
+                                  />
+                                  <div className="flex items-center gap-2">
+                                    <Checkbox
+                                      id={`required-${slot.id || slotIndex}-${qIndex}`}
+                                      checked={q.required}
+                                      onCheckedChange={(checked) => updateQuestion(slotIndex, qIndex, { required: !!checked })}
+                                    />
+                                    <label 
+                                      htmlFor={`required-${slot.id || slotIndex}-${qIndex}`}
+                                      className="text-xs text-muted-foreground cursor-pointer"
+                                    >
+                                      필수 응답
+                                    </label>
+                                  </div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                                  onClick={() => removeQuestion(slotIndex, qIndex)}
+                                >
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ))
+                          )}
+                        </CollapsibleContent>
+                      </Collapsible>
                     </div>
 
                     {/* Delete button */}

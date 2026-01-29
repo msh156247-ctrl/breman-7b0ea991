@@ -1777,6 +1777,7 @@ export type Database = {
           preferred_animal_skin:
             | Database["public"]["Enums"]["animal_skin"]
             | null
+          questions: Json | null
           required_skill_levels: Json | null
           required_skills: string[] | null
           role: Database["public"]["Enums"]["user_role"]
@@ -1793,6 +1794,7 @@ export type Database = {
           preferred_animal_skin?:
             | Database["public"]["Enums"]["animal_skin"]
             | null
+          questions?: Json | null
           required_skill_levels?: Json | null
           required_skills?: string[] | null
           role: Database["public"]["Enums"]["user_role"]
@@ -1809,6 +1811,7 @@ export type Database = {
           preferred_animal_skin?:
             | Database["public"]["Enums"]["animal_skin"]
             | null
+          questions?: Json | null
           required_skill_levels?: Json | null
           required_skills?: string[] | null
           role?: Database["public"]["Enums"]["user_role"]

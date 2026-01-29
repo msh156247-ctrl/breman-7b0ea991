@@ -95,6 +95,7 @@ export default function TeamCreate() {
               max_count: slot.max_count,
               current_count: 0,
               required_skill_levels: JSON.parse(JSON.stringify(slot.required_skill_levels)),
+              questions: JSON.parse(JSON.stringify(slot.questions || [])),
               is_open: true,
             }))
           );
