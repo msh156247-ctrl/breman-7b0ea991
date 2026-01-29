@@ -92,6 +92,7 @@ export default function ChatRoom() {
   
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [conversationInfo, setConversationInfo] = useState<ConversationInfo | null>(null);
+  const [otherParticipantProfile, setOtherParticipantProfile] = useState<{ id: string; name: string; avatar_url: string | null } | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
@@ -271,16 +272,24 @@ export default function ChatRoom() {
         .neq('user_id', user.id);
 
       if (participants && participants[0]) {
-        const { data: profile } = await supabase
+        const { data: otherProfile } = await supabase
           .from('profiles')
-          .select('name, avatar_url')
+          .select('id, name, avatar_url')
           .eq('id', participants[0].user_id)
           .single();
 
+        if (otherProfile) {
+          setOtherParticipantProfile({
+            id: otherProfile.id,
+            name: otherProfile.name,
+            avatar_url: otherProfile.avatar_url
+          });
+        }
+
         setConversationInfo({
-          title: profile?.name || '사용자',
+          title: otherProfile?.name || '사용자',
           subtitle: '1:1 채팅',
-          avatar: profile?.avatar_url || undefined,
+          avatar: otherProfile?.avatar_url || undefined,
           type: 'direct'
         });
       }
@@ -672,35 +681,46 @@ export default function ChatRoom() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-4rem)] -m-4 lg:-m-6">
-      {/* Header */}
-      <div className="flex items-center gap-3 p-4 border-b bg-background">
-        <Button variant="ghost" size="icon" onClick={() => navigate('/chat')}>
+    <div className="fixed inset-0 flex flex-col bg-background lg:relative lg:h-[calc(100dvh-4rem)] lg:-m-6">
+      {/* Header - Fixed at top */}
+      <div className="sticky top-0 z-10 flex items-center gap-2 p-3 border-b bg-background shrink-0">
+        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/chat')}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
 
-        <Avatar className="h-10 w-10">
-          <AvatarImage src={conversationInfo?.avatar} />
-          <AvatarFallback className="bg-primary/10">
-            {conversationInfo?.title?.charAt(0) || '?'}
-          </AvatarFallback>
-        </Avatar>
-
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h2 className="font-semibold">{conversationInfo?.title}</h2>
-            {conversationInfo?.type && (
-              <Badge variant="secondary" className="text-xs">
-                {getTypeIcon(conversationInfo.type)}
-              </Badge>
-            )}
+        {/* Other participant's profile (left side) */}
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Avatar className="h-9 w-9 shrink-0">
+            <AvatarImage src={conversationInfo?.avatar} />
+            <AvatarFallback className="bg-primary/10 text-sm">
+              {conversationInfo?.title?.charAt(0) || '?'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h2 className="font-semibold text-sm truncate">{conversationInfo?.title}</h2>
+              {conversationInfo?.type && (
+                <Badge variant="secondary" className="text-[10px] px-1 py-0 shrink-0">
+                  {getTypeIcon(conversationInfo.type)}
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground truncate">{conversationInfo?.subtitle}</p>
           </div>
-          <p className="text-xs text-muted-foreground">{conversationInfo?.subtitle}</p>
         </div>
 
-        <Button variant="ghost" size="icon" onClick={() => setIsSearchOpen(!isSearchOpen)}>
-          <Search className="h-5 w-5" />
-        </Button>
+        {/* My profile (right side) */}
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsSearchOpen(!isSearchOpen)}>
+            <Search className="h-4 w-4" />
+          </Button>
+          <Avatar className="h-8 w-8 ring-2 ring-primary/20">
+            <AvatarImage src={profile?.avatar_url || undefined} />
+            <AvatarFallback className="bg-primary text-primary-foreground text-xs">
+              {profile?.name?.charAt(0) || 'U'}
+            </AvatarFallback>
+          </Avatar>
+        </div>
       </div>
 
       {/* Search Bar */}
@@ -711,8 +731,8 @@ export default function ChatRoom() {
         onClose={() => setIsSearchOpen(false)}
       />
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4">
+      {/* Messages - Scrollable area */}
+      <div className="flex-1 overflow-y-auto p-4 overscroll-contain">
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <MessageCircle className="h-12 w-12 mb-2 opacity-50" />
@@ -727,7 +747,7 @@ export default function ChatRoom() {
 
       {/* Edit Message Preview */}
       {editingMessage && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-t">
+        <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-t shrink-0">
           <Pencil className="h-4 w-4 text-muted-foreground" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium">메시지 수정</p>
@@ -757,7 +777,7 @@ export default function ChatRoom() {
 
       {/* Reply Preview */}
       {replyTo && !editingMessage && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-t">
+        <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-t shrink-0">
           <Reply className="h-4 w-4 text-muted-foreground" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium">{replyTo.sender?.name}에게 답장</p>
@@ -770,7 +790,7 @@ export default function ChatRoom() {
       )}
 
       {/* Typing Indicator */}
-      <TypingIndicator typingUsers={typingUsers} className="border-t" />
+      <TypingIndicator typingUsers={typingUsers} className="border-t shrink-0" />
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteMessageId} onOpenChange={(open) => !open && setDeleteMessageId(null)}>
@@ -790,16 +810,18 @@ export default function ChatRoom() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Input */}
-      <ChatInputArea
-        inputRef={inputRef}
-        newMessage={newMessage}
-        setNewMessage={setNewMessage}
-        sending={sending}
-        userId={user?.id || ''}
-        onSendMessage={handleSendMessage}
-        onInputChange={handleInputChange}
-      />
+      {/* Input - Fixed at bottom */}
+      <div className="shrink-0">
+        <ChatInputArea
+          inputRef={inputRef}
+          newMessage={newMessage}
+          setNewMessage={setNewMessage}
+          sending={sending}
+          userId={user?.id || ''}
+          onSendMessage={handleSendMessage}
+          onInputChange={handleInputChange}
+        />
+      </div>
     </div>
   );
 }
