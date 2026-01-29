@@ -3,13 +3,13 @@ import { Link } from 'react-router-dom';
 import { 
   Edit, Calendar, Star, Users, Briefcase, Award, 
   ChevronRight, Trophy, Code, ClipboardList, X, RefreshCw,
-  User, Activity, Medal, TrendingUp, Sparkles, Crown, Megaphone
+  User, Activity, Medal, TrendingUp, Sparkles, Crown, Megaphone,
+  CheckCircle2
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { RoleBadge } from '@/components/ui/RoleBadge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -34,6 +34,7 @@ import { useCalculatedLevel, type LevelBreakdown } from '@/hooks/useCalculatedLe
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { useToast } from '@/hooks/use-toast';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   AlertDialog,
@@ -271,49 +272,68 @@ export default function Profile() {
 
   return (
     <div className="space-y-6">
-      {/* Profile header */}
+      {/* Profile header - 개선된 레이아웃 */}
       <ScrollReveal animation="fade-up">
-        <Card className="overflow-hidden">
-          {/* Banner */}
-          <div className={`h-32 bg-gradient-to-r ${animalSkinData.gradient}`} />
+        <Card className="overflow-hidden border-0 shadow-lg">
+          {/* 배너 - 성향에 따른 그라데이션 */}
+          <div className={`h-28 md:h-36 bg-gradient-to-br ${animalSkinData.gradient} relative`}>
+            {/* 패턴 오버레이 */}
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxwYXRoIGQ9Ik0wIDBoNjB2NjBIMHoiLz48cGF0aCBkPSJNMzAgMzBtLTIgMGEyIDIgMCAxIDAgNCAwIDIgMiAwIDEgMC00IDB6IiBmaWxsPSJyZ2JhKDI1NSwyNTUsMjU1LDAuMSkiLz48L2c+PC9zdmc+')] opacity-50" />
+          </div>
           
-          <CardContent className="relative pb-6">
-            {/* Avatar */}
-            <div className="absolute -top-16 left-6">
-              <Avatar className="h-32 w-32 border-4 border-card">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="text-4xl bg-muted">
-                  {profile?.name?.[0] || 'U'}
-                </AvatarFallback>
-              </Avatar>
+          <CardContent className="relative px-4 md:px-6 pb-6">
+            {/* 아바타 - 배너에 걸치는 위치 */}
+            <div className="absolute -top-14 md:-top-16 left-4 md:left-6">
+              <div className="relative">
+                <UserAvatar
+                  userId={user?.id || ''}
+                  avatarUrl={profile?.avatar_url}
+                  name={profile?.name}
+                  className="h-28 w-28 md:h-32 md:w-32 border-4 border-card shadow-xl"
+                  fallbackClassName="text-3xl md:text-4xl"
+                />
+                {profile?.verified && (
+                  <div className="absolute -bottom-1 -right-1 bg-success text-success-foreground rounded-full p-1.5 border-2 border-card shadow-md">
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Edit button */}
-            <div className="flex justify-end mb-4">
-              <Button variant="outline" size="sm" onClick={() => setEditDialogOpen(true)}>
-                <Edit className="w-4 h-4 mr-2" />
-                프로필 수정
+            {/* 프로필 수정 버튼 */}
+            <div className="flex justify-end pt-2 mb-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setEditDialogOpen(true)}
+                className="gap-2"
+              >
+                <Edit className="w-4 h-4" />
+                <span className="hidden sm:inline">프로필 수정</span>
               </Button>
             </div>
 
-            {/* User info */}
-            <div className="mt-8">
-              {/* Name and verified */}
-              <div className="flex flex-wrap items-center gap-3 mb-3">
-                <h1 className="text-2xl font-display font-bold">{profile?.name || '사용자'}</h1>
-                {profile?.verified && (
-                  <span className="px-2 py-1 text-xs font-medium rounded-full bg-success/10 text-success border border-success/20">
-                    ✓ 인증됨
-                  </span>
+            {/* 유저 정보 영역 */}
+            <div className="mt-12 md:mt-14 space-y-4">
+              {/* 이름 & 레벨 */}
+              <div className="flex flex-wrap items-center gap-3">
+                <h1 className="text-2xl md:text-3xl font-display font-bold">{profile?.name || '사용자'}</h1>
+                {levelBreakdown && (
+                  <LevelBadge 
+                    level={levelBreakdown.level} 
+                    score={levelBreakdown.calculatedLevelScore} 
+                    showScore 
+                    size="lg" 
+                  />
                 )}
               </div>
 
-              {/* Role Types (직무) - 1st */}
-              <div className="flex flex-wrap items-center gap-2 mb-3">
+              {/* 직무 (1순위) */}
+              <div className="flex flex-wrap items-center gap-2">
                 {profile?.main_role_type && ROLE_TYPES[profile.main_role_type as RoleType] && (
                   <Badge 
                     variant="default" 
-                    className="gap-1 font-medium"
+                    className="gap-1.5 py-1 px-3 text-sm font-semibold"
                   >
                     {ROLE_TYPES[profile.main_role_type as RoleType].icon}
                     메인: {ROLE_TYPES[profile.main_role_type as RoleType].name}
@@ -330,8 +350,7 @@ export default function Profile() {
                           variant="secondary" 
                           className="gap-1 text-xs"
                         >
-                          {roleData.icon}
-                          {roleData.name}
+                          {roleData.icon} {roleData.name}
                         </Badge>
                       );
                     })}
@@ -339,34 +358,36 @@ export default function Profile() {
                 )}
               </div>
 
-              {/* Top Skills Preview (기술) - 2nd */}
+              {/* 대표 스킬 (2순위) */}
               {userSkills.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mb-3">
+                <div className="flex flex-wrap gap-1.5">
                   {userSkills.slice(0, 5).map((skill) => (
                     <span 
                       key={skill.id} 
-                      className="text-xs px-2 py-1 rounded-md bg-accent/10 text-accent-foreground border border-accent/20"
+                      className="text-xs px-2.5 py-1 rounded-full bg-accent/10 text-accent-foreground border border-accent/20 font-medium"
                     >
-                      {skill.skill?.name || 'Unknown'} Lv.{skill.level}
+                      {skill.skill?.name || 'Unknown'} <span className="opacity-70">Lv.{skill.level}</span>
                     </span>
                   ))}
                   {userSkills.length > 5 && (
-                    <span className="text-xs px-2 py-1 rounded-md bg-muted text-muted-foreground">
+                    <span className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground">
                       +{userSkills.length - 5}
                     </span>
                   )}
                 </div>
               )}
 
-              {/* Animal Skin (성향) - 3rd - 인라인 수정 가능 */}
-              <div className="flex items-center gap-3 mb-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+              {/* 성향 (3순위) - 컴팩트 인라인 수정 */}
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border/50">
                 <span className="text-3xl">{animalSkinData.icon}</span>
                 <div className="flex-1 min-w-0">
-                  <span className="font-bold text-lg">{animalSkinData.name}</span>
-                  <span className="text-sm text-muted-foreground ml-2">({animalSkinData.title})</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold">{animalSkinData.name}</span>
+                    <span className="text-sm text-muted-foreground">({animalSkinData.title})</span>
+                  </div>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {animalSkinData.keywords.map((keyword) => (
-                      <span key={keyword} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                      <span key={keyword} className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
                         {keyword}
                       </span>
                     ))}
@@ -389,7 +410,7 @@ export default function Profile() {
                     }
                   }}
                 >
-                  <SelectTrigger className="w-[130px] h-9">
+                  <SelectTrigger className="w-[120px] h-8 text-sm">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -404,12 +425,12 @@ export default function Profile() {
                 </Select>
               </div>
 
-              {/* 취미 & 관심분야 표시 */}
+              {/* 취미 & 관심분야 */}
               {((profile as any)?.hobbies?.length > 0 || (profile as any)?.interests?.length > 0) && (
-                <div className="flex flex-wrap gap-3 mb-3">
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
                   {(profile as any)?.hobbies?.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground">취미:</span>
+                      <span className="text-xs text-muted-foreground font-medium">취미</span>
                       {(profile as any).hobbies.slice(0, 5).map((hobby: string) => (
                         <span key={hobby} className="text-xs px-2 py-0.5 rounded-full bg-secondary/50 text-secondary-foreground">
                           {hobby}
@@ -422,7 +443,7 @@ export default function Profile() {
                   )}
                   {(profile as any)?.interests?.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-xs text-muted-foreground">관심:</span>
+                      <span className="text-xs text-muted-foreground font-medium">관심</span>
                       {(profile as any).interests.slice(0, 5).map((interest: string) => (
                         <span key={interest} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
                           {interest}
@@ -436,124 +457,116 @@ export default function Profile() {
                 </div>
               )}
 
-              <p className="text-muted-foreground mb-4 max-w-2xl">
+              {/* 자기소개 */}
+              <p className="text-muted-foreground text-sm md:text-base max-w-2xl leading-relaxed">
                 {profile?.bio || '아직 소개가 없습니다. 프로필을 수정해서 자기소개를 추가해보세요!'}
               </p>
 
-              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground mb-6">
-                <div className="flex items-center gap-1">
-                  <Calendar className="w-4 h-4" />
+              {/* 통계 미니 바 */}
+              <div className="flex flex-wrap gap-4 text-sm text-muted-foreground pt-2">
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="w-4 h-4 text-primary" />
                   <span>2024년 1월 가입</span>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   <Star className="w-4 h-4 text-secondary" />
                   <span>{profile?.rating_avg || 0} 평점</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
+                <div className="flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-accent" />
                   <span>{userTeams.length}개 팀</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <Award className="w-4 h-4" />
+                <div className="flex items-center gap-1.5">
+                  <Award className="w-4 h-4 text-tier-gold" />
                   <span>{userBadges.length}개 배지</span>
                 </div>
               </div>
-
-              {/* Level Breakdown Card */}
-              {levelBreakdown && (
-                <div className="mt-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <LevelBadge 
-                      level={levelBreakdown.level} 
-                      score={levelBreakdown.calculatedLevelScore} 
-                      showScore 
-                      size="lg" 
-                    />
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
-                      onClick={handleRecalculateLevel}
-                      disabled={isCalculating}
-                    >
-                      <RefreshCw className={`w-4 h-4 mr-1 ${isCalculating ? 'animate-spin' : ''}`} />
-                      재계산
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
           </CardContent>
         </Card>
       </ScrollReveal>
 
-      {/* Stats cards */}
+      {/* Stats cards - 개선된 디자인 */}
       <ScrollReveal animation="fade-up" delay={100}>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Trophy className="w-8 h-8 mx-auto mb-2 text-primary" />
-              <p className="text-2xl font-bold">#42</p>
-              <p className="text-xs text-muted-foreground">전체 랭킹</p>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+          <Card className="relative overflow-hidden group hover:shadow-md transition-shadow">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-primary/20 to-transparent rounded-bl-full" />
+            <CardContent className="p-4 text-center relative">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Trophy className="w-6 h-6 text-primary" />
+              </div>
+              <p className="text-2xl font-bold font-display">#42</p>
+              <p className="text-xs text-muted-foreground mt-1">전체 랭킹</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Briefcase className="w-8 h-8 mx-auto mb-2 text-secondary" />
-              <p className="text-2xl font-bold">12</p>
-              <p className="text-xs text-muted-foreground">완료 프로젝트</p>
+          <Card className="relative overflow-hidden group hover:shadow-md transition-shadow">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-secondary/20 to-transparent rounded-bl-full" />
+            <CardContent className="p-4 text-center relative">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-secondary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Briefcase className="w-6 h-6 text-secondary" />
+              </div>
+              <p className="text-2xl font-bold font-display">12</p>
+              <p className="text-xs text-muted-foreground mt-1">완료 프로젝트</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Code className="w-8 h-8 mx-auto mb-2 text-accent" />
-              <p className="text-2xl font-bold">{userSkills.length}</p>
-              <p className="text-xs text-muted-foreground">스킬</p>
+          <Card className="relative overflow-hidden group hover:shadow-md transition-shadow">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-accent/20 to-transparent rounded-bl-full" />
+            <CardContent className="p-4 text-center relative">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-accent/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Code className="w-6 h-6 text-accent" />
+              </div>
+              <p className="text-2xl font-bold font-display">{userSkills.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">스킬</p>
             </CardContent>
           </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <Star className="w-8 h-8 mx-auto mb-2 text-tier-gold" />
-              <p className="text-2xl font-bold">4.9</p>
-              <p className="text-xs text-muted-foreground">평균 평점</p>
+          <Card className="relative overflow-hidden group hover:shadow-md transition-shadow">
+            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-tier-gold/20 to-transparent rounded-bl-full" />
+            <CardContent className="p-4 text-center relative">
+              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-tier-gold/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Star className="w-6 h-6 text-tier-gold" />
+              </div>
+              <p className="text-2xl font-bold font-display">4.9</p>
+              <p className="text-xs text-muted-foreground mt-1">평균 평점</p>
             </CardContent>
           </Card>
         </div>
       </ScrollReveal>
 
-      {/* Unified 5 Tabs: 직무 / 활동 / 성과 / 평판 / 공지 */}
+      {/* 탭 영역 - 개선된 디자인 */}
       <ScrollReveal animation="fade-up" delay={200}>
-        <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="w-full grid grid-cols-5">
-            <TabsTrigger value="profile" className="gap-1.5">
-              <Briefcase className="w-4 h-4" />
-              <span className="hidden sm:inline">직무</span>
-            </TabsTrigger>
-            <TabsTrigger value="activity" className="gap-1.5">
-              <Activity className="w-4 h-4" />
-              <span className="hidden sm:inline">활동</span>
-            </TabsTrigger>
-            <TabsTrigger value="performance" className="gap-1.5">
-              <TrendingUp className="w-4 h-4" />
-              <span className="hidden sm:inline">성과</span>
-            </TabsTrigger>
-            <TabsTrigger value="reputation" className="gap-1.5">
-              <Medal className="w-4 h-4" />
-              <span className="hidden sm:inline">평판</span>
-            </TabsTrigger>
-            <TabsTrigger value="announcements" className="gap-1.5">
-              <Megaphone className="w-4 h-4" />
-              <span className="hidden sm:inline">공지</span>
-            </TabsTrigger>
-          </TabsList>
+        <Card className="border-0 shadow-lg">
+          <Tabs defaultValue="profile" className="w-full">
+            <TabsList className="w-full grid grid-cols-5 p-1 h-auto bg-muted/50 rounded-t-xl rounded-b-none">
+              <TabsTrigger value="profile" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
+                <Briefcase className="w-4 h-4" />
+                <span className="hidden sm:inline text-sm">직무</span>
+              </TabsTrigger>
+              <TabsTrigger value="activity" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
+                <Activity className="w-4 h-4" />
+                <span className="hidden sm:inline text-sm">활동</span>
+              </TabsTrigger>
+              <TabsTrigger value="performance" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
+                <TrendingUp className="w-4 h-4" />
+                <span className="hidden sm:inline text-sm">성과</span>
+              </TabsTrigger>
+              <TabsTrigger value="reputation" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
+                <Medal className="w-4 h-4" />
+                <span className="hidden sm:inline text-sm">평판</span>
+              </TabsTrigger>
+              <TabsTrigger value="announcements" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
+                <Megaphone className="w-4 h-4" />
+                <span className="hidden sm:inline text-sm">공지</span>
+              </TabsTrigger>
+            </TabsList>
 
-          {/* 직무 Tab: 직무 + 스킬 */}
-          <TabsContent value="profile" className="mt-6 space-y-6">
-            <RoleTypeManagement />
-            <SkillManagement />
-          </TabsContent>
+            {/* 직무 Tab: 직무 + 스킬 */}
+            <TabsContent value="profile" className="p-4 md:p-6 space-y-6 m-0">
+              <RoleTypeManagement />
+              <SkillManagement />
+            </TabsContent>
 
-          {/* 활동 Tab: 팀 (공지/구직/프로젝트) + 지원 현황 */}
-          <TabsContent value="activity" className="mt-6 space-y-6">
+            {/* 활동 Tab: 팀 (공지/구직/프로젝트) + 지원 현황 */}
+            <TabsContent value="activity" className="p-4 md:p-6 space-y-6 m-0">
             {/* 내가 만든 팀 */}
             {myCreatedTeams.length > 0 && (
               <Card className="border-primary/30">
@@ -588,7 +601,7 @@ export default function Profile() {
                           <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
                             {team.rating_avg > 0 && (
                               <span className="flex items-center gap-1">
-                                <Star className="w-3.5 h-3.5 text-yellow-500" />
+                                <Star className="w-3.5 h-3.5 text-secondary" />
                                 {team.rating_avg?.toFixed(1)}
                               </span>
                             )}
@@ -777,10 +790,10 @@ export default function Profile() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+            </TabsContent>
 
-          {/* 평판 Tab: 배지 + 리뷰 */}
-          <TabsContent value="reputation" className="mt-6 space-y-6">
+            {/* 평판 Tab: 배지 + 리뷰 */}
+            <TabsContent value="reputation" className="p-4 md:p-6 space-y-6 m-0">
             {/* 획득한 배지 */}
             <Card>
               <CardHeader>
@@ -846,10 +859,10 @@ export default function Profile() {
                 )}
               </CardContent>
             </Card>
-          </TabsContent>
+            </TabsContent>
 
-          {/* 성과 Tab: 경력 + 레벨 상세 (모바일 축약) */}
-          <TabsContent value="performance" className="mt-6 space-y-6">
+            {/* 성과 Tab: 경력 + 레벨 상세 (모바일 축약) */}
+            <TabsContent value="performance" className="p-4 md:p-6 space-y-6 m-0">
             {/* 레벨 상세 분석 */}
             {levelBreakdown && (
               isMobile ? (
@@ -924,11 +937,12 @@ export default function Profile() {
             </Card>
           </TabsContent>
 
-          {/* 공지 Tab: 브래맨 앱 공지사항 */}
-          <TabsContent value="announcements" className="mt-6 space-y-6">
-            <AnnouncementsWidget />
-          </TabsContent>
-        </Tabs>
+            {/* 공지 Tab: 브래맨 앱 공지사항 */}
+            <TabsContent value="announcements" className="p-4 md:p-6 space-y-6 m-0">
+              <AnnouncementsWidget />
+            </TabsContent>
+          </Tabs>
+        </Card>
       </ScrollReveal>
 
       {/* Withdraw Confirmation Dialog */}
