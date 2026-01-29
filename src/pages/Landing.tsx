@@ -1,28 +1,13 @@
 import { Link } from "react-router-dom";
-import {
-  ArrowRight,
-  Users,
-  Briefcase,
-  Eye,
-  Trophy,
-  Star,
-  Zap,
-  Shield,
-  Info,
-  Sparkles,
-  Target,
-  TrendingUp,
-} from "lucide-react";
+import { ArrowRight, Users, Briefcase, Eye, Trophy, Star, Zap, Shield, Info, Sparkles, Target, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ScrollReveal } from "@/components/ui/ScrollReveal";
 import { BackToTop } from "@/components/ui/BackToTop";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { ANIMAL_SKINS, ROLE_TYPES, SKILL_CATEGORIES, METRIC_DESCRIPTIONS } from "@/lib/constants";
-
 export default function Landing() {
-  return (
-    <div className="min-h-screen bg-gradient-hero">
+  return <div className="min-h-screen bg-gradient-hero">
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
@@ -107,12 +92,9 @@ export default function Landing() {
               협업 스타일과 성격을 나타내는 브레맨 동물 캐릭터
             </p>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-              {Object.entries(ANIMAL_SKINS).map(([key, skin], index) => (
-                <div
-                  key={key}
-                  className="group relative p-6 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 animate-fade-up cursor-pointer"
-                  style={{ animationDelay: `${index * 100}ms` }}
-                >
+              {Object.entries(ANIMAL_SKINS).map(([key, skin], index) => <div key={key} className="group relative p-6 rounded-2xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-xl hover:-translate-y-2 animate-fade-up cursor-pointer" style={{
+              animationDelay: `${index * 100}ms`
+            }}>
                   <div className="text-5xl mb-4 group-hover:scale-125 group-hover:rotate-6 transition-all duration-300 ease-out">
                     {skin.icon}
                   </div>
@@ -123,14 +105,9 @@ export default function Landing() {
                   <p className="text-sm text-muted-foreground group-hover:text-foreground/80 transition-colors line-clamp-2">
                     {skin.description}
                   </p>
-                  <div
-                    className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${skin.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
-                  />
-                  <div
-                    className={`absolute -inset-0.5 rounded-2xl bg-gradient-to-br ${skin.gradient} opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500 -z-10`}
-                  />
-                </div>
-              ))}
+                  <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${skin.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`} />
+                  <div className={`absolute -inset-0.5 rounded-2xl bg-gradient-to-br ${skin.gradient} opacity-0 group-hover:opacity-20 blur-xl transition-opacity duration-500 -z-10`} />
+                </div>)}
             </div>
           </div>
 
@@ -144,32 +121,19 @@ export default function Landing() {
               전문 직무 영역과 기술 스택을 선택하여 역량을 표현하세요
             </p>
             <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-              {Object.entries(ROLE_TYPES).map(([key, roleType], index) => (
-                <div
-                  key={key}
-                  className="group p-4 rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg animate-fade-up text-center"
-                  style={{ animationDelay: `${index * 50}ms` }}
-                >
+              {Object.entries(ROLE_TYPES).map(([key, roleType], index) => <div key={key} className="group p-4 rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-300 hover:shadow-lg animate-fade-up text-center" style={{
+              animationDelay: `${index * 50}ms`
+            }}>
                   <div className="text-3xl mb-2 group-hover:scale-110 transition-transform">{roleType.icon}</div>
                   <h4 className="font-semibold text-sm mb-1 group-hover:text-primary transition-colors">
                     {roleType.name}
                   </h4>
                   <p className="text-xs text-muted-foreground line-clamp-2">{roleType.description}</p>
-                </div>
-              ))}
+                </div>)}
             </div>
 
             {/* Skill Categories */}
-            <div className="mt-8 flex flex-wrap justify-center gap-3">
-              {Object.entries(SKILL_CATEGORIES).map(([key, category]) => (
-                <span
-                  key={key}
-                  className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r ${category.color} text-primary-foreground text-sm font-medium shadow-sm`}
-                >
-                  {category.icon} {category.name}
-                </span>
-              ))}
-            </div>
+            
           </div>
 
           {/* Experience - 경험 */}
@@ -232,13 +196,23 @@ export default function Landing() {
           </ScrollReveal>
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { icon: Users, title: "팀 빌딩", desc: "역할 기반 자동 매칭으로 완벽한 팀 구성" },
-              { icon: Briefcase, title: "프로젝트 마켓", desc: "검증된 팀과 클라이언트 연결" },
-              { icon: Eye, title: "쇼케이스", desc: "작업물 기록으로 성장 증명" },
-              { icon: Trophy, title: "성장 시스템", desc: "XP와 배지로 성장을 추적" },
-            ].map((feature, i) => (
-              <ScrollReveal key={i} animation="fade-up" delay={i * 100}>
+            {[{
+            icon: Users,
+            title: "팀 빌딩",
+            desc: "역할 기반 자동 매칭으로 완벽한 팀 구성"
+          }, {
+            icon: Briefcase,
+            title: "프로젝트 마켓",
+            desc: "검증된 팀과 클라이언트 연결"
+          }, {
+            icon: Eye,
+            title: "쇼케이스",
+            desc: "작업물 기록으로 성장 증명"
+          }, {
+            icon: Trophy,
+            title: "성장 시스템",
+            desc: "XP와 배지로 성장을 추적"
+          }].map((feature, i) => <ScrollReveal key={i} animation="fade-up" delay={i * 100}>
                 <div className="p-6 rounded-2xl bg-card border border-border hover:shadow-md transition-all h-full">
                   <div className="w-12 h-12 rounded-xl bg-gradient-primary flex items-center justify-center mb-4">
                     <feature.icon className="w-6 h-6 text-primary-foreground" />
@@ -246,8 +220,7 @@ export default function Landing() {
                   <h3 className="font-display font-semibold text-lg mb-2">{feature.title}</h3>
                   <p className="text-sm text-muted-foreground">{feature.desc}</p>
                 </div>
-              </ScrollReveal>
-            ))}
+              </ScrollReveal>)}
           </div>
         </div>
       </section>
@@ -265,19 +238,14 @@ export default function Landing() {
           </ScrollReveal>
 
           <div className="grid md:grid-cols-2 gap-8">
-            {Object.entries(ANIMAL_SKINS).map(([key, skin], index) => (
-              <ScrollReveal key={key} animation={index % 2 === 0 ? "fade-right" : "fade-left"} delay={index * 100}>
+            {Object.entries(ANIMAL_SKINS).map(([key, skin], index) => <ScrollReveal key={key} animation={index % 2 === 0 ? "fade-right" : "fade-left"} delay={index * 100}>
                 <div className="group relative p-6 rounded-2xl bg-card border border-border hover:border-primary/30 transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden h-full">
                   {/* Animated background gradient */}
-                  <div
-                    className={`absolute inset-0 bg-gradient-to-br ${skin.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`}
-                  />
+                  <div className={`absolute inset-0 bg-gradient-to-br ${skin.gradient} opacity-0 group-hover:opacity-5 transition-opacity duration-500`} />
 
                   {/* Header */}
                   <div className="relative flex items-start gap-4 mb-5">
-                    <div
-                      className={`flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${skin.gradient} flex items-center justify-center text-4xl shadow-md group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg transition-all duration-300`}
-                    >
+                    <div className={`flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br ${skin.gradient} flex items-center justify-center text-4xl shadow-md group-hover:scale-110 group-hover:rotate-3 group-hover:shadow-lg transition-all duration-300`}>
                       {skin.icon}
                     </div>
                     <div className="flex-1">
@@ -295,14 +263,9 @@ export default function Landing() {
                       키워드
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {skin.keywords.map((keyword) => (
-                        <span
-                          key={keyword}
-                          className={`text-xs px-2.5 py-1 rounded-full bg-gradient-to-r ${skin.gradient} text-primary-foreground font-medium`}
-                        >
+                      {skin.keywords.map(keyword => <span key={keyword} className={`text-xs px-2.5 py-1 rounded-full bg-gradient-to-r ${skin.gradient} text-primary-foreground font-medium`}>
                           {keyword}
-                        </span>
-                      ))}
+                        </span>)}
                     </div>
                   </div>
 
@@ -312,16 +275,14 @@ export default function Landing() {
                       성장 지표
                     </h4>
                     <div className="flex flex-wrap gap-2">
-                      {skin.metrics.map((metric) => (
-                        <Tooltip key={metric}>
+                      {skin.metrics.map(metric => <Tooltip key={metric}>
                           <TooltipTrigger className="text-xs px-2.5 py-1 rounded-full bg-muted text-muted-foreground cursor-help flex items-center gap-1 hover:bg-muted/80 transition-colors">
                             📊 {metric}
                             <Info className="w-3 h-3" />
                           </TooltipTrigger>
                           <TooltipContent side="top" className="max-w-xs">
                             <p className="font-semibold mb-2">{metric}</p>
-                            {METRIC_DESCRIPTIONS[metric] && (
-                              <div className="space-y-2 text-sm">
+                            {METRIC_DESCRIPTIONS[metric] && <div className="space-y-2 text-sm">
                                 <div>
                                   <span className="text-muted-foreground">계산 방식:</span>
                                   <p className="text-foreground">{METRIC_DESCRIPTIONS[metric].calculation}</p>
@@ -330,16 +291,13 @@ export default function Landing() {
                                   <span className="text-muted-foreground">추적 방법:</span>
                                   <p className="text-foreground">{METRIC_DESCRIPTIONS[metric].tracking}</p>
                                 </div>
-                              </div>
-                            )}
+                              </div>}
                           </TooltipContent>
-                        </Tooltip>
-                      ))}
+                        </Tooltip>)}
                     </div>
                   </div>
                 </div>
-              </ScrollReveal>
-            ))}
+              </ScrollReveal>)}
           </div>
         </div>
       </section>
@@ -348,17 +306,22 @@ export default function Landing() {
       <section className="py-20 px-4 bg-gradient-primary text-primary-foreground">
         <div className="container mx-auto max-w-6xl">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            {[
-              { value: "2,500+", label: "활성 사용자" },
-              { value: "450+", label: "등록된 팀" },
-              { value: "1,200+", label: "완료된 프로젝트" },
-              { value: "98%", label: "고객 만족도" },
-            ].map((stat, i) => (
-              <ScrollReveal key={i} animation="scale" delay={i * 100}>
+            {[{
+            value: "2,500+",
+            label: "활성 사용자"
+          }, {
+            value: "450+",
+            label: "등록된 팀"
+          }, {
+            value: "1,200+",
+            label: "완료된 프로젝트"
+          }, {
+            value: "98%",
+            label: "고객 만족도"
+          }].map((stat, i) => <ScrollReveal key={i} animation="scale" delay={i * 100}>
                 <div className="text-3xl md:text-4xl font-display font-bold mb-2">{stat.value}</div>
                 <div className="text-primary-foreground/80">{stat.label}</div>
-              </ScrollReveal>
-            ))}
+              </ScrollReveal>)}
           </div>
         </div>
       </section>
@@ -379,12 +342,10 @@ export default function Landing() {
                 <h3 className="font-display font-bold text-xl mb-2">개인 / 팀</h3>
                 <div className="text-4xl font-bold mb-4">무료</div>
                 <ul className="space-y-3 mb-6">
-                  {["팀 생성 및 참여", "프로젝트 지원", "Showcase 등록", "성장 시스템"].map((f, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
+                  {["팀 생성 및 참여", "프로젝트 지원", "Showcase 등록", "성장 시스템"].map((f, i) => <li key={i} className="flex items-center gap-2 text-sm">
                       <Star className="w-4 h-4 text-success" />
                       {f}
-                    </li>
-                  ))}
+                    </li>)}
                 </ul>
                 <Link to="/auth?mode=signup">
                   <Button variant="outline" className="w-full">
@@ -405,12 +366,10 @@ export default function Landing() {
                 <div className="text-4xl font-bold mb-1">10%</div>
                 <p className="text-sm text-muted-foreground mb-4">프로젝트 금액 기준</p>
                 <ul className="space-y-3 mb-6">
-                  {["프로젝트 등록", "팀 매칭", "에스크로 결제", "분쟁 해결 지원", "전담 매니저"].map((f, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm">
+                  {["프로젝트 등록", "팀 매칭", "에스크로 결제", "분쟁 해결 지원", "전담 매니저"].map((f, i) => <li key={i} className="flex items-center gap-2 text-sm">
                       <Shield className="w-4 h-4 text-primary" />
                       {f}
-                    </li>
-                  ))}
+                    </li>)}
                 </ul>
                 <Link to="/auth?mode=signup&type=client">
                   <Button className="w-full bg-gradient-primary">의뢰하기</Button>
@@ -468,6 +427,5 @@ export default function Landing() {
       </footer>
       {/* Back to Top */}
       <BackToTop />
-    </div>
-  );
+    </div>;
 }
