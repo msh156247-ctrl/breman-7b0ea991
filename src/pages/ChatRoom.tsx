@@ -9,6 +9,9 @@ import { ChatSearch } from '@/components/chat/ChatSearch';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { MessageAttachments } from '@/components/chat/ChatAttachments';
 import { InviteToConversationDialog } from '@/components/chat/InviteToConversationDialog';
+import { ChatRoomInfoSheet } from '@/components/chat/ChatRoomInfoSheet';
+import { SharedFilesSheet } from '@/components/chat/SharedFilesSheet';
+import { ChatScheduleSheet } from '@/components/chat/ChatScheduleSheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -115,6 +118,11 @@ export default function ChatRoom() {
   // Invite dialog state
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [existingParticipantIds, setExistingParticipantIds] = useState<string[]>([]);
+  
+  // Sheet states
+  const [isRoomInfoOpen, setIsRoomInfoOpen] = useState(false);
+  const [isSharedFilesOpen, setIsSharedFilesOpen] = useState(false);
+  const [isScheduleOpen, setIsScheduleOpen] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -949,15 +957,15 @@ export default function ChatRoom() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem onClick={() => toast.info('채팅방 정보 기능 준비중입니다')}>
+              <DropdownMenuItem onClick={() => setIsRoomInfoOpen(true)}>
                 <Info className="h-4 w-4 mr-2" />
                 톡방 정보
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toast.info('공유된 파일 기능 준비중입니다')}>
+              <DropdownMenuItem onClick={() => setIsSharedFilesOpen(true)}>
                 <FileText className="h-4 w-4 mr-2" />
                 교류된 파일
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => toast.info('일정 기능 준비중입니다')}>
+              <DropdownMenuItem onClick={() => setIsScheduleOpen(true)}>
                 <Calendar className="h-4 w-4 mr-2" />
                 일정
               </DropdownMenuItem>
@@ -1065,6 +1073,32 @@ export default function ChatRoom() {
         existingParticipantIds={existingParticipantIds}
         onInviteSuccess={handleInviteSuccess}
       />
+
+      {/* Room Info Sheet */}
+      <ChatRoomInfoSheet
+        open={isRoomInfoOpen}
+        onOpenChange={setIsRoomInfoOpen}
+        conversationId={conversationId || ''}
+        conversationType={conversation?.type || 'direct'}
+        conversationName={conversationInfo?.title}
+        currentUserId={user?.id}
+      />
+
+      {/* Shared Files Sheet */}
+      <SharedFilesSheet
+        open={isSharedFilesOpen}
+        onOpenChange={setIsSharedFilesOpen}
+        conversationId={conversationId || ''}
+      />
+
+      {/* Schedule Sheet */}
+      <ChatScheduleSheet
+        open={isScheduleOpen}
+        onOpenChange={setIsScheduleOpen}
+        conversationId={conversationId || ''}
+        currentUserId={user?.id}
+      />
+
       <div className="shrink-0">
         <ChatInputArea
           inputRef={inputRef}
