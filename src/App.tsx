@@ -81,6 +81,13 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       
+      {/* ChatRoom - standalone without AppShell header */}
+      <Route path="/chat/:conversationId" element={
+        <ProtectedRoute>
+          <ChatRoom />
+        </ProtectedRoute>
+      } />
+      
       {/* Protected routes with AppShell */}
       <Route path="/" element={
         <ProtectedRoute>
@@ -89,7 +96,6 @@ function AppRoutes() {
       }>
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="chat" element={<Chat />} />
-        <Route path="chat/:conversationId" element={<ChatRoom />} />
         <Route path="teams" element={<Teams />} />
         <Route path="teams/create" element={<TeamCreate />} />
         <Route path="teams/join/:teamId" element={<TeamJoin />} />
