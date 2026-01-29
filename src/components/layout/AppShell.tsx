@@ -11,7 +11,8 @@ import {
   User,
   ChevronDown,
   MessageSquare,
-  Bell
+  Bell,
+  ClipboardList
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -33,6 +34,7 @@ const NAV_ITEMS = [
   { href: '/dashboard', label: '대시보드', icon: LayoutDashboard },
   { href: '/teams', label: '팀', icon: Users },
   { href: '/projects', label: '프로젝트', icon: Briefcase },
+  { href: '/client', label: '의뢰관리', icon: ClipboardList },
 ];
 
 export function AppShell() {
