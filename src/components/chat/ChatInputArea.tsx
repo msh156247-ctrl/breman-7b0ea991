@@ -63,9 +63,9 @@ export function ChatInputArea({
   };
 
   return (
-    <div className="border-t bg-background">
+    <div className="border-t bg-background pb-safe">
       {AttachmentPreview}
-      <div className="flex items-center gap-2 p-4">
+      <div className="flex items-center gap-2 p-3">
         {AttachmentButton}
         <Input
           ref={inputRef}
