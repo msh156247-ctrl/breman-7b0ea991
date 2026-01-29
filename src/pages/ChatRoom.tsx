@@ -8,6 +8,7 @@ import { ChatInputArea } from '@/components/chat/ChatInputArea';
 import { ChatSearch } from '@/components/chat/ChatSearch';
 import { TypingIndicator } from '@/components/chat/TypingIndicator';
 import { MessageAttachments } from '@/components/chat/ChatAttachments';
+import { InviteToConversationDialog } from '@/components/chat/InviteToConversationDialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -25,7 +26,8 @@ import {
   CheckCheck,
   Pencil,
   Trash2,
-  Search
+  Search,
+  UserPlus
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -106,6 +108,10 @@ export default function ChatRoom() {
   // Search state
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [highlightedMessageId, setHighlightedMessageId] = useState<string | null>(null);
+  
+  // Invite dialog state
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [existingParticipantIds, setExistingParticipantIds] = useState<string[]>([]);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -263,6 +269,16 @@ export default function ChatRoom() {
       type: data.type as 'direct' | 'team' | 'team_to_team'
     });
 
+    // Fetch all participant IDs for invite dialog
+    const { data: allParticipants } = await supabase
+      .from('conversation_participants')
+      .select('user_id')
+      .eq('conversation_id', conversationId);
+    
+    if (allParticipants) {
+      setExistingParticipantIds(allParticipants.map(p => p.user_id).filter(Boolean) as string[]);
+    }
+
     // Get conversation info based on type
     if (data.type === 'direct') {
       const { data: participants } = await supabase
@@ -319,6 +335,12 @@ export default function ChatRoom() {
         type: 'team_to_team'
       });
     }
+  };
+
+  const handleInviteSuccess = () => {
+    // Refresh conversation to get updated participant list
+    fetchConversation();
+    fetchReadCounts();
   };
 
   const fetchMessages = async () => {
@@ -709,8 +731,17 @@ export default function ChatRoom() {
           </div>
         </div>
 
-        {/* My profile (right side) */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Actions (right side) */}
+        <div className="flex items-center gap-1 shrink-0">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8" 
+            onClick={() => setIsInviteOpen(true)}
+            title="대화 초대"
+          >
+            <UserPlus className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsSearchOpen(!isSearchOpen)}>
             <Search className="h-4 w-4" />
           </Button>
@@ -810,7 +841,14 @@ export default function ChatRoom() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Input - Fixed at bottom */}
+      {/* Invite to Conversation Dialog */}
+      <InviteToConversationDialog
+        open={isInviteOpen}
+        onOpenChange={setIsInviteOpen}
+        conversationId={conversationId || ''}
+        existingParticipantIds={existingParticipantIds}
+        onInviteSuccess={handleInviteSuccess}
+      />
       <div className="shrink-0">
         <ChatInputArea
           inputRef={inputRef}
