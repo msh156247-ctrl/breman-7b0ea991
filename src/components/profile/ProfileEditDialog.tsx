@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { getAvatarWithFallback } from '@/lib/avatarUtils';
+import { processImageForUpload } from '@/lib/imageCompression';
 import {
   Dialog,
   DialogContent,
@@ -121,29 +122,23 @@ export function ProfileEditDialog({ open, onOpenChange, onSuccess }: ProfileEdit
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: '오류',
-        description: '파일 크기는 5MB 이하여야 합니다.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setIsUploading(true);
     try {
+      // Compress image if over 5MB
+      const processedFile = await processImageForUpload(file, 5);
+      
       const reader = new FileReader();
       reader.onload = (event) => {
         setAvatarPreview(event.target?.result as string);
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(processedFile);
 
-      const fileExt = file.name.split('.').pop();
+      const fileExt = processedFile.name.split('.').pop();
       const fileName = `profiles/${user.id}/avatar.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
         .from('avatars')
-        .upload(fileName, file, { upsert: true });
+        .upload(fileName, processedFile, { upsert: true });
 
       if (uploadError) throw uploadError;
 

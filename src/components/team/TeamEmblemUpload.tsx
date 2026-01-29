@@ -5,6 +5,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
 import { generateRandomAvatar, isEmoji } from '@/lib/avatarUtils';
+import { processImageForUpload } from '@/lib/imageCompression';
 
 const EMOJIS = ['🚀', '💻', '🎨', '🔒', '⚡', '🌟', '🎯', '💡', '🔥', '🏆', '💪', '🎮'];
 
@@ -49,32 +50,27 @@ export function TeamEmblemUpload({
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: '오류',
-        description: '파일 크기는 5MB 이하여야 합니다.',
-        variant: 'destructive',
-      });
-      return;
-    }
+    setIsUploading(true);
+    
+    try {
+      // Compress image if over 5MB
+      const processedFile = await processImageForUpload(file, 5);
+      
+      // Show preview
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPreviewUrl(event.target?.result as string);
+      };
+      reader.readAsDataURL(processedFile);
 
-    // Show preview immediately
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setPreviewUrl(event.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    // If editing existing team, upload immediately
-    if (isEditing && teamId) {
-      setIsUploading(true);
-      try {
-        const fileExt = file.name.split('.').pop();
+      // If editing existing team, upload immediately
+      if (isEditing && teamId) {
+        const fileExt = processedFile.name.split('.').pop();
         const fileName = `teams/${teamId}/emblem.${fileExt}`;
         
         const { error: uploadError } = await supabase.storage
           .from('avatars')
-          .upload(fileName, file, { upsert: true });
+          .upload(fileName, processedFile, { upsert: true });
 
         if (uploadError) throw uploadError;
 
@@ -88,21 +84,25 @@ export function TeamEmblemUpload({
           title: '성공',
           description: '팀 엠블럼이 업데이트되었습니다.',
         });
-      } catch (error) {
-        console.error('Emblem upload error:', error);
-        toast({
-          title: '오류',
-          description: '엠블럼 업로드에 실패했습니다.',
-          variant: 'destructive',
+      } else {
+        // For new teams, store the data URL temporarily
+        const dataUrl = await new Promise<string>((resolve) => {
+          const r = new FileReader();
+          r.onload = (ev) => resolve(ev.target?.result as string);
+          r.readAsDataURL(processedFile);
         });
-        setPreviewUrl(null);
-      } finally {
-        setIsUploading(false);
+        onEmblemChange(dataUrl);
       }
-    } else {
-      // For new teams, store the file temporarily and upload after team creation
-      // We'll handle this with a data URL for now
-      onEmblemChange(previewUrl || currentEmblem);
+    } catch (error) {
+      console.error('Emblem upload error:', error);
+      toast({
+        title: '오류',
+        description: '엠블럼 업로드에 실패했습니다.',
+        variant: 'destructive',
+      });
+      setPreviewUrl(null);
+    } finally {
+      setIsUploading(false);
     }
   };
 
