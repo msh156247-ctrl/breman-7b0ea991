@@ -138,16 +138,16 @@ export function ProfileEditDialog({ open, onOpenChange, onSuccess }: ProfileEdit
       reader.readAsDataURL(file);
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/avatar.${fileExt}`;
+      const fileName = `profiles/${user.id}/avatar.${fileExt}`;
       
       const { error: uploadError } = await supabase.storage
-        .from('team-attachments')
+        .from('avatars')
         .upload(fileName, file, { upsert: true });
 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('team-attachments')
+        .from('avatars')
         .getPublicUrl(fileName);
 
       const { error: updateError } = await supabase
