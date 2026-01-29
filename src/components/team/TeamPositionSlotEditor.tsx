@@ -309,9 +309,9 @@ export function TeamPositionSlotEditor({ slots, onChange }: TeamPositionSlotEdit
                         })()}
                       </div>
 
-                      {/* Preferred Animal Skin - 성향 */}
+                      {/* Preferred Animal Skin - 성향 (참고용) */}
                       <div className="space-y-1.5">
-                        <label className="text-xs text-muted-foreground">선호 성향 (선택사항)</label>
+                        <label className="text-xs text-muted-foreground">선호 성향 (참고용)</label>
                         <Select 
                           value={slot.preferred_animal_skin || 'none'} 
                           onValueChange={(v) => updateSlot(slotIndex, { preferred_animal_skin: v === 'none' ? null : v as AnimalSkin })}

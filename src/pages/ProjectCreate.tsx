@@ -17,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { ROLE_TYPES, ANIMAL_SKINS, type RoleType, type AnimalSkin } from '@/lib/constants';
+import { ROLE_TYPES, type RoleType } from '@/lib/constants';
 
 export default function ProjectCreate() {
   const navigate = useNavigate();
@@ -35,7 +35,7 @@ export default function ProjectCreate() {
   });
 
   const [requiredRoles, setRequiredRoles] = useState<RoleType[]>([]);
-  const [preferredSkins, setPreferredSkins] = useState<AnimalSkin[]>([]);
+  
   
   const [requiredSkills, setRequiredSkills] = useState<string[]>([]);
   const [newSkill, setNewSkill] = useState('');
@@ -54,13 +54,6 @@ export default function ProjectCreate() {
     setRequiredRoles(prev => prev.filter(r => r !== role));
   };
 
-  const togglePreferredSkin = (skin: AnimalSkin) => {
-    if (preferredSkins.includes(skin)) {
-      setPreferredSkins(prev => prev.filter(s => s !== skin));
-    } else {
-      setPreferredSkins(prev => [...prev, skin]);
-    }
-  };
 
   const addSkill = () => {
     if (newSkill.trim() && !requiredSkills.includes(newSkill.trim())) {
@@ -112,7 +105,7 @@ export default function ProjectCreate() {
           timeline_weeks: formData.timeline_weeks ? parseInt(formData.timeline_weeks) : null,
           visibility: formData.visibility,
           required_roles: null,
-          preferred_animal_skins: preferredSkins.length > 0 ? preferredSkins : [],
+          preferred_animal_skins: [],
           required_skills: allRequirements.length > 0 ? allRequirements : null,
           client_id: user.id,
           status: 'open',
@@ -263,57 +256,6 @@ export default function ProjectCreate() {
                       ))}
                     </div>
                   )}
-                </div>
-              </div>
-
-              {/* Preferred Personality (Animal Skins) - 선호 성향 */}
-              <div className="space-y-4">
-                <div className="flex items-center gap-2 text-sm text-primary font-medium mb-2">
-                  <span className="flex items-center justify-center w-6 h-6 rounded-full bg-primary/20 text-primary text-xs font-medium">+</span>
-                  <span>선호하는 협업 성향이 있나요? (선택)</span>
-                </div>
-                
-                <div>
-                  <Label className="mb-2 block">원하는 성향을 선택해주세요</Label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {(Object.entries(ANIMAL_SKINS) as [AnimalSkin, typeof ANIMAL_SKINS[AnimalSkin]][]).map(([key, skin]) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => togglePreferredSkin(key)}
-                        className={`p-3 rounded-lg border-2 text-left transition-all ${
-                          preferredSkins.includes(key)
-                            ? 'border-primary bg-primary/5'
-                            : 'border-border hover:border-primary/30'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-2xl">{skin.icon}</span>
-                          <div>
-                            <span className="font-medium">{skin.name}</span>
-                            <span className="text-xs text-muted-foreground ml-1">({skin.title})</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {skin.keywords.slice(0, 2).map((keyword) => (
-                            <span 
-                              key={keyword}
-                              className={`text-xs px-1.5 py-0.5 rounded-full ${
-                                preferredSkins.includes(key)
-                                  ? 'bg-primary/10 text-primary'
-                                  : 'bg-muted text-muted-foreground'
-                              }`}
-                            >
-                              {keyword}
-                            </span>
-                          ))}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2">
-                    🎭 성향은 팀원의 협업 스타일을 나타냅니다. 비워두면 모든 성향을 환영합니다.
-                  </p>
                 </div>
               </div>
 

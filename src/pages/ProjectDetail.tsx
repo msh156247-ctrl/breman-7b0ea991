@@ -16,7 +16,7 @@ import { BackToTop } from '@/components/ui/BackToTop';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { PROJECT_STATUS, ROLES, ANIMAL_SKINS, type UserRole, type AnimalSkin } from '@/lib/constants';
+import { PROJECT_STATUS, ROLES, type UserRole, type AnimalSkin } from '@/lib/constants';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -458,26 +458,6 @@ export default function ProjectDetail() {
                   )}
                 </div>
 
-                {/* Preferred Animal Skins */}
-                {project.preferred_animal_skins && project.preferred_animal_skins.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm text-muted-foreground">선호 성향:</span>
-                    {project.preferred_animal_skins.map((skin) => {
-                      const skinData = ANIMAL_SKINS[skin];
-                      if (!skinData) return null;
-                      return (
-                        <div 
-                          key={skin}
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 border"
-                        >
-                          <span className="text-lg">{skinData.icon}</span>
-                          <span className="text-sm font-medium">{skinData.name}</span>
-                          <span className="text-xs text-muted-foreground">({skinData.title})</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
 
                 {/* Required Roles */}
                 {project.required_roles && project.required_roles.length > 0 && (
