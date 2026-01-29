@@ -485,8 +485,16 @@ export default function TeamDetail() {
           <div className="relative p-6 md:p-8">
             <div className="flex flex-col md:flex-row gap-6">
               {/* Emblem */}
-              <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-5xl md:text-6xl shadow-lg flex-shrink-0">
-                {team.emblem_url || '🎯'}
+              <div className="w-24 h-24 md:w-32 md:h-32 rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center shadow-lg flex-shrink-0 overflow-hidden">
+                {team.emblem_url ? (
+                  <img 
+                    src={team.emblem_url} 
+                    alt={team.name} 
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-5xl md:text-6xl">🎯</span>
+                )}
               </div>
 
               {/* Info */}
