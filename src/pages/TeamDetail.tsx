@@ -40,6 +40,7 @@ import { TeamAnnouncementBoard } from '@/components/team/TeamAnnouncementBoard';
 import { TeamMemberManagement } from '@/components/team/TeamMemberManagement';
 import { TeamApplicationManagement } from '@/components/team/TeamApplicationManagement';
 import { TeamServiceOfferList } from '@/components/team/TeamServiceOfferList';
+import { TeamNotificationsWidget } from '@/components/team/TeamNotificationsWidget';
 
 interface Team {
   id: string;
@@ -983,12 +984,18 @@ export default function TeamDetail() {
 
           {/* Announcements Tab - Members only */}
           {isMember && (
-            <TabsContent value="board" className="space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <MessageSquare className="w-5 h-5 text-primary" />
-                팀 공지사항
-              </h2>
-              <TeamAnnouncementBoard teamId={team.id} isLeader={isLeader} isMember={isMember} />
+            <TabsContent value="board" className="space-y-6">
+              {/* Team Notifications */}
+              <TeamNotificationsWidget teamId={team.id} />
+              
+              {/* Team Announcements */}
+              <div className="space-y-4">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <MessageSquare className="w-5 h-5 text-primary" />
+                  팀 공지사항
+                </h2>
+                <TeamAnnouncementBoard teamId={team.id} isLeader={isLeader} isMember={isMember} />
+              </div>
             </TabsContent>
           )}
 

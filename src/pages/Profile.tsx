@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   Edit, Calendar, Star, Users, Briefcase, Award, 
   ChevronRight, Trophy, Code, ClipboardList, X, RefreshCw,
-  User, Activity, Medal, TrendingUp, Sparkles, Crown
+  User, Activity, Medal, TrendingUp, Sparkles, Crown, Megaphone
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -23,6 +23,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { ROLES, ROLE_TYPES, ANIMAL_SKINS, APPLICATION_STATUS, type RoleType, type AnimalSkin } from '@/lib/constants';
 import { SkillManagement } from '@/components/profile/SkillManagement';
+import { AnnouncementsWidget } from '@/components/dashboard/AnnouncementsWidget';
 import { RoleTypeManagement } from '@/components/profile/RoleTypeManagement';
 import { LevelBreakdownCard } from '@/components/profile/LevelBreakdownCard';
 import { ProfileEditDialog } from '@/components/profile/ProfileEditDialog';
@@ -457,10 +458,10 @@ export default function Profile() {
         </div>
       </ScrollReveal>
 
-      {/* Unified 4 Tabs: 직무 / 활동 / 성과 / 평판 */}
+      {/* Unified 5 Tabs: 직무 / 활동 / 성과 / 평판 / 공지 */}
       <ScrollReveal animation="fade-up" delay={200}>
         <Tabs defaultValue="profile" className="w-full">
-          <TabsList className="w-full grid grid-cols-4">
+          <TabsList className="w-full grid grid-cols-5">
             <TabsTrigger value="profile" className="gap-1.5">
               <Briefcase className="w-4 h-4" />
               <span className="hidden sm:inline">직무</span>
@@ -476,6 +477,10 @@ export default function Profile() {
             <TabsTrigger value="reputation" className="gap-1.5">
               <Medal className="w-4 h-4" />
               <span className="hidden sm:inline">평판</span>
+            </TabsTrigger>
+            <TabsTrigger value="announcements" className="gap-1.5">
+              <Megaphone className="w-4 h-4" />
+              <span className="hidden sm:inline">공지</span>
             </TabsTrigger>
           </TabsList>
 
@@ -913,6 +918,11 @@ export default function Profile() {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          {/* 공지 Tab: 브래맨 앱 공지사항 */}
+          <TabsContent value="announcements" className="mt-6 space-y-6">
+            <AnnouncementsWidget />
           </TabsContent>
         </Tabs>
       </ScrollReveal>
