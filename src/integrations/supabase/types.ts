@@ -2361,6 +2361,10 @@ export type Database = {
         Returns: boolean
       }
       is_admin: { Args: { _user_id: string }; Returns: boolean }
+      user_has_conversation_access: {
+        Args: { check_user_id: string; conv_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       animal_skin: "horse" | "dog" | "cat" | "rooster"
