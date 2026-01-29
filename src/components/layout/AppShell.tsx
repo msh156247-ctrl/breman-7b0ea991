@@ -43,6 +43,11 @@ export function AppShell() {
   const { user, profile, signOut } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // 페이지 이동시 사이드바 닫기
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [location.pathname]);
+
   useEffect(() => {
     const checkAdminStatus = async () => {
       if (!user) return;
@@ -62,43 +67,42 @@ export function AppShell() {
     checkAdminStatus();
   }, [user]);
 
+  const closeSidebar = () => {
+    setSidebarOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}
-      {sidebarOpen && (
-        <div 
-          className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setSidebarOpen(false);
-          }}
-          role="button"
-          aria-label="사이드바 닫기"
-        />
-      )}
+      <div 
+        className={cn(
+          "fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden transition-opacity",
+          sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+        onClick={closeSidebar}
+        aria-label="사이드바 닫기"
+      />
 
       {/* Sidebar */}
       <aside
-        className="fixed top-0 left-0 z-50 h-full w-64 bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out -translate-x-full lg:translate-x-0"
-        style={sidebarOpen ? { transform: 'translateX(0)' } : undefined}
+        className={cn(
+          "fixed top-0 left-0 z-50 h-full w-64 bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out",
+          sidebarOpen ? "translate-x-0" : "-translate-x-full",
+          "lg:translate-x-0"
+        )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
-            <Link to="/dashboard" className="flex items-center gap-2">
+            <Link to="/dashboard" className="flex items-center gap-2" onClick={closeSidebar}>
               <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <span className="text-lg">🎵</span>
               </div>
               <span className="font-display font-bold text-xl text-sidebar-foreground">브래맨</span>
             </Link>
             <button 
-              className="lg:hidden p-2 rounded-lg hover:bg-sidebar-accent active:bg-sidebar-accent/80"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setSidebarOpen(false);
-              }}
+              className="lg:hidden p-2 rounded-lg hover:bg-sidebar-accent active:bg-sidebar-accent/80 touch-manipulation"
+              onClick={closeSidebar}
               type="button"
               aria-label="메뉴 닫기"
             >
@@ -115,7 +119,7 @@ export function AppShell() {
                 <Link
                   key={item.href}
                   to={item.href}
-                  onClick={() => setSidebarOpen(false)}
+                  onClick={closeSidebar}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                     isActive
