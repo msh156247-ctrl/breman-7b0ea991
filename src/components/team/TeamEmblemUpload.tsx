@@ -1,9 +1,10 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useId } from 'react';
 import { Camera, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Label } from '@/components/ui/label';
+import { generateRandomAvatar, isEmoji } from '@/lib/avatarUtils';
 
 const EMOJIS = ['🚀', '💻', '🎨', '🔒', '⚡', '🌟', '🎯', '💡', '🔥', '🏆', '💪', '🎮'];
 
@@ -24,9 +25,16 @@ export function TeamEmblemUpload({
   const [isUploading, setIsUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const uniqueId = useId();
 
-  const isEmoji = EMOJIS.includes(currentEmblem) || currentEmblem.length <= 4;
-  const displayUrl = previewUrl || (!isEmoji ? currentEmblem : null);
+  // Generate a stable random avatar for new teams
+  const randomAvatarUrl = generateRandomAvatar(teamId || uniqueId, 'team');
+  
+  const isEmojiEmblem = isEmoji(currentEmblem);
+  const isImageUrl = currentEmblem.startsWith('http') || currentEmblem.startsWith('data:');
+  
+  // Determine display URL: preview > uploaded image > random
+  const displayUrl = previewUrl || (isImageUrl ? currentEmblem : null) || (!isEmojiEmblem ? randomAvatarUrl : null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -118,7 +126,7 @@ export function TeamEmblemUpload({
               <AvatarImage src={displayUrl} />
             ) : null}
             <AvatarFallback className="text-3xl bg-muted">
-              {isEmoji ? currentEmblem : '📷'}
+              {isEmojiEmblem ? currentEmblem : '📷'}
             </AvatarFallback>
           </Avatar>
           <button
