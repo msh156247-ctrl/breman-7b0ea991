@@ -143,19 +143,66 @@ export default function ChatRoom() {
       .eq('user_id', user.id);
   };
 
+  // Channel ref for broadcast
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
   useEffect(() => {
     if (conversationId && user) {
       fetchConversation();
       fetchMessages();
       markAsRead();
 
-      // Realtime subscription for messages (INSERT, UPDATE, DELETE)
+      // Realtime subscription for messages using Broadcast + postgres_changes
       const channel = supabase
         .channel(`chat-${conversationId}`, {
           config: {
-            broadcast: { self: true },
+            broadcast: { self: false }, // Don't receive own broadcasts
           },
         })
+        // Broadcast listener for instant message delivery
+        .on('broadcast', { event: 'new_message' }, async ({ payload }) => {
+          console.log('📨 Broadcast received:', payload);
+          const msg = payload as Message;
+          
+          // Skip if it's our own message (already added via optimistic UI)
+          if (msg.sender_id === user?.id) return;
+          
+          // Fetch sender info
+          const { data: sender } = await supabase
+            .from('profiles')
+            .select('name, avatar_url')
+            .eq('id', msg.sender_id)
+            .single();
+
+          setMessages(prev => {
+            // Prevent duplicates
+            if (prev.some(m => m.id === msg.id || m.id.startsWith('temp-'))) {
+              // Replace temp message with real one if exists
+              const hasTemp = prev.some(m => m.id.startsWith('temp-') && m.content === msg.content);
+              if (hasTemp) {
+                return prev.map(m => 
+                  m.id.startsWith('temp-') && m.content === msg.content
+                    ? { ...msg, sender: sender || undefined, read_by_count: 0 }
+                    : m
+                );
+              }
+              return prev;
+            }
+            return [...prev, { ...msg, sender: sender || undefined, read_by_count: 0 }];
+          });
+          scrollToBottom();
+          markAsRead();
+
+          // Show browser notification
+          showNotification({
+            title: sender?.name || '새 메시지',
+            body: msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content,
+            icon: sender?.avatar_url || '/favicon.ico',
+            tag: `chat-${conversationId}`,
+            onClick: () => navigate(`/chat/${conversationId}`)
+          });
+        })
+        // Postgres changes as fallback
         .on(
           'postgres_changes',
           {
@@ -165,8 +212,9 @@ export default function ChatRoom() {
             filter: `conversation_id=eq.${conversationId}`
           },
           async (payload) => {
-            console.log('🔔 New message received:', payload);
+            console.log('🔔 Postgres INSERT received:', payload);
             const newMsg = payload.new as Message;
+            
             // Fetch sender info
             const { data: sender } = await supabase
               .from('profiles')
@@ -175,26 +223,36 @@ export default function ChatRoom() {
               .single();
 
             setMessages(prev => {
-              // Prevent duplicates
+              // Check for duplicates (from broadcast or optimistic UI)
               if (prev.some(m => m.id === newMsg.id)) return prev;
+              
+              // Check if we have a temp message that matches (for sender)
+              const tempIndex = prev.findIndex(m => 
+                m.id.startsWith('temp-') && 
+                m.sender_id === newMsg.sender_id && 
+                m.content === newMsg.content
+              );
+              
+              if (tempIndex >= 0) {
+                // Replace temp with real message
+                const updated = [...prev];
+                updated[tempIndex] = { ...newMsg, sender: sender || undefined, read_by_count: 0 };
+                return updated;
+              }
+              
               return [...prev, { ...newMsg, sender: sender || undefined, read_by_count: 0 }];
             });
             scrollToBottom();
-            // Mark as read immediately when receiving new messages
             markAsRead();
 
             // Show browser notification for messages from others
             if (newMsg.sender_id !== user?.id) {
               showNotification({
                 title: sender?.name || '새 메시지',
-                body: newMsg.content.length > 50 
-                  ? newMsg.content.substring(0, 50) + '...' 
-                  : newMsg.content,
+                body: newMsg.content.length > 50 ? newMsg.content.substring(0, 50) + '...' : newMsg.content,
                 icon: sender?.avatar_url || '/favicon.ico',
                 tag: `chat-${conversationId}`,
-                onClick: () => {
-                  navigate(`/chat/${conversationId}`);
-                }
+                onClick: () => navigate(`/chat/${conversationId}`)
               });
             }
           }
@@ -210,7 +268,6 @@ export default function ChatRoom() {
           async (payload) => {
             console.log('📝 Message updated:', payload);
             const updatedMsg = payload.new as Message;
-            // Fetch sender info for updated message
             const { data: sender } = await supabase
               .from('profiles')
               .select('name, avatar_url')
@@ -247,7 +304,6 @@ export default function ChatRoom() {
             filter: `conversation_id=eq.${conversationId}`
           },
           () => {
-            // Refresh read counts when participants update their last_read_at
             fetchReadCounts();
           }
         )
@@ -260,21 +316,28 @@ export default function ChatRoom() {
           }
         });
 
+      channelRef.current = channel;
+
       return () => {
         supabase.removeChannel(channel);
+        channelRef.current = null;
       };
     }
   }, [conversationId, user]);
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  const scrollToBottom = () => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+    // Auto-scroll only for new messages (not initial load)
+    if (messages.length > 0 && !loading) {
+      scrollToBottom();
     }
-  };
+  }, [messages.length, loading]);
+
+  const scrollToBottom = useCallback(() => {
+    // For flex-col-reverse, scroll to top means newest messages
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = 0;
+    }
+  }, []);
 
   const scrollToMessage = (messageId: string) => {
     const element = messageRefs.current.get(messageId);
@@ -509,7 +572,13 @@ export default function ChatRoom() {
       read_by_count: 0,
     };
 
-    setMessages(prev => [...prev, optimisticMessage]);
+    console.log('💬 Adding optimistic message:', optimisticMessage.content);
+    setMessages(prev => {
+      console.log('📝 Previous messages count:', prev.length);
+      const newMessages = [...prev, optimisticMessage];
+      console.log('📝 New messages count:', newMessages.length);
+      return newMessages;
+    });
     scrollToBottom();
 
     try {
@@ -527,13 +596,29 @@ export default function ChatRoom() {
 
       if (error) throw error;
 
-      // Replace temp message with real one
+      // Replace temp message with real one and broadcast to others
       if (data) {
+        const realMessage = { ...optimisticMessage, id: data.id, created_at: data.created_at };
+        
         setMessages(prev => prev.map(msg => 
-          msg.id === tempId 
-            ? { ...optimisticMessage, id: data.id, created_at: data.created_at }
-            : msg
+          msg.id === tempId ? realMessage : msg
         ));
+
+        // Broadcast to other participants for instant delivery
+        if (channelRef.current) {
+          console.log('📤 Broadcasting message to others');
+          await channelRef.current.send({
+            type: 'broadcast',
+            event: 'new_message',
+            payload: {
+              ...data,
+              sender: {
+                name: profile?.name || '사용자',
+                avatar_url: profile?.avatar_url || null,
+              }
+            }
+          });
+        }
       }
     } catch (error) {
       console.error('Error sending message:', error);
@@ -882,8 +967,10 @@ export default function ChatRoom() {
       />
 
       {/* Messages - Scrollable area with flex-col-reverse for bottom-to-top scroll */}
-      <div className="flex-1 min-h-0 overflow-y-auto flex flex-col-reverse p-4 overscroll-contain">
-        <div ref={scrollRef} />
+      <div 
+        ref={scrollRef}
+        className="flex-1 min-h-0 overflow-y-auto flex flex-col-reverse p-4 overscroll-contain"
+      >
         <div className="flex flex-col">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-20">
