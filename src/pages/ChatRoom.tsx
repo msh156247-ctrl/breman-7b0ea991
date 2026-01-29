@@ -333,9 +333,9 @@ export default function ChatRoom() {
   }, [messages.length, loading]);
 
   const scrollToBottom = useCallback(() => {
-    // For flex-col-reverse, scroll to top means newest messages
+    // For flex-col-reverse, scrollTop = 0 shows newest messages at bottom
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = 0;
+      scrollRef.current.scrollTo({ top: 0, behavior: 'instant' });
     }
   }, []);
 
@@ -537,27 +537,31 @@ export default function ChatRoom() {
     setLoading(false);
   };
 
-  const handleSendMessage = async (attachmentUrls: string[] = []) => {
-    const hasContent = newMessage.trim();
+  const handleSendMessage = useCallback(async (attachmentUrls: string[] = []) => {
+    const content = newMessage.trim();
+    const hasContent = !!content;
     const hasAttachments = attachmentUrls.length > 0;
     
     if ((!hasContent && !hasAttachments) || !conversationId || !user || sending) return;
 
-    setSending(true);
-    const content = newMessage.trim();
+    // Capture values BEFORE clearing state
+    const messageContent = content || (hasAttachments ? '📎 첨부파일' : '');
     const currentReplyTo = replyTo;
+    
+    // Clear input immediately for UX
     setNewMessage('');
     setReplyTo(null);
+    setSending(true);
     stopTyping();
 
-    // Optimistic UI: Add message immediately
-    const tempId = `temp-${Date.now()}`;
+    // Create optimistic message
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
     const optimisticMessage: Message = {
       id: tempId,
       conversation_id: conversationId,
       sender_id: user.id,
       sender_team_id: null,
-      content: content || (hasAttachments ? '📎 첨부파일' : ''),
+      content: messageContent,
       reply_to_id: currentReplyTo?.id || null,
       attachments: attachmentUrls,
       created_at: new Date().toISOString(),
@@ -572,14 +576,17 @@ export default function ChatRoom() {
       read_by_count: 0,
     };
 
-    console.log('💬 Adding optimistic message:', optimisticMessage.content);
-    setMessages(prev => {
-      console.log('📝 Previous messages count:', prev.length);
-      const newMessages = [...prev, optimisticMessage];
-      console.log('📝 New messages count:', newMessages.length);
+    // Add optimistic message IMMEDIATELY - force new array reference
+    setMessages(prevMessages => {
+      const newMessages = prevMessages.slice();
+      newMessages.push(optimisticMessage);
       return newMessages;
     });
-    scrollToBottom();
+    
+    // Scroll after state update
+    requestAnimationFrame(() => {
+      scrollToBottom();
+    });
 
     try {
       const { data, error } = await supabase
@@ -587,7 +594,7 @@ export default function ChatRoom() {
         .insert({
           conversation_id: conversationId,
           sender_id: user.id,
-          content: content || (hasAttachments ? '📎 첨부파일' : ''),
+          content: messageContent,
           reply_to_id: currentReplyTo?.id || null,
           attachments: attachmentUrls.length > 0 ? attachmentUrls : null
         })
@@ -596,18 +603,19 @@ export default function ChatRoom() {
 
       if (error) throw error;
 
-      // Replace temp message with real one and broadcast to others
+      // Replace temp message with real data
       if (data) {
-        const realMessage = { ...optimisticMessage, id: data.id, created_at: data.created_at };
-        
-        setMessages(prev => prev.map(msg => 
-          msg.id === tempId ? realMessage : msg
-        ));
+        setMessages(prevMessages => 
+          prevMessages.map(msg => 
+            msg.id === tempId 
+              ? { ...msg, id: data.id, created_at: data.created_at } 
+              : msg
+          )
+        );
 
-        // Broadcast to other participants for instant delivery
+        // Broadcast to other participants
         if (channelRef.current) {
-          console.log('📤 Broadcasting message to others');
-          await channelRef.current.send({
+          channelRef.current.send({
             type: 'broadcast',
             event: 'new_message',
             payload: {
@@ -622,16 +630,16 @@ export default function ChatRoom() {
       }
     } catch (error) {
       console.error('Error sending message:', error);
-      // Remove optimistic message on error
-      setMessages(prev => prev.filter(msg => msg.id !== tempId));
-      setNewMessage(content);
+      // Rollback on error
+      setMessages(prevMessages => prevMessages.filter(msg => msg.id !== tempId));
+      setNewMessage(messageContent);
       setReplyTo(currentReplyTo);
       toast.error('메시지 전송에 실패했습니다.');
     } finally {
       setSending(false);
       inputRef.current?.focus();
     }
-  };
+  }, [newMessage, replyTo, conversationId, user, sending, profile, stopTyping, scrollToBottom]);
 
   const handleEditMessage = async () => {
     if (!editingMessage || !editContent.trim()) return;
