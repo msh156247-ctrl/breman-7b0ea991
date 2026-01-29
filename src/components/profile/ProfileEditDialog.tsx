@@ -6,6 +6,7 @@ import { Camera, Loader2, X, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { getAvatarWithFallback } from '@/lib/avatarUtils';
 import {
   Dialog,
   DialogContent,
@@ -214,7 +215,9 @@ export function ProfileEditDialog({ open, onOpenChange, onSuccess }: ProfileEdit
     }
   };
 
-  const currentAvatarUrl = avatarPreview || profile?.avatar_url;
+  // Use random avatar as fallback when no avatar is set
+  const currentAvatarUrl = avatarPreview || 
+    (profile?.avatar_url ? profile.avatar_url : getAvatarWithFallback(null, user?.id || 'default', 'user'));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
