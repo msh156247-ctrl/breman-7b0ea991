@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { 
   LayoutDashboard, 
   Users, 
@@ -39,6 +40,7 @@ const NAV_ITEMS = [
 
 export function AppShell() {
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user, profile, signOut } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -47,6 +49,17 @@ export function AppShell() {
   useEffect(() => {
     setSidebarOpen(false);
   }, [location.pathname]);
+
+  // ESC 키로 사이드바 닫기
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && sidebarOpen) {
+        setSidebarOpen(false);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [sidebarOpen]);
 
   useEffect(() => {
     const checkAdminStatus = async () => {
@@ -67,47 +80,54 @@ export function AppShell() {
     checkAdminStatus();
   }, [user]);
 
-  const closeSidebar = () => {
+  const handleCloseSidebar = useCallback(() => {
     setSidebarOpen(false);
-  };
+  }, []);
+
+  const handleOpenSidebar = useCallback(() => {
+    setSidebarOpen(true);
+  }, []);
+
+  // 사이드바 transform 계산 - 모바일에서만 숨김
+  const sidebarTransform = isMobile 
+    ? (sidebarOpen ? 'translateX(0)' : 'translateX(-100%)')
+    : 'translateX(0)';
 
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar overlay */}
-      <div 
-        className={cn(
-          "fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden transition-opacity",
-          sidebarOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        )}
-        onClick={closeSidebar}
-        aria-label="사이드바 닫기"
-      />
+      {isMobile && sidebarOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
+          onClick={handleCloseSidebar}
+          aria-label="사이드바 닫기"
+        />
+      )}
 
       {/* Sidebar */}
       <aside
-        className={cn(
-          "fixed top-0 left-0 z-50 h-full w-64 bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out",
-          sidebarOpen ? "translate-x-0" : "-translate-x-full",
-          "lg:translate-x-0"
-        )}
+        className="fixed top-0 left-0 z-50 h-full w-64 bg-sidebar border-r border-sidebar-border transition-transform duration-300 ease-in-out"
+        style={{ transform: sidebarTransform }}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
           <div className="flex items-center justify-between h-16 px-4 border-b border-sidebar-border">
-            <Link to="/dashboard" className="flex items-center gap-2" onClick={closeSidebar}>
+            <Link to="/dashboard" className="flex items-center gap-2" onClick={handleCloseSidebar}>
               <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <span className="text-lg">🎵</span>
               </div>
               <span className="font-display font-bold text-xl text-sidebar-foreground">브래맨</span>
             </Link>
-            <button 
-              className="lg:hidden p-2 rounded-lg hover:bg-sidebar-accent active:bg-sidebar-accent/80 touch-manipulation"
-              onClick={closeSidebar}
-              type="button"
-              aria-label="메뉴 닫기"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {isMobile && (
+              <button 
+                className="p-2 rounded-lg hover:bg-sidebar-accent active:bg-sidebar-accent/80 touch-manipulation"
+                onClick={handleCloseSidebar}
+                type="button"
+                aria-label="메뉴 닫기"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
 
           {/* Navigation */}
@@ -119,7 +139,7 @@ export function AppShell() {
                 <Link
                   key={item.href}
                   to={item.href}
-                  onClick={closeSidebar}
+                  onClick={handleCloseSidebar}
                   className={cn(
                     'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
                     isActive
@@ -138,6 +158,7 @@ export function AppShell() {
           <div className="p-4 border-t border-sidebar-border">
             <Link 
               to="/profile"
+              onClick={handleCloseSidebar}
               className="flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent transition-colors"
             >
               <Avatar className="h-9 w-9">
@@ -165,12 +186,16 @@ export function AppShell() {
         <header className="sticky top-0 z-30 h-16 bg-background/80 backdrop-blur-lg border-b border-border">
           <div className="flex items-center justify-between h-full px-4 lg:px-6">
             <div className="flex items-center gap-4">
-              <button
-                className="lg:hidden p-2 rounded-lg hover:bg-muted"
-                onClick={() => setSidebarOpen(true)}
-              >
-                <Menu className="w-5 h-5" />
-              </button>
+              {isMobile && (
+                <button
+                  className="p-2 rounded-lg hover:bg-muted active:bg-muted/80 touch-manipulation"
+                  onClick={handleOpenSidebar}
+                  type="button"
+                  aria-label="메뉴 열기"
+                >
+                  <Menu className="w-5 h-5" />
+                </button>
+              )}
               
               {/* Global Search */}
               <div className="hidden sm:flex items-center">
