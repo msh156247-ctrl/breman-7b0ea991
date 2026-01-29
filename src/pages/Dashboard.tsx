@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { 
-  Users, Briefcase, Bell, Trophy, ArrowRight, 
+  Users, Briefcase, Trophy, ArrowRight, 
   TrendingUp, Star, Loader2, CheckCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,17 +9,15 @@ import { RoleBadge } from '@/components/ui/RoleBadge';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { LevelBadge } from '@/components/ui/LevelBadge';
 import { useAuth } from '@/hooks/useAuth';
-import { useNotifications } from '@/hooks/useNotifications';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import { useCalculatedLevel } from '@/hooks/useCalculatedLevel';
-import { AnnouncementsBanner, AnnouncementsWidget } from '@/components/dashboard/AnnouncementsWidget';
+import { AnnouncementsBanner } from '@/components/dashboard/AnnouncementsWidget';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { PROJECT_STATUS } from '@/lib/constants';
 
 export default function Dashboard() {
   const { profile } = useAuth();
-  const { notifications, unreadCount } = useNotifications();
   const { myTeams, activeProjects, stats, loading } = useDashboardData();
   const { getLevelBreakdownFromProfile } = useCalculatedLevel();
   
@@ -164,180 +162,125 @@ export default function Dashboard() {
         </ScrollReveal>
       )}
 
-      {/* Main grid */}
-      <div className="grid lg:grid-cols-3 gap-6">
-        {/* Left column - Teams & Projects */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* My Teams */}
-          <ScrollReveal animation="fade-up" delay={200}>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-display">내 팀</CardTitle>
-                <Link to="/teams">
-                  <Button variant="ghost" size="sm" className="text-primary">
-                    전체 보기 <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : myTeams.length > 0 ? (
-                  myTeams.slice(0, 3).map((team) => (
-                    <Link 
-                      key={team.id}
-                      to={`/teams/${team.id}`}
-                      className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl overflow-hidden">
-                        {team.emblem_url ? (
-                          <img src={team.emblem_url} alt="" className="w-full h-full object-cover" />
-                        ) : (
-                          '🚀'
-                        )}
+      {/* Main grid - Full width now */}
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* My Teams */}
+        <ScrollReveal animation="fade-up" delay={200}>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg font-display">내 팀</CardTitle>
+              <Link to="/teams">
+                <Button variant="ghost" size="sm" className="text-primary">
+                  전체 보기 <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : myTeams.length > 0 ? (
+                myTeams.slice(0, 3).map((team) => (
+                  <Link 
+                    key={team.id}
+                    to={`/teams/${team.id}`}
+                    className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl overflow-hidden">
+                      {team.emblem_url ? (
+                        <img src={team.emblem_url} alt="" className="w-full h-full object-cover" />
+                      ) : (
+                        '🚀'
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{team.name}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <RoleBadge role={team.role} size="sm" showName={false} />
+                        <span className="text-xs text-muted-foreground">{team.memberCount}명</span>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{team.name}</p>
-                        <div className="flex items-center gap-2 mt-1">
-                          <RoleBadge role={team.role} size="sm" showName={false} />
-                          <span className="text-xs text-muted-foreground">{team.memberCount}명</span>
-                        </div>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                    </Link>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>아직 소속된 팀이 없습니다</p>
-                    <Link to="/teams">
-                      <Button variant="link" size="sm">팀 찾아보기</Button>
-                    </Link>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </ScrollReveal>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-muted-foreground" />
+                  </Link>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Users className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>아직 소속된 팀이 없습니다</p>
+                  <Link to="/teams">
+                    <Button variant="link" size="sm">팀 찾아보기</Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </ScrollReveal>
 
-          {/* Active Projects */}
-          <ScrollReveal animation="fade-up" delay={250}>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-display">진행중인 프로젝트</CardTitle>
-                <Link to="/projects">
-                  <Button variant="ghost" size="sm" className="text-primary">
-                    전체 보기 <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {loading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-                  </div>
-                ) : activeProjects.length > 0 ? (
-                  activeProjects.map((project) => (
-                    <Link 
-                      key={project.id}
-                      to={`/projects/${project.id}`}
-                      className="block p-3 rounded-lg hover:bg-muted/50 transition-colors"
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <p className="font-medium line-clamp-1">{project.title}</p>
-                        <StatusBadge 
-                          status={getStatusLabel(project.status)} 
-                          variant={getStatusVariant(project.status)}
-                          size="sm"
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                        <span>{project.clientName}</span>
-                        {project.totalMilestones > 0 && (
-                          <>
-                            <span>•</span>
-                            <span className="flex items-center gap-1">
-                              <CheckCircle className="w-3 h-3" />
-                              {project.completedMilestones}/{project.totalMilestones} 마일스톤
-                            </span>
-                          </>
-                        )}
-                      </div>
-                      <div className="w-full bg-muted rounded-full h-2">
-                        <div 
-                          className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all"
-                          style={{ width: `${project.progress}%` }}
-                        />
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">{project.progress}% 완료</p>
-                    </Link>
-                  ))
-                ) : (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                    <p>진행중인 프로젝트가 없습니다</p>
-                    <Link to="/projects">
-                      <Button variant="link" size="sm">프로젝트 찾아보기</Button>
-                    </Link>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </ScrollReveal>
-        </div>
-
-        {/* Right column - Siege, Notifications, Announcements */}
-        <div className="space-y-6">
-          {/* Notifications */}
-          <ScrollReveal animation="fade-up" delay={250}>
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-lg font-display flex items-center gap-2">
-                  알림
-                  {unreadCount > 0 && (
-                    <span className="text-xs bg-destructive text-destructive-foreground px-1.5 py-0.5 rounded-full">
-                      {unreadCount}
-                    </span>
-                  )}
-                </CardTitle>
-                <Link to="/notifications">
-                  <Button variant="ghost" size="icon" className="h-8 w-8">
-                    <Bell className="w-4 h-4" />
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {notifications.length > 0 ? (
-                  notifications.slice(0, 3).map((notif) => (
-                    <Link
-                      key={notif.id}
-                      to={notif.link || '/notifications'}
-                      className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
-                    >
-                      <div className={`w-2 h-2 rounded-full mt-2 ${notif.read ? 'bg-muted' : 'bg-primary'}`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm line-clamp-2">{notif.title}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {notif.created_at && new Date(notif.created_at).toLocaleDateString('ko-KR')}
-                        </p>
-                      </div>
-                    </Link>
-                  ))
-                ) : (
-                  <div className="text-center py-4 text-muted-foreground text-sm">
-                    새로운 알림이 없습니다
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </ScrollReveal>
-
-          {/* Announcements - Now using real data */}
-          <ScrollReveal animation="fade-up" delay={300}>
-            <AnnouncementsWidget />
-          </ScrollReveal>
-        </div>
+        {/* Active Projects */}
+        <ScrollReveal animation="fade-up" delay={250}>
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-lg font-display">진행중인 프로젝트</CardTitle>
+              <Link to="/projects">
+                <Button variant="ghost" size="sm" className="text-primary">
+                  전체 보기 <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </Link>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : activeProjects.length > 0 ? (
+                activeProjects.map((project) => (
+                  <Link 
+                    key={project.id}
+                    to={`/projects/${project.id}`}
+                    className="block p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <p className="font-medium line-clamp-1">{project.title}</p>
+                      <StatusBadge 
+                        status={getStatusLabel(project.status)} 
+                        variant={getStatusVariant(project.status)}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                      <span>{project.clientName}</span>
+                      {project.totalMilestones > 0 && (
+                        <>
+                          <span>•</span>
+                          <span className="flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" />
+                            {project.completedMilestones}/{project.totalMilestones} 마일스톤
+                          </span>
+                        </>
+                      )}
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2">
+                      <div 
+                        className="h-full bg-gradient-to-r from-primary to-accent rounded-full transition-all"
+                        style={{ width: `${project.progress}%` }}
+                      />
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">{project.progress}% 완료</p>
+                  </Link>
+                ))
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Briefcase className="w-12 h-12 mx-auto mb-3 opacity-50" />
+                  <p>진행중인 프로젝트가 없습니다</p>
+                  <Link to="/projects">
+                    <Button variant="link" size="sm">프로젝트 찾아보기</Button>
+                  </Link>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </ScrollReveal>
       </div>
 
       {/* Back to Top */}
