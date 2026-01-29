@@ -27,7 +27,10 @@ import {
   Pencil,
   Trash2,
   Search,
-  UserPlus
+  UserPlus,
+  Info,
+  FileText,
+  Calendar
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -705,13 +708,12 @@ export default function ChatRoom() {
   return (
     <div className="fixed inset-0 flex flex-col bg-background lg:relative lg:h-[calc(100dvh-4rem)] lg:-m-6">
       {/* Header - Fixed at top */}
-      <div className="sticky top-0 z-10 flex items-center gap-2 p-3 border-b bg-background shrink-0">
-        <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/chat')}>
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-
-        {/* Other participant's profile (left side) */}
+      <div className="sticky top-0 z-10 flex items-center justify-between p-3 border-b bg-background shrink-0">
+        {/* Left: Back button + Chat info */}
         <div className="flex items-center gap-2 flex-1 min-w-0">
+          <Button variant="ghost" size="icon" className="shrink-0 h-9 w-9" onClick={() => navigate('/chat')}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
           <Avatar className="h-9 w-9 shrink-0">
             <AvatarImage src={conversationInfo?.avatar} />
             <AvatarFallback className="bg-primary/10 text-sm">
@@ -731,8 +733,8 @@ export default function ChatRoom() {
           </div>
         </div>
 
-        {/* Actions (right side) */}
-        <div className="flex items-center gap-1 shrink-0">
+        {/* Right: Chat actions */}
+        <div className="flex items-center gap-0.5 shrink-0">
           <Button 
             variant="ghost" 
             size="icon" 
@@ -742,15 +744,36 @@ export default function ChatRoom() {
           >
             <UserPlus className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setIsSearchOpen(!isSearchOpen)}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8" 
+            onClick={() => setIsSearchOpen(!isSearchOpen)}
+            title="검색"
+          >
             <Search className="h-4 w-4" />
           </Button>
-          <Avatar className="h-8 w-8 ring-2 ring-primary/20">
-            <AvatarImage src={profile?.avatar_url || undefined} />
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs">
-              {profile?.name?.charAt(0) || 'U'}
-            </AvatarFallback>
-          </Avatar>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={() => toast.info('채팅방 정보 기능 준비중입니다')}>
+                <Info className="h-4 w-4 mr-2" />
+                톡방 정보
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.info('공유된 파일 기능 준비중입니다')}>
+                <FileText className="h-4 w-4 mr-2" />
+                교류된 파일
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => toast.info('일정 기능 준비중입니다')}>
+                <Calendar className="h-4 w-4 mr-2" />
+                일정
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
