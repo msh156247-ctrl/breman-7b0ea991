@@ -485,14 +485,14 @@ export function ProfileEditDialog({ open, onOpenChange, onSuccess }: ProfileEdit
   if (isMobile) {
     return (
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[85vh] flex flex-col">
-          <DrawerHeader className="text-left">
+        <DrawerContent className="max-h-[85vh] flex flex-col overflow-hidden">
+          <DrawerHeader className="text-left flex-shrink-0">
             <DrawerTitle>프로필 수정</DrawerTitle>
             <DrawerDescription>
               프로필 정보를 수정할 수 있습니다.
             </DrawerDescription>
           </DrawerHeader>
-          <div className="flex-1 overflow-hidden px-4 pb-6">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 pb-6">
             {formContent}
           </div>
         </DrawerContent>
