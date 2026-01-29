@@ -67,10 +67,10 @@ export function AppShell() {
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden cursor-pointer"
-          onClick={() => setSidebarOpen(false)}
-          onTouchEnd={(e) => {
+          className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm lg:hidden"
+          onClick={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             setSidebarOpen(false);
           }}
           role="button"
@@ -97,13 +97,13 @@ export function AppShell() {
               <span className="font-display font-bold text-xl text-sidebar-foreground">브래맨</span>
             </Link>
             <button 
-              className="lg:hidden p-2 rounded-lg hover:bg-sidebar-accent active:bg-sidebar-accent/80 touch-manipulation"
-              onClick={() => setSidebarOpen(false)}
-              onTouchEnd={(e) => {
+              className="lg:hidden p-2 rounded-lg hover:bg-sidebar-accent active:bg-sidebar-accent/80"
+              onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 setSidebarOpen(false);
               }}
+              type="button"
               aria-label="메뉴 닫기"
             >
               <X className="w-5 h-5" />
