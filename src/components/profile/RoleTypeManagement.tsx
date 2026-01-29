@@ -236,34 +236,38 @@ export function RoleTypeManagement() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Main Role Display */}
-                {mainRoleType && ROLE_TYPES[mainRoleType] && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                      <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">메인</span>
-                      메인 직무
-                    </h4>
-                    <div className={`p-4 rounded-lg border-2 border-primary/30 bg-gradient-to-r ${ROLE_TYPES[mainRoleType].color} bg-opacity-10`}>
-                      <div className="flex items-center gap-3 bg-background/80 rounded-lg p-3">
-                        <span className="text-2xl">{ROLE_TYPES[mainRoleType].icon}</span>
+                <div>
+                  <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">메인</span>
+                    메인 직무
+                  </h4>
+                  {mainRoleType && ROLE_TYPES[mainRoleType] ? (
+                    <div className="p-3 rounded-lg border border-primary/30 bg-primary/5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xl">{ROLE_TYPES[mainRoleType].icon}</span>
                         <div>
-                          <p className="font-medium">{ROLE_TYPES[mainRoleType].name}</p>
-                          <p className="text-sm text-muted-foreground">{ROLE_TYPES[mainRoleType].description}</p>
+                          <p className="font-medium text-sm">{ROLE_TYPES[mainRoleType].name}</p>
+                          <p className="text-xs text-muted-foreground line-clamp-1">{ROLE_TYPES[mainRoleType].description}</p>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="p-3 rounded-lg border border-dashed border-muted-foreground/30 text-center">
+                      <p className="text-sm text-muted-foreground">미설정</p>
+                    </div>
+                  )}
+                </div>
 
                 {/* Sub Roles Display */}
-                {subRoleTypes.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
-                      <span className="px-2 py-0.5 bg-secondary/10 text-secondary text-xs rounded-full">서브</span>
-                      서브 직무 ({subRoleTypes.length}개)
-                    </h4>
-                    <div className="flex flex-wrap gap-2">
+                <div>
+                  <h4 className="text-sm font-medium mb-2 flex items-center gap-2">
+                    <span className="px-2 py-0.5 bg-secondary/10 text-secondary text-xs rounded-full">서브</span>
+                    서브 직무 {subRoleTypes.length > 0 && `(${subRoleTypes.length}개)`}
+                  </h4>
+                  {subRoleTypes.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
                       {subRoleTypes.map((roleKey) => {
                         const role = ROLE_TYPES[roleKey];
                         if (!role) return null;
@@ -271,16 +275,20 @@ export function RoleTypeManagement() {
                           <Badge 
                             key={roleKey} 
                             variant="secondary"
-                            className="px-3 py-1.5 text-sm"
+                            className="px-2 py-1 text-xs"
                           >
-                            <span className="mr-1.5">{role.icon}</span>
+                            <span className="mr-1">{role.icon}</span>
                             {role.name}
                           </Badge>
                         );
                       })}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="p-3 rounded-lg border border-dashed border-muted-foreground/30 text-center">
+                      <p className="text-sm text-muted-foreground">미설정</p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </>
