@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { 
   Edit, Calendar, Star, Users, Briefcase, Award, 
   ChevronRight, Trophy, Code, ClipboardList, X, RefreshCw,
-  User, Activity, Medal, TrendingUp, Sparkles, Crown, Megaphone,
+  User, Activity, Medal, TrendingUp, Sparkles, Crown,
   CheckCircle2
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -23,7 +23,6 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { ROLES, ROLE_TYPES, ANIMAL_SKINS, APPLICATION_STATUS, type RoleType, type AnimalSkin } from '@/lib/constants';
 import { SkillManagement } from '@/components/profile/SkillManagement';
-import { AnnouncementsWidget } from '@/components/dashboard/AnnouncementsWidget';
 import { RoleTypeManagement } from '@/components/profile/RoleTypeManagement';
 import { LevelBreakdownCard } from '@/components/profile/LevelBreakdownCard';
 import { ProfileEditDialog } from '@/components/profile/ProfileEditDialog';
@@ -532,35 +531,31 @@ export default function Profile() {
         </div>
       </ScrollReveal>
 
-      {/* 탭 영역 - 개선된 디자인 */}
+      {/* 탭 영역 - 4탭 구조 */}
       <ScrollReveal animation="fade-up" delay={200}>
         <Card className="border-0 shadow-lg">
-          <Tabs defaultValue="profile" className="w-full">
-            <TabsList className="w-full grid grid-cols-5 p-1 h-auto bg-muted/50 rounded-t-xl rounded-b-none">
-              <TabsTrigger value="profile" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
+          <Tabs defaultValue="skills" className="w-full">
+            <TabsList className="w-full grid grid-cols-4 p-1 h-auto bg-muted/50 rounded-t-xl rounded-b-none">
+              <TabsTrigger value="skills" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
+                <Code className="w-4 h-4" />
+                <span className="hidden sm:inline text-sm">역량</span>
+              </TabsTrigger>
+              <TabsTrigger value="career" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
                 <Briefcase className="w-4 h-4" />
-                <span className="hidden sm:inline text-sm">직무</span>
+                <span className="hidden sm:inline text-sm">경력</span>
               </TabsTrigger>
               <TabsTrigger value="activity" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
                 <Activity className="w-4 h-4" />
                 <span className="hidden sm:inline text-sm">활동</span>
               </TabsTrigger>
-              <TabsTrigger value="performance" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
-                <TrendingUp className="w-4 h-4" />
-                <span className="hidden sm:inline text-sm">성과</span>
-              </TabsTrigger>
               <TabsTrigger value="reputation" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
                 <Medal className="w-4 h-4" />
                 <span className="hidden sm:inline text-sm">평판</span>
               </TabsTrigger>
-              <TabsTrigger value="announcements" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
-                <Megaphone className="w-4 h-4" />
-                <span className="hidden sm:inline text-sm">공지</span>
-              </TabsTrigger>
             </TabsList>
 
-            {/* 직무 Tab: 직무 + 스킬 */}
-            <TabsContent value="profile" className="p-4 md:p-6 space-y-6 m-0">
+            {/* 역량 Tab: 직무 + 스킬 */}
+            <TabsContent value="skills" className="p-4 md:p-6 space-y-6 m-0">
               <RoleTypeManagement />
               <SkillManagement />
             </TabsContent>
@@ -861,8 +856,8 @@ export default function Profile() {
             </Card>
             </TabsContent>
 
-            {/* 성과 Tab: 경력 + 레벨 상세 (모바일 축약) */}
-            <TabsContent value="performance" className="p-4 md:p-6 space-y-6 m-0">
+            {/* 경력 Tab: 레벨분석 + 자격증 + 인증 + 경력 */}
+            <TabsContent value="career" className="p-4 md:p-6 space-y-6 m-0">
             {/* 레벨 상세 분석 */}
             {levelBreakdown && (
               isMobile ? (
@@ -936,11 +931,6 @@ export default function Profile() {
               </CardContent>
             </Card>
           </TabsContent>
-
-            {/* 공지 Tab: 브래맨 앱 공지사항 */}
-            <TabsContent value="announcements" className="p-4 md:p-6 space-y-6 m-0">
-              <AnnouncementsWidget />
-            </TabsContent>
           </Tabs>
         </Card>
       </ScrollReveal>

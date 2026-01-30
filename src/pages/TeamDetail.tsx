@@ -36,10 +36,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { TeamAnnouncementBoard } from '@/components/team/TeamAnnouncementBoard';
 import { TeamMemberManagement } from '@/components/team/TeamMemberManagement';
-import { TeamServiceOfferList } from '@/components/team/TeamServiceOfferList';
-import { TeamNotificationsWidget } from '@/components/team/TeamNotificationsWidget';
 import { ApplicationManagementSheet } from '@/components/team/ApplicationManagementSheet';
 import { ProposalListSheet } from '@/components/team/ProposalListSheet';
 import { TeamApplicationDialog } from '@/components/team/TeamApplicationDialog';
@@ -738,7 +735,7 @@ export default function TeamDetail() {
       {/* Content tabs */}
       <ScrollReveal animation="fade-up" delay={isLeader ? 200 : 150}>
         <Tabs defaultValue="intro" className="space-y-6">
-          <TabsList className="w-full grid grid-cols-4 md:grid-cols-4">
+          <TabsList className="w-full grid grid-cols-2">
             <TabsTrigger value="intro" className="gap-1.5">
               <Users className="w-4 h-4" />
               소개
@@ -748,20 +745,6 @@ export default function TeamDetail() {
               <span className="hidden sm:inline">모집 포지션</span>
               <span className="sm:hidden">모집</span>
             </TabsTrigger>
-            {isMember && (
-              <TabsTrigger value="board" className="gap-1.5">
-                <MessageSquare className="w-4 h-4" />
-                <span className="hidden sm:inline">공지사항</span>
-                <span className="sm:hidden">공지</span>
-              </TabsTrigger>
-            )}
-            {isMember && (
-              <TabsTrigger value="services" className="gap-1.5">
-                <Briefcase className="w-4 h-4" />
-                <span className="hidden sm:inline">서비스 오퍼</span>
-                <span className="sm:hidden">서비스</span>
-              </TabsTrigger>
-            )}
           </TabsList>
 
           {/* Team Introduction Tab - includes members */}
@@ -940,34 +923,6 @@ export default function TeamDetail() {
               </Card>
             )}
           </TabsContent>
-
-          {/* Announcements Tab - Members only */}
-          {isMember && (
-            <TabsContent value="board" className="space-y-6">
-              {/* Team Notifications */}
-              <TeamNotificationsWidget teamId={team.id} />
-              
-              {/* Team Announcements */}
-              <div className="space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5 text-primary" />
-                  팀 공지사항
-                </h2>
-                <TeamAnnouncementBoard teamId={team.id} isLeader={isLeader} isMember={isMember} />
-              </div>
-            </TabsContent>
-          )}
-
-          {/* Service Offers Tab - Members only */}
-          {isMember && (
-            <TabsContent value="services" className="space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <Briefcase className="w-5 h-5 text-primary" />
-                서비스 오퍼
-              </h2>
-              <TeamServiceOfferList teamId={team.id} isLeader={isLeader} />
-            </TabsContent>
-          )}
         </Tabs>
       </ScrollReveal>
 
