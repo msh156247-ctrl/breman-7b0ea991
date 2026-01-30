@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useFriends } from '@/hooks/useFriends';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -8,6 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+} from '@/components/ui/drawer';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -56,6 +63,7 @@ interface NewChatDialogProps {
 
 export function NewChatDialog({ open, onOpenChange, onChatCreated }: NewChatDialogProps) {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const { 
     friends, 
     pendingRequests, 
@@ -376,140 +384,160 @@ export function NewChatDialog({ open, onOpenChange, onChatCreated }: NewChatDial
     </div>
   );
 
+  const content = (
+    <div className="flex flex-col gap-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="all">전체</TabsTrigger>
+          <TabsTrigger value="friends">
+            친구
+            {friends.length > 0 && (
+              <Badge variant="secondary" className="ml-1 h-5 px-1.5">
+                {friends.length}
+              </Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="requests">
+            요청
+            {pendingRequests.filter(r => !r.isSentByMe).length > 0 && (
+              <Badge variant="destructive" className="ml-1 h-5 px-1.5">
+                {pendingRequests.filter(r => !r.isSentByMe).length}
+              </Badge>
+            )}
+          </TabsTrigger>
+        </TabsList>
+
+        <div className="relative mt-4">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="검색..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        <TabsContent value="all" className="mt-2">
+          <ScrollArea className="h-64">
+            {loading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-pulse">로딩중...</div>
+              </div>
+            ) : filteredTargets.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                검색 결과가 없습니다
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {filteredTargets.map((target) => renderTargetItem(target))}
+              </div>
+            )}
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="friends" className="mt-2">
+          <ScrollArea className="h-64">
+            {friendTargets.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchQuery ? '검색 결과가 없습니다' : '아직 친구가 없습니다'}
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {friendTargets.map((target) => renderTargetItem(target, false))}
+              </div>
+            )}
+          </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="requests" className="mt-2">
+          <ScrollArea className="h-64">
+            {pendingRequests.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                대기 중인 요청이 없습니다
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {pendingRequests.map((request) => (
+                  <div
+                    key={request.id}
+                    className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted"
+                  >
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={request.avatar_url || undefined} />
+                      <AvatarFallback>{request.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">{request.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {request.isSentByMe ? '내가 보낸 요청' : '받은 요청'}
+                      </p>
+                    </div>
+                    {!request.isSentByMe && (
+                      <div className="flex gap-1">
+                        <Button 
+                          size="sm" 
+                          variant="default" 
+                          className="h-7 px-2"
+                          onClick={(e) => handleAcceptRequest(request.id, e)}
+                        >
+                          수락
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          className="h-7 px-2"
+                          onClick={(e) => handleRejectRequest(request.id, e)}
+                        >
+                          거절
+                        </Button>
+                      </div>
+                    )}
+                    {request.isSentByMe && (
+                      <Badge variant="outline" className="text-xs">
+                        <Clock className="h-3 w-3 mr-1" />
+                        대기 중
+                      </Badge>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
+        </TabsContent>
+      </Tabs>
+
+      <Button
+        className="w-full"
+        disabled={!selectedTarget || creating}
+        onClick={handleCreateChat}
+      >
+        {creating ? '생성 중...' : '채팅 시작'}
+      </Button>
+    </div>
+  );
+
+  if (isMobile) {
+    return (
+      <Drawer open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) resetSelections(); }}>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader className="text-left">
+            <DrawerTitle>새 채팅</DrawerTitle>
+          </DrawerHeader>
+          <div className="px-4 pb-6">
+            {content}
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) resetSelections(); }}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>새 채팅</DialogTitle>
         </DialogHeader>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="all">전체</TabsTrigger>
-            <TabsTrigger value="friends">
-              친구
-              {friends.length > 0 && (
-                <Badge variant="secondary" className="ml-1 h-5 px-1.5">
-                  {friends.length}
-                </Badge>
-              )}
-            </TabsTrigger>
-            <TabsTrigger value="requests">
-              요청
-              {pendingRequests.filter(r => !r.isSentByMe).length > 0 && (
-                <Badge variant="destructive" className="ml-1 h-5 px-1.5">
-                  {pendingRequests.filter(r => !r.isSentByMe).length}
-                </Badge>
-              )}
-            </TabsTrigger>
-          </TabsList>
-
-          <div className="relative mt-4">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="검색..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-
-          <TabsContent value="all" className="mt-2">
-            <ScrollArea className="h-72">
-              {loading ? (
-                <div className="flex justify-center py-8">
-                  <div className="animate-pulse">로딩중...</div>
-                </div>
-              ) : filteredTargets.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  검색 결과가 없습니다
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {filteredTargets.map((target) => renderTargetItem(target))}
-                </div>
-              )}
-            </ScrollArea>
-          </TabsContent>
-
-          <TabsContent value="friends" className="mt-2">
-            <ScrollArea className="h-72">
-              {friendTargets.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  {searchQuery ? '검색 결과가 없습니다' : '아직 친구가 없습니다'}
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {friendTargets.map((target) => renderTargetItem(target, false))}
-                </div>
-              )}
-            </ScrollArea>
-          </TabsContent>
-
-          <TabsContent value="requests" className="mt-2">
-            <ScrollArea className="h-72">
-              {pendingRequests.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  대기 중인 요청이 없습니다
-                </div>
-              ) : (
-                <div className="space-y-1">
-                  {pendingRequests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted"
-                    >
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={request.avatar_url || undefined} />
-                        <AvatarFallback>{request.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{request.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {request.isSentByMe ? '내가 보낸 요청' : '받은 요청'}
-                        </p>
-                      </div>
-                      {!request.isSentByMe && (
-                        <div className="flex gap-1">
-                          <Button 
-                            size="sm" 
-                            variant="default" 
-                            className="h-7 px-2"
-                            onClick={(e) => handleAcceptRequest(request.id, e)}
-                          >
-                            수락
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-7 px-2"
-                            onClick={(e) => handleRejectRequest(request.id, e)}
-                          >
-                            거절
-                          </Button>
-                        </div>
-                      )}
-                      {request.isSentByMe && (
-                        <Badge variant="outline" className="text-xs">
-                          <Clock className="h-3 w-3 mr-1" />
-                          대기 중
-                        </Badge>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </TabsContent>
-        </Tabs>
-
-        <Button
-          className="w-full"
-          disabled={!selectedTarget || creating}
-          onClick={handleCreateChat}
-        >
-          {creating ? '생성 중...' : '채팅 시작'}
-        </Button>
+        {content}
       </DialogContent>
     </Dialog>
   );
