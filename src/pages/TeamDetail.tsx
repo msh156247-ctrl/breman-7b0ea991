@@ -38,9 +38,10 @@ import {
 } from '@/components/ui/select';
 import { TeamAnnouncementBoard } from '@/components/team/TeamAnnouncementBoard';
 import { TeamMemberManagement } from '@/components/team/TeamMemberManagement';
-import { TeamApplicationManagement } from '@/components/team/TeamApplicationManagement';
 import { TeamServiceOfferList } from '@/components/team/TeamServiceOfferList';
 import { TeamNotificationsWidget } from '@/components/team/TeamNotificationsWidget';
+import { ApplicationManagementSheet } from '@/components/team/ApplicationManagementSheet';
+import { ProposalListSheet } from '@/components/team/ProposalListSheet';
 import { TeamApplicationDialog } from '@/components/team/TeamApplicationDialog';
 
 interface PositionQuestion {
@@ -700,28 +701,10 @@ export default function TeamDetail() {
                       <p className="text-sm text-muted-foreground">팀 지원서 확인</p>
                     </div>
                   </div>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        확인
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                          <ClipboardList className="w-5 h-5" />
-                          지원서 관리
-                        </DialogTitle>
-                        <DialogDescription>
-                          팀 지원서를 검토하고 수락/거절하세요.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <TeamApplicationManagement 
-                        teamId={team.id} 
-                        onApplicationHandled={fetchTeamData}
-                      />
-                    </DialogContent>
-                  </Dialog>
+                  <ApplicationManagementSheet 
+                    teamId={team.id} 
+                    onApplicationHandled={fetchTeamData}
+                  />
                 </div>
               </CardContent>
             </Card>
@@ -741,61 +724,10 @@ export default function TeamDetail() {
                       </p>
                     </div>
                   </div>
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm">
-                        확인
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-                      <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                          <Inbox className="w-5 h-5" />
-                          제안 리스트
-                        </DialogTitle>
-                        <DialogDescription>
-                          프로젝트에 보낸 제안 현황을 확인하세요.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-4 mt-4">
-                        {proposalsLoading ? (
-                          <div className="flex items-center justify-center py-8">
-                            <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                          </div>
-                        ) : sentProposals.length === 0 ? (
-                          <div className="text-center py-8 text-muted-foreground">
-                            보낸 제안이 없습니다
-                          </div>
-                        ) : (
-                          sentProposals.map((proposal) => (
-                            <Card 
-                              key={proposal.id}
-                              className="cursor-pointer hover:shadow-md transition-shadow"
-                              onClick={() => navigate(`/projects/${proposal.project_id}`)}
-                            >
-                              <CardContent className="p-4">
-                                <div className="flex items-center justify-between gap-4">
-                                  <div className="min-w-0">
-                                    <p className="font-medium truncate">
-                                      {proposal.project?.title || '프로젝트'}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                      {proposal.proposed_budget ? `${(proposal.proposed_budget / 10000).toLocaleString()}만원` : '예산 미정'}
-                                      {proposal.proposed_timeline_weeks && ` · ${proposal.proposed_timeline_weeks}주`}
-                                    </p>
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {getStatusIcon(proposal.status)}
-                                    <span className="text-sm">{getStatusLabel(proposal.status)}</span>
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))
-                        )}
-                      </div>
-                    </DialogContent>
-                  </Dialog>
+                  <ProposalListSheet 
+                    proposals={sentProposals} 
+                    loading={proposalsLoading}
+                  />
                 </div>
               </CardContent>
             </Card>
