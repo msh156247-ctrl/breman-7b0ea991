@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,6 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   MessageCircle, 
   Users, 
@@ -72,27 +73,30 @@ export default function Chat() {
     if (!user) return;
 
     try {
-      // Fetch conversations where user is a participant
-      const { data: directConvos, error: directError } = await supabase
-        .from('conversations')
-        .select(`
-          *,
-          conversation_participants!inner(user_id, team_id, last_read_at)
-        `)
-        .order('last_message_at', { ascending: false });
+      // Fetch all data in parallel for better performance
+      const [
+        { data: directConvos, error: directError },
+        { data: userTeams },
+        { data: leaderTeams }
+      ] = await Promise.all([
+        supabase
+          .from('conversations')
+          .select(`
+            *,
+            conversation_participants!inner(user_id, team_id, last_read_at)
+          `)
+          .order('last_message_at', { ascending: false }),
+        supabase
+          .from('team_memberships')
+          .select('team_id')
+          .eq('user_id', user.id),
+        supabase
+          .from('teams')
+          .select('id')
+          .eq('leader_id', user.id)
+      ]);
 
       if (directError) throw directError;
-
-      // Fetch team-based conversations
-      const { data: userTeams } = await supabase
-        .from('team_memberships')
-        .select('team_id')
-        .eq('user_id', user.id);
-
-      const { data: leaderTeams } = await supabase
-        .from('teams')
-        .select('id')
-        .eq('leader_id', user.id);
 
       const teamIds = [
         ...(userTeams?.map(t => t.team_id) || []),
@@ -113,106 +117,119 @@ export default function Chat() {
         teamConvos = data || [];
       }
 
-      // Combine and enrich conversations
+      // Combine and deduplicate conversations
       const allConvos = [...(directConvos || []), ...teamConvos];
       const uniqueConvos = Array.from(new Map(allConvos.map(c => [c.id, c])).values());
+      
+      if (uniqueConvos.length === 0) {
+        setConversations([]);
+        setLoading(false);
+        return;
+      }
 
-      // Enrich with additional data
-      const enrichedConvos = await Promise.all(
-        uniqueConvos.map(async (convo) => {
-          let enriched: Conversation = {
-            ...convo,
-            type: convo.type as 'direct' | 'team' | 'team_to_team'
-          };
+      const convoIds = uniqueConvos.map(c => c.id);
 
-          // Get last message
-          const { data: lastMsg } = await supabase
-            .from('messages')
-            .select('content')
-            .eq('conversation_id', convo.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+      // Batch fetch all related data in parallel
+      const [
+        { data: allMessages },
+        { data: allParticipants },
+        { data: allProfiles },
+        { data: allTeams }
+      ] = await Promise.all([
+        // Get latest message per conversation using a single query
+        supabase
+          .from('messages')
+          .select('conversation_id, content, created_at, sender_id')
+          .in('conversation_id', convoIds)
+          .order('created_at', { ascending: false }),
+        // Get all participants for these conversations
+        supabase
+          .from('conversation_participants')
+          .select('conversation_id, user_id, last_read_at')
+          .in('conversation_id', convoIds),
+        // Get profiles for direct chats (we'll filter by user_id later)
+        supabase
+          .from('profiles')
+          .select('id, name, avatar_url'),
+        // Get teams info for team chats
+        supabase
+          .from('teams')
+          .select('id, name, emblem_url')
+          .in('id', teamIds.length > 0 ? teamIds : [''])
+      ]);
 
-          enriched.last_message = lastMsg?.content;
+      // Create lookup maps for fast access
+      const messagesByConvo = new Map<string, { content: string; created_at: string; sender_id: string }>();
+      allMessages?.forEach(msg => {
+        if (!messagesByConvo.has(msg.conversation_id)) {
+          messagesByConvo.set(msg.conversation_id, msg);
+        }
+      });
 
-          // Get user's last_read_at for this conversation
-          const { data: participantData } = await supabase
-            .from('conversation_participants')
-            .select('last_read_at')
-            .eq('conversation_id', convo.id)
-            .eq('user_id', user.id)
-            .single();
+      const participantsByConvo = new Map<string, typeof allParticipants>();
+      allParticipants?.forEach(p => {
+        const list = participantsByConvo.get(p.conversation_id) || [];
+        list.push(p);
+        participantsByConvo.set(p.conversation_id, list);
+      });
 
-          const lastReadAt = participantData?.last_read_at;
+      const profilesById = new Map(allProfiles?.map(p => [p.id, p]) || []);
+      const teamsById = new Map(allTeams?.map(t => [t.id, t]) || []);
 
-          // Count unread messages (messages after last_read_at)
-          if (lastReadAt) {
-            const { count } = await supabase
-              .from('messages')
-              .select('*', { count: 'exact', head: true })
-              .eq('conversation_id', convo.id)
-              .gt('created_at', lastReadAt)
-              .neq('sender_id', user.id);
+      // Calculate unread counts in memory (much faster than N queries)
+      const unreadByConvo = new Map<string, number>();
+      allMessages?.forEach(msg => {
+        if (msg.sender_id === user.id) return;
+        
+        const participants = participantsByConvo.get(msg.conversation_id);
+        const userParticipant = participants?.find(p => p.user_id === user.id);
+        const lastRead = userParticipant?.last_read_at;
+        
+        if (!lastRead || new Date(msg.created_at) > new Date(lastRead)) {
+          unreadByConvo.set(msg.conversation_id, (unreadByConvo.get(msg.conversation_id) || 0) + 1);
+        }
+      });
 
-            enriched.unread_count = count || 0;
-          } else {
-            // If no last_read_at, count all messages not from user
-            const { count } = await supabase
-              .from('messages')
-              .select('*', { count: 'exact', head: true })
-              .eq('conversation_id', convo.id)
-              .neq('sender_id', user.id);
+      // Enrich conversations synchronously using cached data
+      const enrichedConvos: Conversation[] = uniqueConvos.map((convo) => {
+        const lastMsg = messagesByConvo.get(convo.id);
+        const participants = participantsByConvo.get(convo.id) || [];
+        const otherParticipant = participants.find(p => p.user_id !== user.id);
+        
+        let enriched: Conversation = {
+          id: convo.id,
+          type: convo.type as 'direct' | 'team' | 'team_to_team',
+          name: convo.name,
+          team_id: convo.team_id,
+          last_message_at: convo.last_message_at,
+          last_message: lastMsg?.content,
+          unread_count: unreadByConvo.get(convo.id) || 0
+        };
 
-            enriched.unread_count = count || 0;
-          }
+        if (convo.type === 'direct' && otherParticipant?.user_id) {
+          const profile = profilesById.get(otherParticipant.user_id);
+          enriched.participant_name = profile?.name;
+          enriched.participant_avatar = profile?.avatar_url || undefined;
+        } else if (convo.type === 'team' && convo.team_id) {
+          const team = teamsById.get(convo.team_id);
+          enriched.team_name = team?.name;
+          enriched.team_emblem = team?.emblem_url || undefined;
+        } else if (convo.type === 'team_to_team') {
+          enriched.name = convo.name || '팀 간 채팅';
+        }
 
-          if (convo.type === 'direct') {
-            // Get the other participant
-            const { data: participants } = await supabase
-              .from('conversation_participants')
-              .select('user_id')
-              .eq('conversation_id', convo.id)
-              .neq('user_id', user.id);
-
-            if (participants && participants[0]) {
-              const { data: profile } = await supabase
-                .from('profiles')
-                .select('name, avatar_url')
-                .eq('id', participants[0].user_id)
-                .single();
-
-              enriched.participant_name = profile?.name;
-              enriched.participant_avatar = profile?.avatar_url || undefined;
-            }
-          } else if (convo.type === 'team' && convo.team_id) {
-            const { data: team } = await supabase
-              .from('teams')
-              .select('name, emblem_url')
-              .eq('id', convo.team_id)
-              .single();
-
-            enriched.team_name = team?.name;
-            enriched.team_emblem = team?.emblem_url || undefined;
-          } else if (convo.type === 'team_to_team') {
-            enriched.name = convo.name || '팀 간 채팅';
-          }
-
-          return enriched;
-        })
-      );
+        return enriched;
+      });
 
       // Sort: unread first, then by last_message_at
       setConversations(enrichedConvos.sort((a, b) => {
-        // Prioritize conversations with unread messages
         const aUnread = (a.unread_count || 0) > 0 ? 1 : 0;
         const bUnread = (b.unread_count || 0) > 0 ? 1 : 0;
         
         if (bUnread !== aUnread) {
-          return bUnread - aUnread; // Unread first
+          return bUnread - aUnread;
         }
         
-        // Then sort by last message time
         return new Date(b.last_message_at).getTime() - new Date(a.last_message_at).getTime();
       }));
     } catch (error) {
@@ -232,19 +249,6 @@ export default function Chat() {
     return format(date, 'M/d', { locale: ko });
   };
 
-  const getConversationIcon = (type: string) => {
-    switch (type) {
-      case 'direct':
-        return <MessageCircle className="h-4 w-4" />;
-      case 'team':
-        return <Users className="h-4 w-4" />;
-      case 'team_to_team':
-        return <UsersRound className="h-4 w-4" />;
-      default:
-        return <MessageCircle className="h-4 w-4" />;
-    }
-  };
-
   const getConversationLabel = (type: string) => {
     switch (type) {
       case 'direct':
@@ -258,19 +262,21 @@ export default function Chat() {
     }
   };
 
-  const filteredConversations = conversations.filter(convo => {
-    // Filter by tab
-    if (activeTab === 'direct' && convo.type !== 'direct') return false;
-    if (activeTab === 'team' && convo.type !== 'team' && convo.type !== 'team_to_team') return false;
-    
-    // Filter by search
-    const searchLower = searchQuery.toLowerCase();
-    return !searchQuery || 
-      convo.participant_name?.toLowerCase().includes(searchLower) ||
-      convo.team_name?.toLowerCase().includes(searchLower) ||
-      convo.name?.toLowerCase().includes(searchLower) ||
-      convo.last_message?.toLowerCase().includes(searchLower);
-  });
+  const filteredConversations = useMemo(() => {
+    return conversations.filter(convo => {
+      // Filter by tab
+      if (activeTab === 'direct' && convo.type !== 'direct') return false;
+      if (activeTab === 'team' && convo.type !== 'team' && convo.type !== 'team_to_team') return false;
+      
+      // Filter by search
+      const searchLower = searchQuery.toLowerCase();
+      return !searchQuery || 
+        convo.participant_name?.toLowerCase().includes(searchLower) ||
+        convo.team_name?.toLowerCase().includes(searchLower) ||
+        convo.name?.toLowerCase().includes(searchLower) ||
+        convo.last_message?.toLowerCase().includes(searchLower);
+    });
+  }, [conversations, activeTab, searchQuery]);
 
   const handleConversationClick = (convo: Conversation) => {
     navigate(`/chat/${convo.id}`);
@@ -318,8 +324,17 @@ export default function Chat() {
       {/* Conversation List */}
       <div className="flex-1 overflow-y-auto">
         {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-pulse text-muted-foreground">로딩중...</div>
+          <div className="space-y-1">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="p-3 flex items-center gap-3">
+                <Skeleton className="h-12 w-12 rounded-full" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-3 w-40" />
+                </div>
+                <Skeleton className="h-3 w-10" />
+              </div>
+            ))}
           </div>
         ) : filteredConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-center">
