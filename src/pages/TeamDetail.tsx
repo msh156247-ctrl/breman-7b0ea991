@@ -98,7 +98,9 @@ export default function TeamDetail() {
   const [inviteDialogOpen, setInviteDialogOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [selectedRoleType, setSelectedRoleType] = useState<string>('');
+  const [selectedSlotId, setSelectedSlotId] = useState<string>('');
   const [applicationText, setApplicationText] = useState('');
+  const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
   
   // Proposal states
   const [sentProposals, setSentProposals] = useState<any[]>([]);
@@ -140,6 +142,9 @@ export default function TeamDetail() {
         if (matchedSlot) {
           setSelectedRole(matchedSlot.role);
           setSelectedRoleType(matchedSlot.role_type || '');
+          setSelectedSlotId(matchedSlot.id);
+          // Reset question answers
+          setQuestionAnswers({});
         }
       }
     }
@@ -340,6 +345,22 @@ export default function TeamDetail() {
       return;
     }
 
+    // Check required questions
+    const selectedSlot = openSlots.find(s => s.id === selectedSlotId);
+    if (selectedSlot?.questions && selectedSlot.questions.length > 0) {
+      const unansweredRequired = selectedSlot.questions.filter(
+        q => q.required && (!questionAnswers[q.id] || questionAnswers[q.id].trim() === '')
+      );
+      if (unansweredRequired.length > 0) {
+        toast({
+          title: '필수 질문 미답변',
+          description: '모든 필수 질문에 답변해주세요.',
+          variant: 'destructive',
+        });
+        return;
+      }
+    }
+
     try {
       const insertData: {
         team_id: string;
@@ -347,6 +368,7 @@ export default function TeamDetail() {
         desired_role: UserRole;
         role_type?: RoleType | null;
         intro: string;
+        answers_json?: any;
       } = {
         team_id: team.id,
         user_id: user.id,
@@ -356,6 +378,11 @@ export default function TeamDetail() {
       
       if (selectedRoleType) {
         insertData.role_type = selectedRoleType as RoleType;
+      }
+
+      // Include question answers if any
+      if (Object.keys(questionAnswers).length > 0) {
+        insertData.answers_json = questionAnswers;
       }
 
       const { error } = await supabase
@@ -371,7 +398,9 @@ export default function TeamDetail() {
       setApplyDialogOpen(false);
       setSelectedRole('');
       setSelectedRoleType('');
+      setSelectedSlotId('');
       setApplicationText('');
+      setQuestionAnswers({});
     } catch (error) {
       console.error('Error applying to team:', error);
       toast({
@@ -589,7 +618,7 @@ export default function TeamDetail() {
                           <div className="grid gap-2">
                             {openSlots.map((slot) => {
                               const isFilled = slot.current_count >= slot.max_count;
-                              const isSelected = selectedRole === slot.role && selectedRoleType === (slot.role_type || '');
+                              const isSelected = selectedSlotId === slot.id;
                               const roleTypeInfo = slot.role_type ? ROLE_TYPES[slot.role_type] : null;
                               const skinInfo = slot.preferred_animal_skin ? ANIMAL_SKINS[slot.preferred_animal_skin] : null;
                               
@@ -601,6 +630,8 @@ export default function TeamDetail() {
                                   onClick={() => {
                                     setSelectedRole(slot.role);
                                     setSelectedRoleType(slot.role_type || '');
+                                    setSelectedSlotId(slot.id);
+                                    setQuestionAnswers({});
                                   }}
                                   className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
                                     isFilled 
@@ -654,6 +685,91 @@ export default function TeamDetail() {
                             </p>
                           )}
                         </div>
+
+                        {/* Selected position details */}
+                        {selectedSlotId && (() => {
+                          const selectedSlot = openSlots.find(s => s.id === selectedSlotId);
+                          if (!selectedSlot) return null;
+                          
+                          const hasRequirements = (selectedSlot.required_skills && selectedSlot.required_skills.length > 0) ||
+                                                  (selectedSlot.required_skill_levels && selectedSlot.required_skill_levels.length > 0);
+                          const hasQuestions = selectedSlot.questions && selectedSlot.questions.length > 0;
+                          
+                          return (
+                            <>
+                              {/* Required skills detail */}
+                              {hasRequirements && (
+                                <div className="p-4 rounded-lg bg-muted/50 border">
+                                  <h4 className="text-sm font-medium mb-3 flex items-center gap-2">
+                                    <span className="text-base">📋</span>
+                                    필요 역량
+                                  </h4>
+                                  
+                                  {/* Skills list */}
+                                  {selectedSlot.required_skills && selectedSlot.required_skills.length > 0 && (
+                                    <div className="mb-3">
+                                      <p className="text-xs text-muted-foreground mb-2">필요 기술</p>
+                                      <div className="flex flex-wrap gap-1.5">
+                                        {selectedSlot.required_skills.map((skill, i) => (
+                                          <Badge key={i} variant="outline" className="text-xs">
+                                            {skill}
+                                          </Badge>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                  
+                                  {/* Skill levels */}
+                                  {selectedSlot.required_skill_levels && selectedSlot.required_skill_levels.length > 0 && (
+                                    <div>
+                                      <p className="text-xs text-muted-foreground mb-2">최소 숙련도</p>
+                                      <div className="flex flex-wrap gap-2">
+                                        {selectedSlot.required_skill_levels.map((skillLevel, i) => (
+                                          <div key={i} className="flex items-center gap-1.5 px-2 py-1 rounded bg-background border text-xs">
+                                            <span className="font-medium">{skillLevel.skillName}</span>
+                                            <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                                              Lv.{skillLevel.minLevel}+
+                                            </Badge>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+
+                              {/* Questions */}
+                              {hasQuestions && (
+                                <div className="space-y-3">
+                                  <h4 className="text-sm font-medium flex items-center gap-2">
+                                    <span className="text-base">❓</span>
+                                    사전 질문
+                                  </h4>
+                                  {selectedSlot.questions.map((question, i) => (
+                                    <div key={question.id} className="space-y-2">
+                                      <label className="text-sm text-foreground flex items-start gap-1">
+                                        <span>{i + 1}. {question.question}</span>
+                                        {question.required && (
+                                          <span className="text-destructive">*</span>
+                                        )}
+                                      </label>
+                                      <Textarea
+                                        placeholder="답변을 입력해주세요..."
+                                        value={questionAnswers[question.id] || ''}
+                                        onChange={(e) => setQuestionAnswers(prev => ({
+                                          ...prev,
+                                          [question.id]: e.target.value
+                                        }))}
+                                        rows={2}
+                                        className="text-sm"
+                                      />
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          );
+                        })()}
                         
                         <div>
                           <label className="text-sm font-medium mb-2 block">자기소개</label>
