@@ -88,6 +88,14 @@ function AppRoutes() {
         </ProtectedRoute>
       } />
       
+      {/* Public routes with AppShell (viewable without login) */}
+      <Route path="/" element={<AppShell />}>
+        <Route path="teams" element={<Teams />} />
+        <Route path="teams/:teamId" element={<TeamDetail />} />
+        <Route path="projects" element={<Projects />} />
+        <Route path="projects/:projectId" element={<ProjectDetail />} />
+      </Route>
+      
       {/* Protected routes with AppShell */}
       <Route path="/" element={
         <ProtectedRoute>
@@ -96,14 +104,10 @@ function AppRoutes() {
       }>
         <Route path="dashboard" element={<Dashboard />} />
         <Route path="chat" element={<Chat />} />
-        <Route path="teams" element={<Teams />} />
         <Route path="teams/create" element={<TeamCreate />} />
         <Route path="teams/join/:teamId" element={<TeamJoin />} />
-        <Route path="teams/:teamId" element={<TeamDetail />} />
         <Route path="teams/:teamId/edit" element={<TeamEdit />} />
-        <Route path="projects" element={<Projects />} />
         <Route path="projects/create" element={<ProjectCreate />} />
-        <Route path="projects/:projectId" element={<ProjectDetail />} />
         <Route path="projects/:projectId/edit" element={<ProjectEdit />} />
         <Route path="contracts/:contractId" element={<ContractManagement />} />
         <Route path="showcase" element={<Showcase />} />
