@@ -566,13 +566,14 @@ export default function TeamDetail() {
                     </Dialog>
                   </>
                 ) : !isMember ? (
-                  <Dialog open={applyDialogOpen} onOpenChange={setApplyDialogOpen}>
-                    <DialogTrigger asChild>
-                      <Button className="bg-gradient-primary">
-                        <UserPlus className="w-4 h-4 mr-2" />
-                        지원하기
-                      </Button>
-                    </DialogTrigger>
+                  user ? (
+                    <Dialog open={applyDialogOpen} onOpenChange={setApplyDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button className="bg-gradient-primary">
+                          <UserPlus className="w-4 h-4 mr-2" />
+                          지원하기
+                        </Button>
+                      </DialogTrigger>
                     <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
                       <DialogHeader>
                         <DialogTitle>팀 지원하기</DialogTitle>
@@ -673,7 +674,15 @@ export default function TeamDetail() {
                         </Button>
                       </DialogFooter>
                     </DialogContent>
-                  </Dialog>
+                    </Dialog>
+                  ) : (
+                    <Link to="/auth">
+                      <Button className="bg-gradient-primary">
+                        <UserPlus className="w-4 h-4 mr-2" />
+                        지원하기
+                      </Button>
+                    </Link>
+                  )
                 ) : null}
               </div>
             </div>

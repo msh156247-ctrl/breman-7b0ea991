@@ -212,7 +212,7 @@ export default function Teams() {
             <h1 className="text-2xl md:text-3xl font-display font-bold">팀</h1>
             <p className="text-muted-foreground mt-1">함께할 팀을 찾거나 새로운 팀을 만들어보세요</p>
           </div>
-          <Link to="/teams/create">
+          <Link to={user ? "/teams/create" : "/auth"}>
             <Button className="bg-gradient-primary">
               <Plus className="w-4 h-4 mr-2" />
               팀 만들기

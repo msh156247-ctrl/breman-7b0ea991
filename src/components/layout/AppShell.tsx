@@ -155,26 +155,36 @@ export function AppShell() {
 
           {/* User section */}
           <div className="p-4 border-t border-sidebar-border">
-            <Link 
-              to="/profile"
-              onClick={handleCloseSidebar}
-              className="flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent transition-colors"
-            >
-              <Avatar className="h-9 w-9">
-                <AvatarImage src={profile?.avatar_url || undefined} />
-                <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                  {profile?.name?.[0] || 'U'}
-                </AvatarFallback>
-              </Avatar>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-sidebar-foreground truncate">
-                  {profile?.name || '사용자'}
-                </p>
-                <p className="text-xs text-muted-foreground truncate">
-                  Lv.{profile?.level || 1}
-                </p>
-              </div>
-            </Link>
+            {user ? (
+              <Link 
+                to="/profile"
+                onClick={handleCloseSidebar}
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-sidebar-accent transition-colors"
+              >
+                <Avatar className="h-9 w-9">
+                  <AvatarImage src={profile?.avatar_url || undefined} />
+                  <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                    {profile?.name?.[0] || 'U'}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-sidebar-foreground truncate">
+                    {profile?.name || '사용자'}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    Lv.{profile?.level || 1}
+                  </p>
+                </div>
+              </Link>
+            ) : (
+              <Link 
+                to="/auth"
+                onClick={handleCloseSidebar}
+                className="flex items-center justify-center gap-2 p-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-medium"
+              >
+                로그인 / 회원가입
+              </Link>
+            )}
           </div>
         </div>
       </aside>
@@ -206,59 +216,67 @@ export function AppShell() {
               {/* Theme toggle */}
               <ThemeToggle />
 
-              {/* Notifications */}
-              <NotificationsDropdown />
+              {user ? (
+                <>
+                  {/* Notifications */}
+                  <NotificationsDropdown />
 
-              {/* User menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" className="gap-2 px-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={profile?.avatar_url || undefined} />
-                      <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                        {profile?.name?.[0] || 'U'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <Link to="/profile" className="cursor-pointer">
-                      <User className="w-4 h-4 mr-2" />
-                      프로필
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/chat" className="cursor-pointer">
-                      <MessageSquare className="w-4 h-4 mr-2" />
-                      채팅
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/notifications" className="cursor-pointer">
-                      <Bell className="w-4 h-4 mr-2" />
-                      알림
-                    </Link>
-                  </DropdownMenuItem>
-                  {isAdmin && (
-                    <DropdownMenuItem asChild>
-                      <Link to="/admin" className="cursor-pointer">
-                        <Shield className="w-4 h-4 mr-2" />
-                        관리자 설정
-                      </Link>
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem 
-                    onClick={signOut}
-                    className="text-destructive focus:text-destructive cursor-pointer"
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    로그아웃
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                  {/* User menu */}
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="gap-2 px-2">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={profile?.avatar_url || undefined} />
+                          <AvatarFallback className="bg-primary text-primary-foreground text-sm">
+                            {profile?.name?.[0] || 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48">
+                      <DropdownMenuItem asChild>
+                        <Link to="/profile" className="cursor-pointer">
+                          <User className="w-4 h-4 mr-2" />
+                          프로필
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/chat" className="cursor-pointer">
+                          <MessageSquare className="w-4 h-4 mr-2" />
+                          채팅
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/notifications" className="cursor-pointer">
+                          <Bell className="w-4 h-4 mr-2" />
+                          알림
+                        </Link>
+                      </DropdownMenuItem>
+                      {isAdmin && (
+                        <DropdownMenuItem asChild>
+                          <Link to="/admin" className="cursor-pointer">
+                            <Shield className="w-4 h-4 mr-2" />
+                            관리자 설정
+                          </Link>
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={signOut}
+                        className="text-destructive focus:text-destructive cursor-pointer"
+                      >
+                        <LogOut className="w-4 h-4 mr-2" />
+                        로그아웃
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </>
+              ) : (
+                <Link to="/auth">
+                  <Button size="sm">로그인</Button>
+                </Link>
+              )}
             </div>
           </div>
         </header>

@@ -404,7 +404,11 @@ export default function Projects() {
                           variant="outline"
                           onClick={(e) => {
                             e.stopPropagation();
-                            navigate(`/projects/create?teamId=${team.id}`);
+                            if (user) {
+                              navigate(`/projects/create?teamId=${team.id}`);
+                            } else {
+                              navigate('/auth');
+                            }
                           }}
                         >
                           제안하기
@@ -434,7 +438,7 @@ export default function Projects() {
                   <div className="grid gap-4 md:grid-cols-2">
                     <Card 
                       className="p-6 cursor-pointer hover:shadow-md transition-shadow border-dashed"
-                      onClick={() => navigate('/projects/create')}
+                      onClick={() => navigate(user ? '/projects/create' : '/auth')}
                     >
                       <div className="flex flex-col items-center text-center gap-3">
                         <div className="p-4 rounded-full bg-primary/10">
@@ -451,7 +455,13 @@ export default function Projects() {
 
                     <Card 
                       className="p-6 cursor-pointer hover:shadow-md transition-shadow border-dashed"
-                      onClick={handleDirectProposalClick}
+                      onClick={() => {
+                        if (!user) {
+                          navigate('/auth');
+                          return;
+                        }
+                        handleDirectProposalClick();
+                      }}
                     >
                       <div className="flex flex-col items-center text-center gap-3">
                         <div className="p-4 rounded-full bg-secondary/50">
