@@ -164,7 +164,7 @@ export default function ChatRoom() {
       const channel = supabase
         .channel(`chat-${conversationId}`, {
           config: {
-            broadcast: { self: false }, // Don't receive own broadcasts
+            broadcast: { self: false, ack: true }, // Don't receive own broadcasts, with acknowledgment
           },
         })
         // Broadcast listener for instant message delivery
@@ -184,17 +184,17 @@ export default function ChatRoom() {
 
           setMessages(prev => {
             // Prevent duplicates
-            if (prev.some(m => m.id === msg.id || m.id.startsWith('temp-'))) {
-              // Replace temp message with real one if exists
-              const hasTemp = prev.some(m => m.id.startsWith('temp-') && m.content === msg.content);
-              if (hasTemp) {
-                return prev.map(m => 
-                  m.id.startsWith('temp-') && m.content === msg.content
-                    ? { ...msg, sender: sender || undefined, read_by_count: 0 }
-                    : m
-                );
-              }
+            if (prev.some(m => m.id === msg.id)) {
               return prev;
+            }
+            // Check for temp messages
+            const hasTemp = prev.some(m => m.id.startsWith('temp-') && m.content === msg.content && m.sender_id === msg.sender_id);
+            if (hasTemp) {
+              return prev.map(m => 
+                m.id.startsWith('temp-') && m.content === msg.content && m.sender_id === msg.sender_id
+                  ? { ...msg, sender: sender || undefined, read_by_count: 0 }
+                  : m
+              );
             }
             return [...prev, { ...msg, sender: sender || undefined, read_by_count: 0 }];
           });
@@ -210,7 +210,7 @@ export default function ChatRoom() {
             onClick: () => navigate(`/chat/${conversationId}`)
           });
         })
-        // Postgres changes as fallback
+        // Postgres changes for persistence sync (primary mechanism)
         .on(
           'postgres_changes',
           {
@@ -223,6 +223,27 @@ export default function ChatRoom() {
             console.log('🔔 Postgres INSERT received:', payload);
             const newMsg = payload.new as Message;
             
+            // Skip own messages (already handled by optimistic UI)
+            if (newMsg.sender_id === user?.id) {
+              // Just replace temp with real
+              setMessages(prev => {
+                const tempIndex = prev.findIndex(m => 
+                  m.id.startsWith('temp-') && 
+                  m.sender_id === newMsg.sender_id && 
+                  m.content === newMsg.content
+                );
+                if (tempIndex >= 0) {
+                  const updated = [...prev];
+                  updated[tempIndex] = { ...updated[tempIndex], id: newMsg.id, created_at: newMsg.created_at };
+                  return updated;
+                }
+                // Already exists
+                if (prev.some(m => m.id === newMsg.id)) return prev;
+                return prev;
+              });
+              return;
+            }
+            
             // Fetch sender info
             const { data: sender } = await supabase
               .from('profiles')
@@ -231,22 +252,8 @@ export default function ChatRoom() {
               .single();
 
             setMessages(prev => {
-              // Check for duplicates (from broadcast or optimistic UI)
+              // Check for duplicates (from broadcast)
               if (prev.some(m => m.id === newMsg.id)) return prev;
-              
-              // Check if we have a temp message that matches (for sender)
-              const tempIndex = prev.findIndex(m => 
-                m.id.startsWith('temp-') && 
-                m.sender_id === newMsg.sender_id && 
-                m.content === newMsg.content
-              );
-              
-              if (tempIndex >= 0) {
-                // Replace temp with real message
-                const updated = [...prev];
-                updated[tempIndex] = { ...newMsg, sender: sender || undefined, read_by_count: 0 };
-                return updated;
-              }
               
               return [...prev, { ...newMsg, sender: sender || undefined, read_by_count: 0 }];
             });
@@ -254,15 +261,13 @@ export default function ChatRoom() {
             markAsRead();
 
             // Show browser notification for messages from others
-            if (newMsg.sender_id !== user?.id) {
-              showNotification({
-                title: sender?.name || '새 메시지',
-                body: newMsg.content.length > 50 ? newMsg.content.substring(0, 50) + '...' : newMsg.content,
-                icon: sender?.avatar_url || '/favicon.ico',
-                tag: `chat-${conversationId}`,
-                onClick: () => navigate(`/chat/${conversationId}`)
-              });
-            }
+            showNotification({
+              title: sender?.name || '새 메시지',
+              body: newMsg.content.length > 50 ? newMsg.content.substring(0, 50) + '...' : newMsg.content,
+              icon: sender?.avatar_url || '/favicon.ico',
+              tag: `chat-${conversationId}`,
+              onClick: () => navigate(`/chat/${conversationId}`)
+            });
           }
         )
         .on(
@@ -321,6 +326,10 @@ export default function ChatRoom() {
             console.log('✅ Successfully subscribed to chat channel');
           } else if (status === 'CHANNEL_ERROR') {
             console.error('❌ Failed to subscribe to chat channel');
+            // Retry connection after delay
+            setTimeout(() => {
+              channel.subscribe();
+            }, 2000);
           }
         });
 
