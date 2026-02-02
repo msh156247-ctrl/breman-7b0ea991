@@ -645,19 +645,27 @@ export default function ChatRoom() {
           )
         );
 
-        // Broadcast to other participants
+        // Broadcast to other participants - await to ensure delivery
         if (channelRef.current) {
-          channelRef.current.send({
+          const broadcastPayload = {
+            ...data,
+            sender: {
+              name: profile?.name || '사용자',
+              avatar_url: profile?.avatar_url || null,
+            }
+          };
+          
+          const status = await channelRef.current.send({
             type: 'broadcast',
             event: 'new_message',
-            payload: {
-              ...data,
-              sender: {
-                name: profile?.name || '사용자',
-                avatar_url: profile?.avatar_url || null,
-              }
-            }
+            payload: broadcastPayload
           });
+          
+          console.log('📤 Broadcast sent:', status, broadcastPayload.id);
+          
+          if (status !== 'ok') {
+            console.warn('⚠️ Broadcast may have failed:', status);
+          }
         }
       }
     } catch (error) {
