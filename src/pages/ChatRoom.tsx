@@ -141,14 +141,26 @@ export default function ChatRoom() {
   }, [requestPermission]);
 
   // Mark messages as read when entering the chat room
+  // Uses upsert to handle team chats where participant record may not exist
   const markAsRead = async () => {
     if (!conversationId || !user) return;
 
-    await supabase
+    const { error } = await supabase
       .from('conversation_participants')
-      .update({ last_read_at: new Date().toISOString() })
-      .eq('conversation_id', conversationId)
-      .eq('user_id', user.id);
+      .upsert(
+        {
+          conversation_id: conversationId,
+          user_id: user.id,
+          last_read_at: new Date().toISOString(),
+        },
+        {
+          onConflict: 'conversation_id,user_id',
+        }
+      );
+
+    if (error) {
+      console.error('Mark as read error:', error);
+    }
   };
 
   // Channel ref for broadcast
