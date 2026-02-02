@@ -176,7 +176,7 @@ export default function ChatRoom() {
       const channel = supabase
         .channel(`chat-${conversationId}`, {
           config: {
-            broadcast: { self: false, ack: true }, // Don't receive own broadcasts, with acknowledgment
+            broadcast: { self: true, ack: true }, // Receive own broadcasts for multi-window sync
           },
         })
         // Broadcast listener for instant message delivery
@@ -184,45 +184,53 @@ export default function ChatRoom() {
           console.log('📨 Broadcast received:', payload);
           const msg = payload as Message;
           
-          // Skip if it's our own message (already added via optimistic UI)
-          if (msg.sender_id === user?.id) return;
-          
-          // Fetch sender info
-          const { data: sender } = await supabase
-            .from('profiles')
-            .select('name, avatar_url')
-            .eq('id', msg.sender_id)
-            .single();
+          // Fetch sender info if not included
+          let sender = msg.sender;
+          if (!sender) {
+            const { data: senderData } = await supabase
+              .from('profiles')
+              .select('name, avatar_url')
+              .eq('id', msg.sender_id)
+              .single();
+            sender = senderData || undefined;
+          }
 
           setMessages(prev => {
-            // Prevent duplicates
-            if (prev.some(m => m.id === msg.id)) {
+            // Prevent duplicates (check by real ID)
+            if (prev.some(m => m.id === msg.id && !m.id.startsWith('temp-'))) {
               return prev;
             }
-            // Check for temp messages
-            const hasTemp = prev.some(m => m.id.startsWith('temp-') && m.content === msg.content && m.sender_id === msg.sender_id);
-            if (hasTemp) {
-              return prev.map(m => 
-                m.id.startsWith('temp-') && m.content === msg.content && m.sender_id === msg.sender_id
-                  ? { ...msg, sender: sender || undefined, read_by_count: 0 }
-                  : m
-              );
+            // Replace temp message with broadcast data
+            const tempIndex = prev.findIndex(m => 
+              m.id.startsWith('temp-') && 
+              m.content === msg.content && 
+              m.sender_id === msg.sender_id
+            );
+            if (tempIndex >= 0) {
+              const updated = [...prev];
+              updated[tempIndex] = { ...msg, sender, read_by_count: 0 };
+              return updated;
             }
-            return [...prev, { ...msg, sender: sender || undefined, read_by_count: 0 }];
+            // Add new message from others
+            return [...prev, { ...msg, sender, read_by_count: 0 }];
           });
-          scrollToBottom();
-          markAsRead();
+          
+          // Only scroll and notify for messages from others
+          if (msg.sender_id !== user?.id) {
+            scrollToBottom();
+            markAsRead();
 
-          // Show browser notification
-          showNotification({
-            title: sender?.name || '새 메시지',
-            body: msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content,
-            icon: sender?.avatar_url || '/favicon.ico',
-            tag: `chat-${conversationId}`,
-            onClick: () => navigate(`/chat/${conversationId}`)
-          });
+            // Show browser notification
+            showNotification({
+              title: sender?.name || '새 메시지',
+              body: msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content,
+              icon: sender?.avatar_url || '/favicon.ico',
+              tag: `chat-${conversationId}`,
+              onClick: () => navigate(`/chat/${conversationId}`)
+            });
+          }
         })
-        // Postgres changes for persistence sync (primary mechanism)
+        // Postgres changes as fallback for reliability
         .on(
           'postgres_changes',
           {
@@ -235,27 +243,6 @@ export default function ChatRoom() {
             console.log('🔔 Postgres INSERT received:', payload);
             const newMsg = payload.new as Message;
             
-            // Skip own messages (already handled by optimistic UI)
-            if (newMsg.sender_id === user?.id) {
-              // Just replace temp with real
-              setMessages(prev => {
-                const tempIndex = prev.findIndex(m => 
-                  m.id.startsWith('temp-') && 
-                  m.sender_id === newMsg.sender_id && 
-                  m.content === newMsg.content
-                );
-                if (tempIndex >= 0) {
-                  const updated = [...prev];
-                  updated[tempIndex] = { ...updated[tempIndex], id: newMsg.id, created_at: newMsg.created_at };
-                  return updated;
-                }
-                // Already exists
-                if (prev.some(m => m.id === newMsg.id)) return prev;
-                return prev;
-              });
-              return;
-            }
-            
             // Fetch sender info
             const { data: sender } = await supabase
               .from('profiles')
@@ -264,22 +251,38 @@ export default function ChatRoom() {
               .single();
 
             setMessages(prev => {
-              // Check for duplicates (from broadcast)
-              if (prev.some(m => m.id === newMsg.id)) return prev;
-              
+              // Check if already exists (from broadcast or optimistic)
+              if (prev.some(m => m.id === newMsg.id && !m.id.startsWith('temp-'))) {
+                return prev;
+              }
+              // Replace temp message
+              const tempIndex = prev.findIndex(m => 
+                m.id.startsWith('temp-') && 
+                m.sender_id === newMsg.sender_id && 
+                m.content === newMsg.content
+              );
+              if (tempIndex >= 0) {
+                const updated = [...prev];
+                updated[tempIndex] = { ...newMsg, sender: sender || updated[tempIndex].sender, read_by_count: 0 };
+                return updated;
+              }
+              // Add new message
               return [...prev, { ...newMsg, sender: sender || undefined, read_by_count: 0 }];
             });
-            scrollToBottom();
-            markAsRead();
+            
+            if (newMsg.sender_id !== user?.id) {
+              scrollToBottom();
+              markAsRead();
 
-            // Show browser notification for messages from others
-            showNotification({
-              title: sender?.name || '새 메시지',
-              body: newMsg.content.length > 50 ? newMsg.content.substring(0, 50) + '...' : newMsg.content,
-              icon: sender?.avatar_url || '/favicon.ico',
-              tag: `chat-${conversationId}`,
-              onClick: () => navigate(`/chat/${conversationId}`)
-            });
+              // Show browser notification for messages from others
+              showNotification({
+                title: sender?.name || '새 메시지',
+                body: newMsg.content.length > 50 ? newMsg.content.substring(0, 50) + '...' : newMsg.content,
+                icon: sender?.avatar_url || '/favicon.ico',
+                tag: `chat-${conversationId}`,
+                onClick: () => navigate(`/chat/${conversationId}`)
+              });
+            }
           }
         )
         .on(
