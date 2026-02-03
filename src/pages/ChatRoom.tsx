@@ -230,6 +230,16 @@ export default function ChatRoom() {
             });
           }
         })
+        // Handle message ID confirmation (temp -> real)
+        .on('broadcast', { event: 'message_confirmed' }, ({ payload }) => {
+          console.log('✅ Message confirmed:', payload);
+          const { tempId, realId, created_at } = payload as { tempId: string; realId: string; created_at: string };
+          setMessages(prev => prev.map(msg => 
+            msg.id === tempId 
+              ? { ...msg, id: realId, created_at } 
+              : msg
+          ));
+        })
         // Postgres changes as fallback for reliability
         .on(
           'postgres_changes',
@@ -621,7 +631,27 @@ export default function ChatRoom() {
     });
 
     try {
-      const { data, error } = await supabase
+      // 1. Broadcast FIRST for instant delivery (fire-and-forget for speed)
+      const broadcastPromise = channelRef.current?.send({
+        type: 'broadcast',
+        event: 'new_message',
+        payload: {
+          id: tempId, // Use temp ID initially
+          conversation_id: conversationId,
+          sender_id: user.id,
+          content: messageContent,
+          reply_to_id: currentReplyTo?.id || null,
+          attachments: attachmentUrls,
+          created_at: optimisticMessage.created_at,
+          sender: {
+            name: profile?.name || '사용자',
+            avatar_url: profile?.avatar_url || null,
+          }
+        }
+      });
+
+      // 2. DB insert in parallel
+      const dbPromise = supabase
         .from('messages')
         .insert({
           conversation_id: conversationId,
@@ -633,9 +663,18 @@ export default function ChatRoom() {
         .select()
         .single();
 
+      // Wait for both operations
+      const [broadcastStatus, dbResult] = await Promise.all([
+        broadcastPromise || Promise.resolve('no-channel'),
+        dbPromise
+      ]);
+
+      console.log('📤 Broadcast sent:', broadcastStatus);
+      
+      const { data, error } = dbResult;
       if (error) throw error;
 
-      // Replace temp message with real data
+      // Replace temp message with real DB data
       if (data) {
         setMessages(prevMessages => 
           prevMessages.map(msg => 
@@ -645,27 +684,13 @@ export default function ChatRoom() {
           )
         );
 
-        // Broadcast to other participants - await to ensure delivery
-        if (channelRef.current) {
-          const broadcastPayload = {
-            ...data,
-            sender: {
-              name: profile?.name || '사용자',
-              avatar_url: profile?.avatar_url || null,
-            }
-          };
-          
-          const status = await channelRef.current.send({
+        // Send another broadcast with real ID for consistency
+        if (channelRef.current && broadcastStatus === 'ok') {
+          channelRef.current.send({
             type: 'broadcast',
-            event: 'new_message',
-            payload: broadcastPayload
+            event: 'message_confirmed',
+            payload: { tempId, realId: data.id, created_at: data.created_at }
           });
-          
-          console.log('📤 Broadcast sent:', status, broadcastPayload.id);
-          
-          if (status !== 'ok') {
-            console.warn('⚠️ Broadcast may have failed:', status);
-          }
         }
       }
     } catch (error) {
