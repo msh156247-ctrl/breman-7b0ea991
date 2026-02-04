@@ -99,6 +99,10 @@ export function AppShell() {
         <div 
           className="fixed inset-0 z-40 bg-foreground/20 backdrop-blur-sm"
           onClick={handleCloseSidebar}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            handleCloseSidebar();
+          }}
           aria-label="사이드바 닫기"
         />
       )}
@@ -121,6 +125,11 @@ export function AppShell() {
               <button 
                 className="p-2 rounded-lg hover:bg-sidebar-accent active:bg-sidebar-accent/80 touch-manipulation"
                 onClick={handleCloseSidebar}
+                onTouchEnd={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleCloseSidebar();
+                }}
                 type="button"
                 aria-label="메뉴 닫기"
               >
