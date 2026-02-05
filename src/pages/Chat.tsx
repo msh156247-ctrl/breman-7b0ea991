@@ -178,12 +178,20 @@ export default function Chat() {
 
       // Calculate unread counts in memory (much faster than N queries)
       const unreadByConvo = new Map<string, number>();
+      
+      // Get user's last_read_at for each conversation
+      const userReadTimes = new Map<string, string>();
+      participantsByConvo.forEach((participants, convoId) => {
+        const userParticipant = participants?.find(p => p.user_id === user.id);
+        if (userParticipant?.last_read_at) {
+          userReadTimes.set(convoId, userParticipant.last_read_at);
+        }
+      });
+      
       allMessages?.forEach(msg => {
         if (msg.sender_id === user.id) return;
         
-        const participants = participantsByConvo.get(msg.conversation_id);
-        const userParticipant = participants?.find(p => p.user_id === user.id);
-        const lastRead = userParticipant?.last_read_at;
+        const lastRead = userReadTimes.get(msg.conversation_id);
         
         if (!lastRead || new Date(msg.created_at) > new Date(lastRead)) {
           unreadByConvo.set(msg.conversation_id, (unreadByConvo.get(msg.conversation_id) || 0) + 1);

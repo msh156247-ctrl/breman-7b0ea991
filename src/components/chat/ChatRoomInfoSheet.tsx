@@ -20,10 +20,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Users, MessageCircle, UsersRound, Calendar, LogOut, Bell, BellOff } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Users, MessageCircle, UsersRound, Calendar, LogOut, Bell, BellOff, EyeOff } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 interface Participant {
   id: string;
@@ -43,6 +46,8 @@ interface ChatRoomInfoSheetProps {
   conversationType: 'direct' | 'team' | 'team_to_team';
   conversationName?: string | null;
   currentUserId?: string;
+  hideMessagesBeforeJoin?: boolean;
+  onSettingChange?: () => void;
 }
 
 export function ChatRoomInfoSheet({
@@ -51,7 +56,9 @@ export function ChatRoomInfoSheet({
   conversationId,
   conversationType,
   conversationName,
-  currentUserId
+  currentUserId,
+  hideMessagesBeforeJoin = false,
+  onSettingChange
 }: ChatRoomInfoSheetProps) {
   const isMobile = useIsMobile();
   const navigate = useNavigate();
@@ -59,12 +66,15 @@ export function ChatRoomInfoSheet({
   const [loading, setLoading] = useState(false);
   const [createdAt, setCreatedAt] = useState<string | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [hideBeforeJoin, setHideBeforeJoin] = useState(hideMessagesBeforeJoin);
+  const [updatingSettings, setUpdatingSettings] = useState(false);
 
   useEffect(() => {
     if (open) {
       fetchConversationInfo();
+      setHideBeforeJoin(hideMessagesBeforeJoin);
     }
-  }, [open, conversationId]);
+  }, [open, conversationId, hideMessagesBeforeJoin]);
 
   const fetchConversationInfo = async () => {
     setLoading(true);
@@ -108,6 +118,30 @@ export function ChatRoomInfoSheet({
       console.error('Error fetching conversation info:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleToggleHideBeforeJoin = async (checked: boolean) => {
+    if (!currentUserId) return;
+    
+    setUpdatingSettings(true);
+    try {
+      const { error } = await supabase
+        .from('conversation_participants')
+        .update({ hide_messages_before_join: checked })
+        .eq('conversation_id', conversationId)
+        .eq('user_id', currentUserId);
+
+      if (error) throw error;
+
+      setHideBeforeJoin(checked);
+      toast.success(checked ? '참여 이전 메시지가 숨겨집니다' : '모든 메시지가 표시됩니다');
+      onSettingChange?.();
+    } catch (error) {
+      console.error('Error updating setting:', error);
+      toast.error('설정 변경에 실패했습니다');
+    } finally {
+      setUpdatingSettings(false);
     }
   };
 
@@ -218,6 +252,22 @@ export function ChatRoomInfoSheet({
 
       {/* Actions */}
       <div className="py-4 space-y-2">
+        {/* Hide messages before join setting */}
+        <div className="flex items-center justify-between p-2 rounded-lg hover:bg-accent">
+          <div className="flex items-center gap-2">
+            <EyeOff className="h-4 w-4 text-muted-foreground" />
+            <Label htmlFor="hide-before-join" className="text-sm cursor-pointer">
+              참여 이전 대화 숨기기
+            </Label>
+          </div>
+          <Switch
+            id="hide-before-join"
+            checked={hideBeforeJoin}
+            onCheckedChange={handleToggleHideBeforeJoin}
+            disabled={updatingSettings}
+          />
+        </div>
+        
         <Button
           variant="ghost"
           className="w-full justify-start"

@@ -78,6 +78,11 @@ interface Message {
   read_by_count?: number;
 }
 
+interface ParticipantSettings {
+  joined_at: string;
+  hide_messages_before_join: boolean;
+}
+
 interface Conversation {
   id: string;
   type: 'direct' | 'team' | 'team_to_team';
@@ -104,8 +109,6 @@ export default function ChatRoom() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [replyTo, setReplyTo] = useState<Message | null>(null);
-  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
-  const [editContent, setEditContent] = useState('');
   const [deleteMessageId, setDeleteMessageId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -123,6 +126,9 @@ export default function ChatRoom() {
   const [isRoomInfoOpen, setIsRoomInfoOpen] = useState(false);
   const [isSharedFilesOpen, setIsSharedFilesOpen] = useState(false);
   const [isScheduleOpen, setIsScheduleOpen] = useState(false);
+  
+  // Participant settings for filtering messages
+  const [participantSettings, setParticipantSettings] = useState<ParticipantSettings | null>(null);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -432,6 +438,21 @@ export default function ChatRoom() {
       type: data.type as 'direct' | 'team' | 'team_to_team'
     });
 
+    // Fetch participant settings for current user
+    const { data: myParticipant } = await supabase
+      .from('conversation_participants')
+      .select('joined_at, hide_messages_before_join')
+      .eq('conversation_id', conversationId)
+      .eq('user_id', user.id)
+      .single();
+    
+    if (myParticipant) {
+      setParticipantSettings({
+        joined_at: myParticipant.joined_at,
+        hide_messages_before_join: myParticipant.hide_messages_before_join || false
+      });
+    }
+
     // Fetch all participant IDs for invite dialog
     const { data: allParticipants } = await supabase
       .from('conversation_participants')
@@ -509,11 +530,26 @@ export default function ChatRoom() {
   const fetchMessages = async () => {
     if (!conversationId || !user) return;
 
-    const { data, error } = await supabase
+    // Get participant settings first
+    const { data: myParticipant } = await supabase
+      .from('conversation_participants')
+      .select('joined_at, hide_messages_before_join')
+      .eq('conversation_id', conversationId)
+      .eq('user_id', user.id)
+      .single();
+
+    let query = supabase
       .from('messages')
       .select('*')
       .eq('conversation_id', conversationId)
       .order('created_at', { ascending: true });
+
+    // Filter messages if hide_messages_before_join is enabled
+    if (myParticipant?.hide_messages_before_join && myParticipant?.joined_at) {
+      query = query.gte('created_at', myParticipant.joined_at);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching messages:', error);
@@ -706,37 +742,32 @@ export default function ChatRoom() {
     }
   }, [newMessage, replyTo, conversationId, user, sending, profile, stopTyping, scrollToBottom]);
 
-  const handleEditMessage = async () => {
-    if (!editingMessage || !editContent.trim()) return;
-
-    try {
-      const { error } = await supabase
-        .from('messages')
-        .update({ 
-          content: editContent.trim(),
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', editingMessage.id);
-
-      if (error) throw error;
-
-      setMessages(prev => prev.map(msg => 
-        msg.id === editingMessage.id 
-          ? { ...msg, content: editContent.trim() }
-          : msg
-      ));
-
-      toast.success('메시지가 수정되었습니다');
-      setEditingMessage(null);
-      setEditContent('');
-    } catch (error) {
-      console.error('Error editing message:', error);
-      toast.error('메시지 수정에 실패했습니다');
-    }
+  // Check if message can be deleted (within 1 minute)
+  const canDeleteMessage = (msg: Message) => {
+    if (msg.sender_id !== user?.id) return false;
+    if (msg.id.startsWith('temp-')) return false; // Can't delete messages still sending
+    const messageTime = new Date(msg.created_at).getTime();
+    const now = Date.now();
+    const oneMinute = 60 * 1000;
+    return now - messageTime <= oneMinute;
   };
 
   const handleDeleteMessage = async () => {
     if (!deleteMessageId) return;
+
+    // Find the message to check time limit
+    const messageToDelete = messages.find(m => m.id === deleteMessageId);
+    if (messageToDelete && !messageToDelete.id.startsWith('temp-')) {
+      const messageTime = new Date(messageToDelete.created_at).getTime();
+      const now = Date.now();
+      const oneMinute = 60 * 1000;
+      
+      if (now - messageTime > oneMinute) {
+        toast.error('1분 이내의 메시지만 삭제할 수 있습니다');
+        setDeleteMessageId(null);
+        return;
+      }
+    }
 
     try {
       const { error } = await supabase
@@ -753,16 +784,6 @@ export default function ChatRoom() {
       console.error('Error deleting message:', error);
       toast.error('메시지 삭제에 실패했습니다');
     }
-  };
-
-  const startEditing = (msg: Message) => {
-    setEditingMessage(msg);
-    setEditContent(msg.content);
-  };
-
-  const cancelEditing = () => {
-    setEditingMessage(null);
-    setEditContent('');
   };
 
   const handleSearchHighlight = useCallback((messageId: string | null, _index: number, _total: number) => {
@@ -885,7 +906,9 @@ export default function ChatRoom() {
                     }`}>
                       <span className="font-medium">{msg.reply_to.sender_name}</span>
                       <p className="text-muted-foreground truncate max-w-[200px]">
-                        {msg.reply_to.content}
+                        {msg.reply_to.content.length > 30 
+                          ? msg.reply_to.content.slice(0, 30) + '...' 
+                          : msg.reply_to.content}
                       </p>
                     </div>
                   )}
@@ -918,19 +941,15 @@ export default function ChatRoom() {
                         <Reply className="h-4 w-4 mr-2" />
                         답장
                       </DropdownMenuItem>
-                      {isOwn && (
+                      {canDeleteMessage(msg) && (
                         <>
                           <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => startEditing(msg)}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            수정
-                          </DropdownMenuItem>
                           <DropdownMenuItem 
                             onClick={() => setDeleteMessageId(msg.id)}
                             className="text-destructive focus:text-destructive"
                           >
                             <Trash2 className="h-4 w-4 mr-2" />
-                            삭제
+                            삭제 (1분 이내)
                           </DropdownMenuItem>
                         </>
                       )}
@@ -1057,43 +1076,15 @@ export default function ChatRoom() {
         </div>
       </div>
 
-      {/* Edit Message Preview */}
-      {editingMessage && (
-        <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-t shrink-0">
-          <Pencil className="h-4 w-4 text-muted-foreground" />
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-medium">메시지 수정</p>
-            <Input
-              value={editContent}
-              onChange={(e) => setEditContent(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleEditMessage();
-                } else if (e.key === 'Escape') {
-                  cancelEditing();
-                }
-              }}
-              className="mt-1 h-8 text-sm"
-              autoFocus
-            />
-          </div>
-          <Button variant="ghost" size="icon" onClick={handleEditMessage} disabled={!editContent.trim()}>
-            <Check className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="icon" onClick={cancelEditing}>
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      )}
-
       {/* Reply Preview */}
-      {replyTo && !editingMessage && (
+      {replyTo && (
         <div className="flex items-center gap-2 px-4 py-2 bg-muted/50 border-t shrink-0">
           <Reply className="h-4 w-4 text-muted-foreground" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-medium">{replyTo.sender?.name}에게 답장</p>
-            <p className="text-xs text-muted-foreground truncate">{replyTo.content}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {replyTo.content.length > 40 ? replyTo.content.slice(0, 40) + '...' : replyTo.content}
+            </p>
           </div>
           <Button variant="ghost" size="icon" onClick={() => setReplyTo(null)}>
             <X className="h-4 w-4" />
@@ -1139,6 +1130,11 @@ export default function ChatRoom() {
         conversationType={conversation?.type || 'direct'}
         conversationName={conversationInfo?.title}
         currentUserId={user?.id}
+        hideMessagesBeforeJoin={participantSettings?.hide_messages_before_join || false}
+        onSettingChange={() => {
+          fetchMessages();
+          fetchConversation();
+        }}
       />
 
       {/* Shared Files Sheet */}
