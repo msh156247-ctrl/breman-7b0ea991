@@ -28,19 +28,55 @@ export default function ResetPassword() {
   const [success, setSuccess] = useState(false);
   const [isValidSession, setIsValidSession] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [isRecoveryFlow, setIsRecoveryFlow] = useState(false);
 
   useEffect(() => {
-    // 리셋 토큰이 있는 세션인지 확인
+    // URL 해시에서 recovery 토큰 확인
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      // URL 해시 파라미터 확인 (Supabase recovery 링크 형식)
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const type = hashParams.get('type');
       
-      if (session) {
-        setIsValidSession(true);
+      // recovery 타입인 경우에만 유효한 비밀번호 재설정 플로우
+      if (type === 'recovery' && accessToken) {
+        setIsRecoveryFlow(true);
+        
+        // 토큰으로 세션 설정 (이 시점에서 자동 로그인됨)
+        const { error } = await supabase.auth.setSession({
+          access_token: accessToken,
+          refresh_token: hashParams.get('refresh_token') || ''
+        });
+        
+        if (!error) {
+          setIsValidSession(true);
+        }
+      } else {
+        // URL에 recovery 토큰이 없으면 기존 세션 확인
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        // 일반 세션으로 접근한 경우 (비밀번호 재설정이 아님)
+        if (session && !isRecoveryFlow) {
+          // 이미 로그인된 상태에서 접근 - 유효하지 않은 접근
+          setIsValidSession(false);
+        }
       }
+      
       setChecking(false);
     };
 
+    // onAuthStateChange로 recovery 이벤트 감지
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsRecoveryFlow(true);
+        setIsValidSession(true);
+        setChecking(false);
+      }
+    });
+
     checkSession();
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const form = useForm<PasswordFormData>({
@@ -62,6 +98,8 @@ export default function ResetPassword() {
         toast.error('비밀번호 변경에 실패했습니다: ' + error.message);
       }
     } else {
+      // 비밀번호 변경 성공 후 로그아웃
+      await supabase.auth.signOut();
       setSuccess(true);
     }
 
