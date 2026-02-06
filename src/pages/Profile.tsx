@@ -376,7 +376,48 @@ export default function Profile() {
                 </div>
               )}
 
-              {/* 성향 (3순위) - 컴팩트 인라인 수정 */}
+              {/* 소속 팀 (역할보다 위에) */}
+              {(userTeams.length > 0 || myCreatedTeams.length > 0) && (
+                <div className="flex flex-wrap gap-2">
+                  {myCreatedTeams.map((team: any) => (
+                    <Link 
+                      key={`leader-${team.id}`}
+                      to={`/teams/${team.id}`}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 hover:bg-primary/20 transition-colors"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-sm overflow-hidden">
+                        {team.emblem_url ? (
+                          <img src={team.emblem_url} alt="" className="w-full h-full object-cover" />
+                        ) : '🎯'}
+                      </div>
+                      <span className="text-sm font-medium">{team.name}</span>
+                      <Crown className="w-3.5 h-3.5 text-primary" />
+                      {team.rating_avg > 0 && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                          <Star className="w-3 h-3 text-secondary" />{team.rating_avg?.toFixed(1)}
+                        </span>
+                      )}
+                    </Link>
+                  ))}
+                  {userTeams.map((team) => (
+                    <Link 
+                      key={`member-${team.id}`}
+                      to={`/teams/${team.id}`}
+                      className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-muted/50 border border-border/50 hover:bg-muted transition-colors"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-sm overflow-hidden">
+                        {team.emblem && team.emblem.startsWith('http') ? (
+                          <img src={team.emblem} alt="" className="w-full h-full object-cover" />
+                        ) : team.emblem || '🎯'}
+                      </div>
+                      <span className="text-sm font-medium">{team.name}</span>
+                      <RoleBadge role={team.role} size="sm" showName={false} />
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              {/* 성향 (3순위) - 컴팩트 인라인 (수정 버튼 제거 - 프로필 수정에서 변경) */}
               <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50 border border-border/50">
                 <span className="text-3xl">{animalSkinData.icon}</span>
                 <div className="flex-1 min-w-0">
@@ -392,36 +433,6 @@ export default function Profile() {
                     ))}
                   </div>
                 </div>
-                <Select
-                  value={animalSkin}
-                  onValueChange={async (value: AnimalSkin) => {
-                    if (!user) return;
-                    try {
-                      const { error } = await supabase
-                        .from('profiles')
-                        .update({ animal_skin: value })
-                        .eq('id', user.id);
-                      if (error) throw error;
-                      await refreshProfile();
-                      toast({ title: '성향이 변경되었습니다' });
-                    } catch (error) {
-                      toast({ title: '변경 실패', variant: 'destructive' });
-                    }
-                  }}
-                >
-                  <SelectTrigger className="w-[120px] h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(Object.entries(ANIMAL_SKINS) as [AnimalSkin, typeof ANIMAL_SKINS[AnimalSkin]][]).map(([key, skin]) => (
-                      <SelectItem key={key} value={key}>
-                        <span className="flex items-center gap-2">
-                          {skin.icon} {skin.name}
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
               </div>
 
               {/* 취미 & 관심분야 */}
@@ -473,7 +484,7 @@ export default function Profile() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-accent" />
-                  <span>{userTeams.length}개 팀</span>
+                  <span>{userTeams.length + myCreatedTeams.length}개 팀</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Award className="w-4 h-4 text-tier-gold" />
@@ -485,49 +496,57 @@ export default function Profile() {
         </Card>
       </ScrollReveal>
 
-      {/* Stats cards - 개선된 디자인 */}
+      {/* Stats cards - 개선된 디자인 with links */}
       <ScrollReveal animation="fade-up" delay={100}>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-          <Card className="relative overflow-hidden group hover:shadow-md transition-shadow">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-primary/20 to-transparent rounded-bl-full" />
-            <CardContent className="p-4 text-center relative">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Trophy className="w-6 h-6 text-primary" />
-              </div>
-              <p className="text-2xl font-bold font-display">#42</p>
-              <p className="text-xs text-muted-foreground mt-1">전체 랭킹</p>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden group hover:shadow-md transition-shadow">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-secondary/20 to-transparent rounded-bl-full" />
-            <CardContent className="p-4 text-center relative">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-secondary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Briefcase className="w-6 h-6 text-secondary" />
-              </div>
-              <p className="text-2xl font-bold font-display">12</p>
-              <p className="text-xs text-muted-foreground mt-1">완료 프로젝트</p>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden group hover:shadow-md transition-shadow">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-accent/20 to-transparent rounded-bl-full" />
-            <CardContent className="p-4 text-center relative">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-accent/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Code className="w-6 h-6 text-accent" />
-              </div>
-              <p className="text-2xl font-bold font-display">{userSkills.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">스킬</p>
-            </CardContent>
-          </Card>
-          <Card className="relative overflow-hidden group hover:shadow-md transition-shadow">
-            <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-tier-gold/20 to-transparent rounded-bl-full" />
-            <CardContent className="p-4 text-center relative">
-              <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-tier-gold/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Star className="w-6 h-6 text-tier-gold" />
-              </div>
-              <p className="text-2xl font-bold font-display">4.9</p>
-              <p className="text-xs text-muted-foreground mt-1">평균 평점</p>
-            </CardContent>
-          </Card>
+          <Link to="/showcase" className="block">
+            <Card className="relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-primary/20 to-transparent rounded-bl-full" />
+              <CardContent className="p-4 text-center relative">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Trophy className="w-6 h-6 text-primary" />
+                </div>
+                <p className="text-2xl font-bold font-display">#42</p>
+                <p className="text-xs text-muted-foreground mt-1">전체 랭킹</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link to="/projects" className="block">
+            <Card className="relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-secondary/20 to-transparent rounded-bl-full" />
+              <CardContent className="p-4 text-center relative">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-secondary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Briefcase className="w-6 h-6 text-secondary" />
+                </div>
+                <p className="text-2xl font-bold font-display">12</p>
+                <p className="text-xs text-muted-foreground mt-1">완료 프로젝트</p>
+              </CardContent>
+            </Card>
+          </Link>
+          <button onClick={() => document.querySelector('[value="skills"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))} className="block w-full text-left">
+            <Card className="relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-accent/20 to-transparent rounded-bl-full" />
+              <CardContent className="p-4 text-center relative">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-accent/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Code className="w-6 h-6 text-accent" />
+                </div>
+                <p className="text-2xl font-bold font-display">{userSkills.length}</p>
+                <p className="text-xs text-muted-foreground mt-1">스킬</p>
+              </CardContent>
+            </Card>
+          </button>
+          <button onClick={() => document.querySelector('[value="reputation"]')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))} className="block w-full text-left">
+            <Card className="relative overflow-hidden group hover:shadow-md transition-shadow cursor-pointer">
+              <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-tier-gold/20 to-transparent rounded-bl-full" />
+              <CardContent className="p-4 text-center relative">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-tier-gold/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                  <Star className="w-6 h-6 text-tier-gold" />
+                </div>
+                <p className="text-2xl font-bold font-display">4.9</p>
+                <p className="text-xs text-muted-foreground mt-1">평균 평점</p>
+              </CardContent>
+            </Card>
+          </button>
         </div>
       </ScrollReveal>
 

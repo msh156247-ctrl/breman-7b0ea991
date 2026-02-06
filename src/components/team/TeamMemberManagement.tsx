@@ -17,13 +17,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 
 interface Member {
   id: string;
@@ -39,13 +32,15 @@ interface TeamMemberManagementProps {
   leaderId: string;
   members: Member[];
   onMemberUpdated: () => void;
+  inlineMode?: boolean; // For inline actions within member cards
 }
 
 export function TeamMemberManagement({ 
   teamId, 
   leaderId, 
   members, 
-  onMemberUpdated 
+  onMemberUpdated,
+  inlineMode = false
 }: TeamMemberManagementProps) {
   const { toast } = useToast();
   const [updatingMember, setUpdatingMember] = useState<string | null>(null);
@@ -138,6 +133,87 @@ export function TeamMemberManagement({
   // Filter out leader from manageable members
   const manageableMembers = members.filter(m => m.id !== leaderId);
 
+  // Inline mode: just show remove button for single member
+  if (inlineMode) {
+    if (manageableMembers.length === 0) return null;
+    
+    const member = manageableMembers[0];
+    return (
+      <div className="flex items-center gap-1">
+        {/* Transfer Leadership */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8"
+              title="리더 권한 이전"
+            >
+              <Crown className="w-4 h-4 text-secondary" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>리더 권한 이전</AlertDialogTitle>
+              <AlertDialogDescription>
+                <strong>{member.name}</strong>님에게 팀 리더 권한을 이전하시겠습니까?
+                <br />
+                <span className="text-destructive">이 작업은 되돌릴 수 없습니다.</span>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => handleTransferLeadership(member.id, member.name)}
+                className="bg-secondary hover:bg-secondary/90"
+              >
+                권한 이전
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Remove Member */}
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8 hover:bg-destructive/10 hover:text-destructive"
+              disabled={removingMember === member.id}
+              title="멤버 추방"
+            >
+              {removingMember === member.id ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <UserMinus className="w-4 h-4" />
+              )}
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>멤버 추방</AlertDialogTitle>
+              <AlertDialogDescription>
+                <strong>{member.name}</strong>님을 팀에서 추방하시겠습니까?
+                <br />
+                이 작업은 되돌릴 수 없습니다.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>취소</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => handleRemoveMember(member.id, member.name)}
+                className="bg-destructive hover:bg-destructive/90"
+              >
+                추방하기
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
+    );
+  }
+
   if (manageableMembers.length === 0) {
     return (
       <div className="text-center py-8 text-muted-foreground">
@@ -151,7 +227,7 @@ export function TeamMemberManagement({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        팀원의 역할을 변경하거나 팀에서 추방할 수 있습니다.
+        팀원을 팀에서 추방하거나 리더 권한을 이전할 수 있습니다.
       </p>
       
       <div className="space-y-3">
@@ -181,29 +257,8 @@ export function TeamMemberManagement({
                   <RoleBadge role={member.role} size="sm" />
                 </div>
 
-                {/* Role Change */}
+                {/* Actions (no role change) */}
                 <div className="flex items-center gap-2">
-                  <Select
-                    value={member.role}
-                    onValueChange={(value) => handleRoleChange(member.id, value as UserRole)}
-                    disabled={updatingMember === member.id}
-                  >
-                    <SelectTrigger className="w-[130px]">
-                      {updatingMember === member.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <SelectValue />
-                      )}
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(ROLES).map(([key, role]) => (
-                        <SelectItem key={key} value={key}>
-                          {role.icon} {role.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
                   {/* Transfer Leadership */}
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
