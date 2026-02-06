@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
-  ArrowLeft, Users, Star, Trophy, Calendar, Settings, 
-  UserPlus, Copy, Check, Briefcase, Crown, MessageSquare, ExternalLink, Loader2, UserCog, ClipboardList,
+  ArrowLeft, Users, Star, Calendar, Settings, 
+  UserPlus, Copy, Check, Crown, Loader2, ClipboardList,
   Inbox, Clock, CheckCircle, XCircle, AlertCircle
 } from 'lucide-react';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
@@ -916,6 +916,16 @@ export default function TeamDetail() {
                             </div>
                             <RoleBadge role={member.role} level={member.level} size="sm" />
                           </div>
+                          {/* Leader can remove members (but not themselves and cannot change role) */}
+                          {isLeader && !member.isLeader && (
+                            <TeamMemberManagement
+                              teamId={team.id}
+                              leaderId={team.leader_id || ''}
+                              members={[member]}
+                              onMemberUpdated={fetchTeamData}
+                              inlineMode
+                            />
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -930,30 +940,24 @@ export default function TeamDetail() {
                 </Card>
               )}
             </div>
-
-            {/* Member Management for Leader */}
-            {isLeader && team.leader_id && (
-              <div className="space-y-4 pt-4 border-t">
-                <h2 className="text-lg font-semibold flex items-center gap-2">
-                  <UserCog className="w-5 h-5 text-primary" />
-                  멤버 관리
-                </h2>
-                <TeamMemberManagement
-                  teamId={team.id}
-                  leaderId={team.leader_id}
-                  members={members}
-                  onMemberUpdated={fetchTeamData}
-                />
-              </div>
-            )}
           </TabsContent>
 
           {/* Open Positions Tab */}
           <TabsContent value="openings" className="space-y-4">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <UserPlus className="w-5 h-5 text-success" />
-              모집 포지션 ({openSlots.length}개)
-            </h2>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-success" />
+                모집 포지션 ({openSlots.length}개)
+              </h2>
+              {isLeader && (
+                <Link to={`/teams/${team.id}/edit`}>
+                  <Button size="sm" className="gap-2">
+                    <UserPlus className="w-4 h-4" />
+                    포지션 추가
+                  </Button>
+                </Link>
+              )}
+            </div>
             {openSlots.length > 0 ? (
               <div className="grid md:grid-cols-2 gap-4">
                 {openSlots.map((slot) => {
@@ -1009,6 +1013,14 @@ export default function TeamDetail() {
                             {isFilled && (
                               <span className="text-xs text-muted-foreground">모집 완료</span>
                             )}
+                            {isLeader && (
+                              <Link to={`/teams/${team.id}/edit`}>
+                                <Button variant="ghost" size="sm" className="h-7 text-xs mt-1">
+                                  <Settings className="w-3 h-3 mr-1" />
+                                  수정
+                                </Button>
+                              </Link>
+                            )}
                           </div>
                         </div>
                         
@@ -1044,6 +1056,11 @@ export default function TeamDetail() {
                 <CardContent className="p-8 text-center">
                   <UserPlus className="w-12 h-12 mx-auto mb-3 text-muted-foreground/50" />
                   <p className="text-muted-foreground">등록된 포지션이 없습니다</p>
+                  {isLeader && (
+                    <Link to={`/teams/${team.id}/edit`} className="mt-4 inline-block">
+                      <Button size="sm">포지션 추가하기</Button>
+                    </Link>
+                  )}
                 </CardContent>
               </Card>
             )}

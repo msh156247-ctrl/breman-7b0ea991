@@ -900,17 +900,27 @@ export default function ChatRoom() {
                 )}
 
                 <div className="group relative">
-                  {msg.reply_to && (
-                    <div className={`text-xs p-2 mb-1 rounded-lg ${
-                      isOwn ? 'bg-primary/20' : 'bg-muted'
-                    }`}>
+                {msg.reply_to && (
+                    <button
+                      onClick={() => {
+                        // Find original message and scroll to it
+                        if (msg.reply_to_id) {
+                          scrollToMessage(msg.reply_to_id);
+                          setHighlightedMessageId(msg.reply_to_id);
+                          setTimeout(() => setHighlightedMessageId(null), 2000);
+                        }
+                      }}
+                      className={`text-xs p-2 mb-1 rounded-lg text-left w-full cursor-pointer hover:opacity-80 transition-opacity ${
+                        isOwn ? 'bg-primary/20' : 'bg-muted'
+                      }`}
+                    >
                       <span className="font-medium">{msg.reply_to.sender_name}</span>
                       <p className="text-muted-foreground truncate max-w-[200px]">
                         {msg.reply_to.content.length > 30 
                           ? msg.reply_to.content.slice(0, 30) + '...' 
                           : msg.reply_to.content}
                       </p>
-                    </div>
+                    </button>
                   )}
 
                   <div className={`px-3 py-2 rounded-2xl ${
