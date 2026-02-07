@@ -55,7 +55,8 @@ export function InviteToConversationDialog({
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [inviting, setInviting] = useState(false);
-  const [activeTab, setActiveTab] = useState<'friends' | 'search'>('friends');
+  const [activeTab, setActiveTab] = useState<'friends' | 'search'>('search');
+  const [hasFriends, setHasFriends] = useState(false);
 
   // Fetch friends list
   useEffect(() => {
@@ -70,7 +71,6 @@ export function InviteToConversationDialog({
       setSearchQuery('');
       setSearchResults([]);
       setSelectedUsers([]);
-      setActiveTab('friends');
     }
   }, [open]);
 
@@ -81,28 +81,27 @@ export function InviteToConversationDialog({
     try {
       const { data, error } = await supabase
         .from('friendships')
-        .select(`
-          user_id,
-          friend_id,
-          status
-        `)
+        .select('user_id, friend_id, status')
         .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
         .eq('status', 'accepted');
 
       if (error) throw error;
 
-      // Get friend IDs (exclude self)
       const friendIds = (data || []).map(f => 
         f.user_id === user.id ? f.friend_id : f.user_id
       ).filter(id => !existingParticipantIds.includes(id));
 
       if (friendIds.length === 0) {
         setFriends([]);
+        setHasFriends(false);
+        setActiveTab('search');
         setLoading(false);
         return;
       }
 
-      // Fetch friend profiles
+      setHasFriends(true);
+      setActiveTab('friends');
+
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('id, name, avatar_url, email')
@@ -135,12 +134,10 @@ export function InviteToConversationDialog({
 
       if (error) throw error;
 
-      // Filter out existing participants
       const filtered = (data || []).filter(
         p => !existingParticipantIds.includes(p.id)
       );
 
-      // Check which are friends
       const friendIds = friends.map(f => f.id);
       setSearchResults(filtered.map(p => ({
         ...p,
@@ -167,7 +164,6 @@ export function InviteToConversationDialog({
 
     setInviting(true);
     try {
-      // Add selected users as participants
       const inserts = selectedUsers.map(userId => ({
         conversation_id: conversationId,
         user_id: userId
@@ -177,14 +173,21 @@ export function InviteToConversationDialog({
         .from('conversation_participants')
         .insert(inserts);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Insert error details:', error);
+        throw error;
+      }
 
       toast.success(`${selectedUsers.length}명을 초대했습니다`);
       onInviteSuccess?.();
       onOpenChange(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error inviting users:', error);
-      toast.error('초대에 실패했습니다');
+      if (error?.code === '23505') {
+        toast.error('이미 참여 중인 사용자가 포함되어 있습니다');
+      } else {
+        toast.error('초대에 실패했습니다. 다시 시도해주세요.');
+      }
     } finally {
       setInviting(false);
     }
@@ -195,37 +198,38 @@ export function InviteToConversationDialog({
   const content = (
     <div className="flex flex-col gap-4">
       {/* Tabs */}
-      <div className="flex gap-2 border-b pb-2">
-        <Button
-          variant={activeTab === 'friends' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setActiveTab('friends')}
-        >
-          친구 목록
-        </Button>
-        <Button
-          variant={activeTab === 'search' ? 'default' : 'ghost'}
-          size="sm"
-          onClick={() => setActiveTab('search')}
-        >
-          사용자 검색
-        </Button>
-      </div>
-
-      {/* Search input (only in search tab) */}
-      {activeTab === 'search' && (
-        <div className="flex gap-2">
-          <Input
-            placeholder="이름 또는 이메일로 검색..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-          />
-          <Button size="icon" onClick={handleSearch} disabled={loading}>
-            <Search className="h-4 w-4" />
+      {hasFriends && (
+        <div className="flex gap-2 border-b pb-2">
+          <Button
+            variant={activeTab === 'friends' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('friends')}
+          >
+            친구 목록
+          </Button>
+          <Button
+            variant={activeTab === 'search' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('search')}
+          >
+            사용자 검색
           </Button>
         </div>
       )}
+
+      {/* Search input */}
+      <div className="flex gap-2">
+        <Input
+          placeholder="이름 또는 이메일로 검색..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+          autoFocus
+        />
+        <Button size="icon" onClick={handleSearch} disabled={loading || !searchQuery.trim()}>
+          <Search className="h-4 w-4" />
+        </Button>
+      </div>
 
       {/* User list */}
       <ScrollArea className="h-[250px]">
@@ -235,22 +239,14 @@ export function InviteToConversationDialog({
           </div>
         ) : displayUsers.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            {activeTab === 'friends' ? (
-              <>
-                <UserPlus className="h-8 w-8 mb-2" />
-                <p className="text-sm">초대 가능한 친구가 없습니다</p>
-              </>
-            ) : searchQuery ? (
-              <>
-                <Search className="h-8 w-8 mb-2" />
-                <p className="text-sm">검색 결과가 없습니다</p>
-              </>
-            ) : (
-              <>
-                <Search className="h-8 w-8 mb-2" />
-                <p className="text-sm">사용자를 검색하세요</p>
-              </>
-            )}
+            <Search className="h-8 w-8 mb-2" />
+            <p className="text-sm">
+              {activeTab === 'friends' 
+                ? '초대 가능한 친구가 없습니다'
+                : searchQuery 
+                  ? '검색 결과가 없습니다' 
+                  : '사용자를 검색하세요'}
+            </p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -325,7 +321,7 @@ export function InviteToConversationDialog({
               대화 초대
             </DrawerTitle>
             <DrawerDescription>
-              대화에 참여할 사용자를 선택하세요
+              대화에 참여할 사용자를 검색하여 초대하세요
             </DrawerDescription>
           </DrawerHeader>
           <div className="px-4 pb-6">
@@ -345,7 +341,7 @@ export function InviteToConversationDialog({
             대화 초대
           </DialogTitle>
           <DialogDescription>
-            대화에 참여할 사용자를 선택하세요
+            대화에 참여할 사용자를 검색하여 초대하세요
           </DialogDescription>
         </DialogHeader>
         {content}
