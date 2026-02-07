@@ -13,7 +13,8 @@ import {
   ChevronDown,
   MessageSquare,
   Bell,
-  ClipboardList
+  ClipboardList,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -254,6 +255,12 @@ export function AppShell() {
                         <Link to="/chat" className="cursor-pointer">
                           <MessageSquare className="w-4 h-4 mr-2" />
                           채팅
+                        </Link>
+                      </DropdownMenuItem>
+                      <DropdownMenuItem asChild>
+                        <Link to="/messages" className="cursor-pointer">
+                          <Mail className="w-4 h-4 mr-2" />
+                          쪽지
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>

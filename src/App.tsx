@@ -38,6 +38,7 @@ import ServiceOfferCreate from "./pages/ServiceOfferCreate";
 import ServiceOfferDetail from "./pages/ServiceOfferDetail";
 import ServiceOfferEdit from "./pages/ServiceOfferEdit";
 import ClientDashboard from "./pages/ClientDashboard";
+import Messages from "./pages/Messages";
 import { AppShell } from "./components/layout/AppShell";
 
 const queryClient = new QueryClient();
@@ -118,6 +119,7 @@ function AppRoutes() {
         <Route path="service-offers/:offerId" element={<ServiceOfferDetail />} />
         <Route path="service-offers/:offerId/edit" element={<ServiceOfferEdit />} />
         <Route path="client" element={<ClientDashboard />} />
+        <Route path="messages" element={<Messages />} />
         <Route path="profile" element={<Profile />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="admin" element={<AdminSettings />} />
