@@ -900,16 +900,20 @@ export default function TeamDetail() {
                     <Card key={member.id} className="hover:shadow-md transition-shadow">
                       <CardContent className="p-4">
                         <div className="flex items-center gap-4">
-                          <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl overflow-hidden">
-                            {member.avatar_url ? (
-                              <img src={member.avatar_url} alt={member.name} className="w-full h-full object-cover" />
-                            ) : (
-                              member.name.charAt(0)
-                            )}
-                          </div>
+                          <Link to={`/profile/${member.id}`} className="shrink-0">
+                            <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl overflow-hidden hover:ring-2 hover:ring-primary/50 transition-all cursor-pointer">
+                              {member.avatar_url ? (
+                                <img src={member.avatar_url} alt={member.name} className="w-full h-full object-cover" />
+                              ) : (
+                                member.name.charAt(0)
+                              )}
+                            </div>
+                          </Link>
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold">{member.name}</span>
+                              <Link to={`/profile/${member.id}`} className="font-semibold hover:text-primary transition-colors cursor-pointer">
+                                {member.name}
+                              </Link>
                               {member.isLeader && (
                                 <Crown className="w-4 h-4 text-secondary" aria-label="팀 리더" />
                               )}
