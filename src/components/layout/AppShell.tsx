@@ -258,7 +258,7 @@ export function AppShell() {
                         </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem asChild>
-                        <Link to="/messages" className="cursor-pointer">
+                        <Link to="/chat?tab=messages" className="cursor-pointer">
                           <Mail className="w-4 h-4 mr-2" />
                           쪽지
                         </Link>

@@ -119,7 +119,7 @@ function AppRoutes() {
         <Route path="service-offers/:offerId" element={<ServiceOfferDetail />} />
         <Route path="service-offers/:offerId/edit" element={<ServiceOfferEdit />} />
         <Route path="client" element={<ClientDashboard />} />
-        <Route path="messages" element={<Messages />} />
+        <Route path="messages" element={<Navigate to="/chat" replace />} />
         <Route path="profile" element={<Profile />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="admin" element={<AdminSettings />} />
