@@ -3,6 +3,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Paperclip, X, Image, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { compressImage } from '@/lib/imageCompression';
+import { ImageLightbox } from '@/components/chat/ImageLightbox';
 
 interface AttachmentFile {
   file: File;
@@ -50,11 +52,25 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
         continue;
       }
 
-      const preview = ALLOWED_IMAGE_TYPES.includes(file.type)
-        ? URL.createObjectURL(file)
+      // Compress images before adding to attachment list
+      let processedFile = file;
+      if (ALLOWED_IMAGE_TYPES.includes(file.type)) {
+        try {
+          processedFile = await compressImage(file, {
+            maxSizeMB: 2,
+            maxWidthOrHeight: 1920,
+            initialQuality: 0.85,
+          });
+        } catch (err) {
+          console.warn('Image compression failed, using original:', err);
+        }
+      }
+
+      const preview = ALLOWED_IMAGE_TYPES.includes(processedFile.type)
+        ? URL.createObjectURL(processedFile)
         : undefined;
 
-      validFiles.push({ file, preview, uploading: false });
+      validFiles.push({ file: processedFile, preview, uploading: false });
     }
 
     if (validFiles.length > 0) {
@@ -210,8 +226,10 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
   };
 }
 
-// Component to display attachments in messages
+// Component to display attachments in messages with lightbox
 export function MessageAttachments({ attachments }: { attachments: string[] }) {
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+
   if (!attachments || attachments.length === 0) return null;
 
   const isImage = (url: string) => {
@@ -219,36 +237,39 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
   };
 
   return (
-    <div className="flex flex-wrap gap-2 mt-2">
-      {attachments.map((url, index) => (
-        isImage(url) ? (
-          <a
-            key={index}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="block rounded-lg overflow-hidden border hover:opacity-90 transition-opacity"
-          >
-            <img
-              src={url}
-              alt="Attachment"
-              className="max-w-[200px] max-h-[200px] object-cover"
-              loading="lazy"
-            />
-          </a>
-        ) : (
-          <a
-            key={index}
-            href={url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-background hover:bg-muted transition-colors"
-          >
-            <FileText className="h-4 w-4" />
-            <span className="text-sm">첨부파일</span>
-          </a>
-        )
-      ))}
-    </div>
+    <>
+      <div className="flex flex-wrap gap-2 mt-2">
+        {attachments.map((url, index) => (
+          isImage(url) ? (
+            <button
+              key={index}
+              type="button"
+              onClick={() => setLightboxSrc(url)}
+              className="block rounded-lg overflow-hidden border hover:opacity-90 transition-opacity cursor-pointer"
+            >
+              <img
+                src={url}
+                alt="Attachment"
+                className="max-w-[200px] max-h-[200px] object-cover"
+                loading="lazy"
+              />
+            </button>
+          ) : (
+            <a
+              key={index}
+              href={url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-background hover:bg-muted transition-colors"
+            >
+              <FileText className="h-4 w-4" />
+              <span className="text-sm">첨부파일</span>
+            </a>
+          )
+        ))}
+      </div>
+
+      <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+    </>
   );
 }
