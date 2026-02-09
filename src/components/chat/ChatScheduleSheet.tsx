@@ -29,7 +29,8 @@ import {
   Trash2, 
   Clock, 
   Loader2,
-  CalendarPlus 
+  CalendarPlus,
+  Share2
 } from 'lucide-react';
 import { format, isSameDay, isAfter, startOfDay } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -51,13 +52,15 @@ interface ChatScheduleSheetProps {
   onOpenChange: (open: boolean) => void;
   conversationId: string;
   currentUserId?: string;
+  onShareEvent?: (eventData: { title: string; event_date: string; event_time: string | null; description: string | null }) => void;
 }
 
 export function ChatScheduleSheet({
   open,
   onOpenChange,
   conversationId,
-  currentUserId
+  currentUserId,
+  onShareEvent
 }: ChatScheduleSheetProps) {
   const isMobile = useIsMobile();
   const [events, setEvents] = useState<ChatEvent[]>([]);
@@ -67,7 +70,8 @@ export function ChatScheduleSheet({
   const [newEvent, setNewEvent] = useState({
     title: '',
     description: '',
-    time: ''
+    time: '',
+    shareToChat: true
   });
   const [saving, setSaving] = useState(false);
 
@@ -128,8 +132,18 @@ export function ChatScheduleSheet({
         setEvents(prev => [...prev, data].sort((a, b) => 
           new Date(a.event_date).getTime() - new Date(b.event_date).getTime()
         ));
+
+        // Share to chat if option is selected
+        if (newEvent.shareToChat && onShareEvent) {
+          onShareEvent({
+            title: data.title,
+            event_date: data.event_date,
+            event_time: data.event_time,
+            description: data.description
+          });
+        }
       }
-      setNewEvent({ title: '', description: '', time: '' });
+      setNewEvent({ title: '', description: '', time: '', shareToChat: true });
       setIsAddingEvent(false);
       toast.success('일정이 추가되었습니다');
     } catch (error) {
@@ -240,6 +254,20 @@ export function ChatScheduleSheet({
                 rows={2}
               />
             </div>
+            {onShareEvent && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="share-to-chat"
+                  checked={newEvent.shareToChat}
+                  onChange={(e) => setNewEvent(prev => ({ ...prev, shareToChat: e.target.checked }))}
+                  className="h-4 w-4 rounded border-input accent-primary"
+                />
+                <Label htmlFor="share-to-chat" className="text-xs text-muted-foreground cursor-pointer">
+                  채팅에 일정 공유
+                </Label>
+              </div>
+            )}
             <div className="flex gap-2 justify-end">
               <Button variant="outline" size="sm" onClick={() => setIsAddingEvent(false)}>
                 취소
@@ -284,14 +312,32 @@ export function ChatScheduleSheet({
                     )}
                   </div>
                   {event.created_by === currentUserId && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
-                      onClick={() => handleDeleteEvent(event.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex flex-col gap-1 shrink-0">
+                      {onShareEvent && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-primary"
+                          onClick={() => onShareEvent({
+                            title: event.title,
+                            event_date: event.event_date,
+                            event_time: event.event_time,
+                            description: event.description
+                          })}
+                          title="채팅에 공유"
+                        >
+                          <Share2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleDeleteEvent(event.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   )}
                 </div>
               ))}

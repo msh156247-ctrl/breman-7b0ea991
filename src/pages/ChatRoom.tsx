@@ -12,6 +12,7 @@ import { InviteToConversationDialog } from '@/components/chat/InviteToConversati
 import { ChatRoomInfoSheet } from '@/components/chat/ChatRoomInfoSheet';
 import { SharedFilesSheet } from '@/components/chat/SharedFilesSheet';
 import { ChatScheduleSheet } from '@/components/chat/ChatScheduleSheet';
+import { EventMessageCard } from '@/components/chat/EventMessageCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -923,15 +924,36 @@ export default function ChatRoom() {
                     </button>
                   )}
 
-                  <div className={`px-3 py-2 rounded-2xl ${
-                    isOwn 
-                      ? 'bg-primary text-primary-foreground rounded-tr-sm' 
-                      : 'bg-muted rounded-tl-sm'
+                  <div className={`${
+                    msg.content.startsWith('[EVENT]') ? '' : `px-3 py-2 rounded-2xl ${
+                      isOwn 
+                        ? 'bg-primary text-primary-foreground rounded-tr-sm' 
+                        : 'bg-muted rounded-tl-sm'
+                    }`
                   }`}>
-                    {msg.content && msg.content !== '📎 첨부파일' && (
-                      <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                    {msg.content.startsWith('[EVENT]') ? (
+                      (() => {
+                        try {
+                          const eventData = JSON.parse(msg.content.replace('[EVENT]', ''));
+                          return (
+                            <EventMessageCard
+                              eventData={eventData}
+                              isOwn={isOwn}
+                              onOpenSchedule={() => setIsScheduleOpen(true)}
+                            />
+                          );
+                        } catch {
+                          return <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>;
+                        }
+                      })()
+                    ) : (
+                      <>
+                        {msg.content && msg.content !== '📎 첨부파일' && (
+                          <p className="text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                        )}
+                        <MessageAttachments attachments={msg.attachments} />
+                      </>
                     )}
-                    <MessageAttachments attachments={msg.attachments} />
                   </div>
 
                   <DropdownMenu>
@@ -1031,6 +1053,15 @@ export default function ChatRoom() {
             variant="ghost" 
             size="icon" 
             className="h-8 w-8" 
+            onClick={() => setIsScheduleOpen(true)}
+            title="일정"
+          >
+            <Calendar className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8" 
             onClick={() => setIsSearchOpen(!isSearchOpen)}
             title="검색"
           >
@@ -1050,10 +1081,6 @@ export default function ChatRoom() {
               <DropdownMenuItem onClick={() => setIsSharedFilesOpen(true)}>
                 <FileText className="h-4 w-4 mr-2" />
                 교류된 파일
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setIsScheduleOpen(true)}>
-                <Calendar className="h-4 w-4 mr-2" />
-                일정
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -1160,6 +1187,90 @@ export default function ChatRoom() {
         onOpenChange={setIsScheduleOpen}
         conversationId={conversationId || ''}
         currentUserId={user?.id}
+        onShareEvent={async (eventData) => {
+          if (!conversationId || !user) return;
+          
+          const eventContent = `[EVENT]${JSON.stringify(eventData)}`;
+          
+          // Create optimistic message
+          const tempId = `temp-${Date.now()}-${Math.random()}`;
+          const optimisticMessage: Message = {
+            id: tempId,
+            conversation_id: conversationId,
+            sender_id: user.id,
+            sender_team_id: null,
+            content: eventContent,
+            reply_to_id: null,
+            attachments: [],
+            created_at: new Date().toISOString(),
+            sender: {
+              name: profile?.name || '나',
+              avatar_url: profile?.avatar_url || null,
+            },
+            read_by_count: 0,
+          };
+
+          setMessages(prev => [...prev, optimisticMessage]);
+          requestAnimationFrame(() => scrollToBottom());
+
+          try {
+            // Broadcast + DB insert in parallel
+            const broadcastPromise = channelRef.current?.send({
+              type: 'broadcast',
+              event: 'new_message',
+              payload: {
+                id: tempId,
+                conversation_id: conversationId,
+                sender_id: user.id,
+                content: eventContent,
+                reply_to_id: null,
+                attachments: [],
+                created_at: optimisticMessage.created_at,
+                sender: {
+                  name: profile?.name || '사용자',
+                  avatar_url: profile?.avatar_url || null,
+                }
+              }
+            });
+
+            const dbPromise = supabase
+              .from('messages')
+              .insert({
+                conversation_id: conversationId,
+                sender_id: user.id,
+                content: eventContent,
+              })
+              .select()
+              .single();
+
+            const [broadcastStatus, dbResult] = await Promise.all([
+              broadcastPromise || Promise.resolve('no-channel'),
+              dbPromise
+            ]);
+
+            const { data, error } = dbResult;
+            if (error) throw error;
+
+            if (data) {
+              setMessages(prev => prev.map(msg => 
+                msg.id === tempId ? { ...msg, id: data.id, created_at: data.created_at } : msg
+              ));
+
+              if (channelRef.current && broadcastStatus === 'ok') {
+                channelRef.current.send({
+                  type: 'broadcast',
+                  event: 'message_confirmed',
+                  payload: { tempId, realId: data.id, created_at: data.created_at }
+                });
+              }
+            }
+            toast.success('일정이 채팅에 공유되었습니다');
+          } catch (error) {
+            console.error('Error sharing event:', error);
+            setMessages(prev => prev.filter(msg => msg.id !== tempId));
+            toast.error('일정 공유에 실패했습니다');
+          }
+        }}
       />
 
       <div className="shrink-0">
