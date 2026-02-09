@@ -226,9 +226,58 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
   };
 }
 
+// File extension to icon/label mapping
+function getFileExtInfo(url: string): { icon: string; label: string; color: string } {
+  const ext = url.split('.').pop()?.toLowerCase() || '';
+  switch (ext) {
+    case 'pdf':
+      return { icon: '📕', label: 'PDF', color: 'bg-red-500/10 text-red-600 dark:text-red-400' };
+    case 'doc':
+    case 'docx':
+      return { icon: '📘', label: 'Word', color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' };
+    case 'xls':
+    case 'xlsx':
+      return { icon: '📗', label: 'Excel', color: 'bg-green-500/10 text-green-600 dark:text-green-400' };
+    case 'ppt':
+    case 'pptx':
+      return { icon: '📙', label: 'PPT', color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' };
+    case 'txt':
+      return { icon: '📄', label: 'TXT', color: 'bg-muted text-muted-foreground' };
+    case 'zip':
+    case 'rar':
+    case '7z':
+      return { icon: '📦', label: ext.toUpperCase(), color: 'bg-yellow-500/10 text-yellow-600 dark:text-yellow-400' };
+    default:
+      return { icon: '📎', label: ext.toUpperCase() || 'FILE', color: 'bg-muted text-muted-foreground' };
+  }
+}
+
+function getFileName(url: string): string {
+  try {
+    const pathParts = url.split('/');
+    const fullName = pathParts[pathParts.length - 1];
+    // Remove the UUID/hash prefix (e.g., "1234567890-abc123.pdf" -> original name)
+    const decoded = decodeURIComponent(fullName);
+    // Try to extract a meaningful name: skip the timestamp-hash prefix
+    const dashIndex = decoded.indexOf('-');
+    if (dashIndex > 0 && dashIndex < 20) {
+      const afterDash = decoded.substring(dashIndex + 1);
+      // If there's a second part after removing hash, use it
+      const dotIndex = afterDash.lastIndexOf('.');
+      if (dotIndex > 0) {
+        return afterDash;
+      }
+    }
+    return decoded;
+  } catch {
+    return 'file';
+  }
+}
+
 // Component to display attachments in messages with lightbox
 export function MessageAttachments({ attachments }: { attachments: string[] }) {
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   if (!attachments || attachments.length === 0) return null;
 
@@ -236,40 +285,81 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
     return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
   };
 
+  const images = attachments.filter(isImage);
+  const files = attachments.filter(url => !isImage(url));
+
+  const handleImageClick = (url: string) => {
+    const idx = images.indexOf(url);
+    setLightboxIndex(idx >= 0 ? idx : 0);
+    setLightboxOpen(true);
+  };
+
+  // Grid layout for images
+  const getImageGridClass = (count: number) => {
+    if (count === 1) return 'grid-cols-1 max-w-[220px]';
+    if (count === 2) return 'grid-cols-2 max-w-[280px]';
+    if (count === 3) return 'grid-cols-2 max-w-[280px]';
+    return 'grid-cols-3 max-w-[320px]';
+  };
+
   return (
     <>
-      <div className="flex flex-wrap gap-2 mt-2">
-        {attachments.map((url, index) => (
-          isImage(url) ? (
+      {/* Images in grid */}
+      {images.length > 0 && (
+        <div className={`grid gap-1 mt-1 ${getImageGridClass(images.length)}`}>
+          {images.map((url, index) => (
             <button
               key={index}
               type="button"
-              onClick={() => setLightboxSrc(url)}
-              className="block rounded-lg overflow-hidden border hover:opacity-90 transition-opacity cursor-pointer"
+              onClick={() => handleImageClick(url)}
+              className={`block rounded-lg overflow-hidden border hover:opacity-90 transition-opacity cursor-pointer ${
+                images.length === 3 && index === 0 ? 'col-span-2' : ''
+              }`}
             >
               <img
                 src={url}
-                alt="Attachment"
-                className="max-w-[200px] max-h-[200px] object-cover"
+                alt={`이미지 ${index + 1}`}
+                className="w-full h-full object-cover aspect-square"
                 loading="lazy"
               />
             </button>
-          ) : (
-            <a
-              key={index}
-              href={url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 px-3 py-2 rounded-lg border bg-background hover:bg-muted transition-colors"
-            >
-              <FileText className="h-4 w-4" />
-              <span className="text-sm">첨부파일</span>
-            </a>
-          )
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
 
-      <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+      {/* Files with extension icons and filenames */}
+      {files.length > 0 && (
+        <div className="flex flex-col gap-1.5 mt-1.5">
+          {files.map((url, index) => {
+            const extInfo = getFileExtInfo(url);
+            const fileName = getFileName(url);
+            return (
+              <a
+                key={index}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border bg-background hover:bg-muted transition-colors max-w-[260px]"
+              >
+                <div className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 text-lg ${extInfo.color}`}>
+                  {extInfo.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium truncate">{fileName}</p>
+                  <p className="text-[10px] text-muted-foreground">{extInfo.label} 파일</p>
+                </div>
+              </a>
+            );
+          })}
+        </div>
+      )}
+
+      <ImageLightbox
+        images={images}
+        initialIndex={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </>
   );
 }
