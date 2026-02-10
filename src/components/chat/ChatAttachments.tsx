@@ -5,11 +5,13 @@ import { Paperclip, X, Image, FileText, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { compressImage } from '@/lib/imageCompression';
 import { ImageLightbox } from '@/components/chat/ImageLightbox';
+import { Progress } from '@/components/ui/progress';
 
 interface AttachmentFile {
   file: File;
   preview?: string;
   uploading: boolean;
+  progress: number;
 }
 
 interface ChatAttachmentsProps {
@@ -70,7 +72,7 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
         ? URL.createObjectURL(processedFile)
         : undefined;
 
-      validFiles.push({ file: processedFile, preview, uploading: false });
+      validFiles.push({ file: processedFile, preview, uploading: false, progress: 0 });
     }
 
     if (validFiles.length > 0) {
@@ -102,18 +104,32 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
     try {
       for (let i = 0; i < attachments.length; i++) {
         const attachment = attachments[i];
-        setAttachments(prev => prev.map((a, idx) => 
-          idx === i ? { ...a, uploading: true } : a
+        setAttachments(prev => prev.map((a, idx) =>
+          idx === i ? { ...a, uploading: true, progress: 0 } : a
         ));
 
         const fileExt = attachment.file.name.split('.').pop();
         const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
+        // Simulate progress for smaller files
+        const progressInterval = setInterval(() => {
+          setAttachments(prev => prev.map((a, idx) =>
+            idx === i && a.progress < 90 ? { ...a, progress: a.progress + 15 } : a
+          ));
+        }, 150);
+
         const { error: uploadError } = await supabase.storage
           .from('chat-attachments')
           .upload(fileName, attachment.file);
 
+        clearInterval(progressInterval);
+
         if (uploadError) throw uploadError;
+
+        // Set to 100%
+        setAttachments(prev => prev.map((a, idx) =>
+          idx === i ? { ...a, progress: 100 } : a
+        ));
 
         const { data: { publicUrl } } = supabase.storage
           .from('chat-attachments')
@@ -205,11 +221,16 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
               </div>
             )}
 
-            {attachment.uploading ? (
-              <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
-                <Loader2 className="h-4 w-4 animate-spin" />
+            {/* Upload progress overlay */}
+            {attachment.uploading && (
+              <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center gap-1 px-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <Progress value={attachment.progress} className="h-1 w-full" />
+                <span className="text-[10px] text-muted-foreground">{attachment.progress}%</span>
               </div>
-            ) : (
+            )}
+
+            {!attachment.uploading && (
               <Button
                 variant="destructive"
                 size="icon"
@@ -256,13 +277,10 @@ function getFileName(url: string): string {
   try {
     const pathParts = url.split('/');
     const fullName = pathParts[pathParts.length - 1];
-    // Remove the UUID/hash prefix (e.g., "1234567890-abc123.pdf" -> original name)
     const decoded = decodeURIComponent(fullName);
-    // Try to extract a meaningful name: skip the timestamp-hash prefix
     const dashIndex = decoded.indexOf('-');
     if (dashIndex > 0 && dashIndex < 20) {
       const afterDash = decoded.substring(dashIndex + 1);
-      // If there's a second part after removing hash, use it
       const dotIndex = afterDash.lastIndexOf('.');
       if (dotIndex > 0) {
         return afterDash;
@@ -287,9 +305,18 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
 
   const images = attachments.filter(isImage);
   const files = attachments.filter(url => !isImage(url));
+  
+  // All items for lightbox (images first, then files)
+  const allItems = [...images, ...files];
 
   const handleImageClick = (url: string) => {
-    const idx = images.indexOf(url);
+    const idx = allItems.indexOf(url);
+    setLightboxIndex(idx >= 0 ? idx : 0);
+    setLightboxOpen(true);
+  };
+
+  const handleFileClick = (url: string) => {
+    const idx = allItems.indexOf(url);
     setLightboxIndex(idx >= 0 ? idx : 0);
     setLightboxOpen(true);
   };
@@ -327,19 +354,18 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
         </div>
       )}
 
-      {/* Files with extension icons and filenames */}
+      {/* Files with extension icons and filenames - clickable for preview */}
       {files.length > 0 && (
         <div className="flex flex-col gap-1.5 mt-1.5">
           {files.map((url, index) => {
             const extInfo = getFileExtInfo(url);
             const fileName = getFileName(url);
             return (
-              <a
+              <button
                 key={index}
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border bg-background hover:bg-muted transition-colors max-w-[260px]"
+                type="button"
+                onClick={() => handleFileClick(url)}
+                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border bg-background hover:bg-muted transition-colors max-w-[260px] text-left"
               >
                 <div className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 text-lg ${extInfo.color}`}>
                   {extInfo.icon}
@@ -348,14 +374,14 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
                   <p className="text-xs font-medium truncate">{fileName}</p>
                   <p className="text-[10px] text-muted-foreground">{extInfo.label} 파일</p>
                 </div>
-              </a>
+              </button>
             );
           })}
         </div>
       )}
 
       <ImageLightbox
-        images={images}
+        images={allItems}
         initialIndex={lightboxIndex}
         open={lightboxOpen}
         onClose={() => setLightboxOpen(false)}
