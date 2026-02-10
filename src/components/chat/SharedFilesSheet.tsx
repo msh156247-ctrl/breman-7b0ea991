@@ -157,20 +157,23 @@ export function SharedFilesSheet({
               {activeTab === 'images' || (activeTab === 'all' && filteredFiles.some(f => f.type === 'image')) ? (
                 <>
                   {activeTab === 'all' && <h4 className="text-sm font-medium mb-2">이미지</h4>}
-                  <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="grid grid-cols-3 gap-1.5 mb-4">
                     {filteredFiles
                       .filter(f => f.type === 'image')
                       .map((file) => (
                         <div
                           key={file.id}
-                          className="aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer group relative"
+                          className="rounded-lg overflow-hidden bg-muted cursor-pointer group relative"
                           onClick={() => window.open(file.url, '_blank')}
                         >
-                          <img
-                            src={file.url}
-                            alt={file.name}
-                            className="w-full h-full object-cover"
-                          />
+                          <div className="relative w-full" style={{ paddingBottom: '100%' }}>
+                            <img
+                              src={file.url}
+                              alt={file.name}
+                              className="absolute inset-0 w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          </div>
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <ExternalLink className="h-5 w-5 text-white" />
                           </div>
