@@ -220,10 +220,15 @@ export function ChatRoomInfoSheet({
         <ScrollArea className="h-[200px]">
           <div className="space-y-2 px-2">
             {participants.map((p) => (
-              <div 
+                <div 
                 key={p.id}
                 className="flex items-center gap-3 p-2 rounded-lg hover:bg-accent cursor-pointer"
-                onClick={() => p.profile?.id && navigate(`/profile/${p.profile.id}`)}
+                onClick={() => {
+                  if (p.profile?.id) {
+                    onOpenChange(false);
+                    navigate(`/profile/${p.profile.id}`);
+                  }
+                }}
               >
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={p.profile?.avatar_url || undefined} />

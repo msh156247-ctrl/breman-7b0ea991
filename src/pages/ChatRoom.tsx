@@ -853,7 +853,10 @@ export default function ChatRoom() {
             {!isOwn && (
               <div className="w-8 shrink-0">
                 {showAvatar && (
-                  <Avatar className="h-8 w-8">
+                  <Avatar 
+                    className="h-8 w-8 cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => navigate(`/profile/${msg.sender_id}`)}
+                  >
                     <AvatarImage src={msg.sender?.avatar_url || undefined} />
                     <AvatarFallback className="text-xs bg-primary/10">
                       {msg.sender?.name?.charAt(0) || '?'}
