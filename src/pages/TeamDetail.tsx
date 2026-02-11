@@ -40,6 +40,9 @@ import { TeamMemberManagement } from '@/components/team/TeamMemberManagement';
 import { ApplicationManagementSheet } from '@/components/team/ApplicationManagementSheet';
 import { ProposalListSheet } from '@/components/team/ProposalListSheet';
 import { TeamApplicationDialog } from '@/components/team/TeamApplicationDialog';
+import { MessageCircle, Mail } from 'lucide-react';
+import { MessageComposeDialog } from '@/components/messages/MessageComposeDialog';
+import { toast as sonnerToast } from 'sonner';
 
 interface PositionQuestion {
   id: string;
@@ -286,6 +289,55 @@ export default function TeamDetail() {
 
   const isLeader = user?.id === team?.leader_id;
   const isMember = isLeader || members.some(m => m.id === user?.id);
+
+  // DM compose state for team member actions
+  const [dmComposeOpen, setDmComposeOpen] = useState(false);
+  const [dmRecipient, setDmRecipient] = useState<{ userId: string; userName: string } | null>(null);
+
+  const handleSendDm = (member: Member) => {
+    setDmRecipient({ userId: member.id, userName: member.name });
+    setDmComposeOpen(true);
+  };
+
+  const handleStartChat = async (member: Member) => {
+    if (!user) return;
+    try {
+      // Check existing direct conversation
+      const { data: existingConvos } = await supabase
+        .from('conversations')
+        .select(`id, conversation_participants!inner(user_id)`)
+        .eq('type', 'direct');
+
+      const existingConvo = existingConvos?.find(convo => {
+        const participants = convo.conversation_participants;
+        if (!participants || participants.length !== 2) return false;
+        const pIds = participants.map((p: { user_id: string | null }) => p.user_id);
+        return pIds.includes(user.id) && pIds.includes(member.id);
+      });
+
+      if (existingConvo) {
+        navigate(`/chat/${existingConvo.id}`);
+        return;
+      }
+
+      const { data: newConvo, error } = await supabase
+        .from('conversations')
+        .insert({ type: 'direct' })
+        .select()
+        .single();
+      if (error) throw error;
+
+      await supabase.from('conversation_participants').insert([
+        { conversation_id: newConvo.id, user_id: user.id },
+        { conversation_id: newConvo.id, user_id: member.id }
+      ]);
+
+      navigate(`/chat/${newConvo.id}`);
+    } catch (error) {
+      console.error('Error starting chat:', error);
+      sonnerToast.error('채팅 시작에 실패했습니다');
+    }
+  };
 
   useEffect(() => {
     if (teamId && isLeader) {
@@ -909,18 +961,41 @@ export default function TeamDetail() {
                               )}
                             </div>
                           </Link>
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
-                              <Link to={`/profile/${member.id}`} className="font-semibold hover:text-primary transition-colors cursor-pointer">
+                              <Link to={`/profile/${member.id}`} className="font-semibold hover:text-primary transition-colors cursor-pointer truncate">
                                 {member.name}
                               </Link>
                               {member.isLeader && (
-                                <Crown className="w-4 h-4 text-secondary" aria-label="팀 리더" />
+                                <Crown className="w-4 h-4 text-secondary shrink-0" aria-label="팀 리더" />
                               )}
                             </div>
                             <RoleBadge role={member.role} level={member.level} size="sm" />
                           </div>
-                          {/* Leader can remove members (but not themselves and cannot change role) */}
+                          {/* Member action buttons */}
+                          {user && member.id !== user.id && (
+                            <div className="flex gap-1 shrink-0">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleStartChat(member)}
+                                title="채팅하기"
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => handleSendDm(member)}
+                                title="쪽지 보내기"
+                              >
+                                <Mail className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          )}
+                          {/* Leader can remove members */}
                           {isLeader && !member.isLeader && (
                             <TeamMemberManagement
                               teamId={team.id}
@@ -1074,6 +1149,18 @@ export default function TeamDetail() {
 
       {/* Back to Top */}
       <BackToTop />
+
+      {/* DM Compose Dialog for team member actions */}
+      <MessageComposeDialog
+        open={dmComposeOpen}
+        onOpenChange={setDmComposeOpen}
+        recipientId={dmRecipient?.userId}
+        recipientName={dmRecipient?.userName}
+        onSent={() => {
+          sonnerToast.success('쪽지를 보냈습니다');
+          setDmRecipient(null);
+        }}
+      />
     </div>
   );
 }
