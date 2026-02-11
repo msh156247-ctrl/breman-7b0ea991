@@ -164,30 +164,36 @@ export function InviteToConversationDialog({
 
     setInviting(true);
     try {
-      const inserts = selectedUsers.map(userId => ({
-        conversation_id: conversationId,
-        user_id: userId
-      }));
+      // Insert one by one to handle duplicates gracefully
+      let successCount = 0;
+      for (const userId of selectedUsers) {
+        const { error } = await supabase
+          .from('conversation_participants')
+          .upsert(
+            {
+              conversation_id: conversationId,
+              user_id: userId,
+            },
+            { onConflict: 'conversation_id,user_id' }
+          );
 
-      const { error } = await supabase
-        .from('conversation_participants')
-        .insert(inserts);
-
-      if (error) {
-        console.error('Insert error details:', error);
-        throw error;
+        if (error) {
+          console.error('Invite error for user:', userId, error);
+        } else {
+          successCount++;
+        }
       }
 
-      toast.success(`${selectedUsers.length}명을 초대했습니다`);
-      onInviteSuccess?.();
-      onOpenChange(false);
-    } catch (error: any) {
-      console.error('Error inviting users:', error);
-      if (error?.code === '23505') {
-        toast.error('이미 참여 중인 사용자가 포함되어 있습니다');
+      if (successCount > 0) {
+        toast.success(`${successCount}명을 초대했습니다`);
+        onInviteSuccess?.();
+        onOpenChange(false);
       } else {
         toast.error('초대에 실패했습니다. 다시 시도해주세요.');
       }
+    } catch (error: any) {
+      console.error('Error inviting users:', error);
+      toast.error('초대에 실패했습니다. 다시 시도해주세요.');
     } finally {
       setInviting(false);
     }
