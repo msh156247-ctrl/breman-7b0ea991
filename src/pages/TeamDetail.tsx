@@ -309,29 +309,34 @@ export default function TeamDetail() {
   const handleStartChat = async (member: Member) => {
     if (!user) return;
     try {
-      // Use RPC-style query: find conversations where both users are participants
+      // Step 1: Get all my conversations with their type
       const { data: myConvos } = await supabase
         .from('conversation_participants')
-        .select('conversation_id')
+        .select('conversation_id, conversations(type)')
         .eq('user_id', user.id);
 
-      if (myConvos && myConvos.length > 0) {
-        const myConvoIds = myConvos.map(c => c.conversation_id);
-        
-        // Find if member is also in any of these conversations that are 'direct'
-        const { data: sharedConvos } = await supabase
-          .from('conversation_participants')
-          .select('conversation_id, conversations:conversation_id(id, type)')
-          .eq('user_id', member.id)
-          .in('conversation_id', myConvoIds);
+      // Filter to only direct conversations
+      const directConvoIds = (myConvos || [])
+        .filter((c: any) => c.conversations?.type === 'direct')
+        .map(c => c.conversation_id);
 
-        const directConvo = sharedConvos?.find((sc: any) => sc.conversations?.type === 'direct');
-        if (directConvo) {
-          navigate(`/chat/${directConvo.conversation_id}`);
+      if (directConvoIds.length > 0) {
+        // Step 2: Check if member is in any of my direct conversations
+        const { data: memberInConvo } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id')
+          .eq('user_id', member.id)
+          .in('conversation_id', directConvoIds)
+          .limit(1)
+          .maybeSingle();
+
+        if (memberInConvo) {
+          navigate(`/chat/${memberInConvo.conversation_id}`);
           return;
         }
       }
 
+      // Step 3: Create new direct conversation
       const { data: newConvo, error } = await supabase
         .from('conversations')
         .insert({ type: 'direct' as const })
