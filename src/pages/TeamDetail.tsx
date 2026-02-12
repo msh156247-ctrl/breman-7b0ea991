@@ -40,7 +40,8 @@ import { TeamMemberManagement } from '@/components/team/TeamMemberManagement';
 import { ApplicationManagementSheet } from '@/components/team/ApplicationManagementSheet';
 import { ProposalListSheet } from '@/components/team/ProposalListSheet';
 import { TeamApplicationDialog } from '@/components/team/TeamApplicationDialog';
-import { MessageCircle, Mail } from 'lucide-react';
+import { MessageCircle, Mail, Search } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { MessageComposeDialog } from '@/components/messages/MessageComposeDialog';
 import { toast as sonnerToast } from 'sonner';
 
@@ -104,6 +105,12 @@ export default function TeamDetail() {
   const [selectedSlotId, setSelectedSlotId] = useState<string>('');
   const [applicationText, setApplicationText] = useState('');
   const [questionAnswers, setQuestionAnswers] = useState<Record<string, string>>({});
+  
+  // Invite by search states
+  const [inviteSearchQuery, setInviteSearchQuery] = useState('');
+  const [inviteSearchResults, setInviteSearchResults] = useState<{ id: string; name: string; avatar_url: string | null; email: string }[]>([]);
+  const [inviteSearchLoading, setInviteSearchLoading] = useState(false);
+  const [invitingUserId, setInvitingUserId] = useState<string | null>(null);
   
   // Proposal states
   const [sentProposals, setSentProposals] = useState<any[]>([]);
@@ -302,27 +309,32 @@ export default function TeamDetail() {
   const handleStartChat = async (member: Member) => {
     if (!user) return;
     try {
-      // Check existing direct conversation
-      const { data: existingConvos } = await supabase
-        .from('conversations')
-        .select(`id, conversation_participants!inner(user_id)`)
-        .eq('type', 'direct');
+      // Use RPC-style query: find conversations where both users are participants
+      const { data: myConvos } = await supabase
+        .from('conversation_participants')
+        .select('conversation_id')
+        .eq('user_id', user.id);
 
-      const existingConvo = existingConvos?.find(convo => {
-        const participants = convo.conversation_participants;
-        if (!participants || participants.length !== 2) return false;
-        const pIds = participants.map((p: { user_id: string | null }) => p.user_id);
-        return pIds.includes(user.id) && pIds.includes(member.id);
-      });
+      if (myConvos && myConvos.length > 0) {
+        const myConvoIds = myConvos.map(c => c.conversation_id);
+        
+        // Find if member is also in any of these conversations that are 'direct'
+        const { data: sharedConvos } = await supabase
+          .from('conversation_participants')
+          .select('conversation_id, conversations:conversation_id(id, type)')
+          .eq('user_id', member.id)
+          .in('conversation_id', myConvoIds);
 
-      if (existingConvo) {
-        navigate(`/chat/${existingConvo.id}`);
-        return;
+        const directConvo = sharedConvos?.find((sc: any) => sc.conversations?.type === 'direct');
+        if (directConvo) {
+          navigate(`/chat/${directConvo.conversation_id}`);
+          return;
+        }
       }
 
       const { data: newConvo, error } = await supabase
         .from('conversations')
-        .insert({ type: 'direct' })
+        .insert({ type: 'direct' as const })
         .select()
         .single();
       if (error) throw error;
@@ -336,6 +348,70 @@ export default function TeamDetail() {
     } catch (error) {
       console.error('Error starting chat:', error);
       sonnerToast.error('채팅 시작에 실패했습니다');
+    }
+  };
+
+  // Invite search handler
+  const handleInviteSearch = async () => {
+    if (!inviteSearchQuery.trim() || !team) return;
+    setInviteSearchLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, avatar_url, email')
+        .ilike('name', `%${inviteSearchQuery}%`)
+        .limit(10);
+
+      if (error) throw error;
+
+      // Filter out existing members
+      const memberIds = members.map(m => m.id);
+      setInviteSearchResults((data || []).filter(u => !memberIds.includes(u.id)));
+    } catch (error) {
+      console.error('Error searching users:', error);
+    } finally {
+      setInviteSearchLoading(false);
+    }
+  };
+
+  // Direct invite handler - add as team member directly
+  const handleDirectInvite = async (targetUserId: string) => {
+    if (!team || !teamId) return;
+    setInvitingUserId(targetUserId);
+    try {
+      // Check if already a member
+      const { data: existing } = await supabase
+        .from('team_memberships')
+        .select('id')
+        .eq('team_id', teamId)
+        .eq('user_id', targetUserId)
+        .maybeSingle();
+
+      if (existing) {
+        sonnerToast.info('이미 팀 멤버입니다');
+        setInvitingUserId(null);
+        return;
+      }
+
+      // Add as team member with default role
+      const { error } = await supabase
+        .from('team_memberships')
+        .insert({
+          team_id: teamId,
+          user_id: targetUserId,
+          role: 'horse' as const,
+        });
+
+      if (error) throw error;
+
+      sonnerToast.success('팀에 초대되었습니다!');
+      setInviteSearchResults(prev => prev.filter(u => u.id !== targetUserId));
+      fetchTeamData(); // Refresh member list
+    } catch (error) {
+      console.error('Error inviting user:', error);
+      sonnerToast.error('초대에 실패했습니다');
+    } finally {
+      setInvitingUserId(null);
     }
   };
 
@@ -625,23 +701,76 @@ export default function TeamDetail() {
                           초대하기
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="sm:max-w-md">
                         <DialogHeader>
                           <DialogTitle>팀원 초대</DialogTitle>
                           <DialogDescription>
-                            아래 링크를 공유하여 새로운 팀원을 초대하세요.
+                            닉네임으로 검색하여 팀원을 초대하세요.
                           </DialogDescription>
                         </DialogHeader>
-                        <div className="flex gap-2 mt-4">
-                          <input 
-                            type="text" 
-                            value={inviteLink} 
-                            readOnly 
-                            className="flex-1 px-3 py-2 text-sm border rounded-lg bg-muted"
+                        {/* Search by nickname */}
+                        <div className="flex gap-2 mt-2">
+                          <Input
+                            placeholder="닉네임으로 검색..."
+                            value={inviteSearchQuery}
+                            onChange={(e) => setInviteSearchQuery(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleInviteSearch()}
                           />
-                          <Button onClick={copyInviteLink} variant="outline">
-                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                          <Button size="icon" onClick={handleInviteSearch} disabled={inviteSearchLoading || !inviteSearchQuery.trim()}>
+                            {inviteSearchLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
                           </Button>
+                        </div>
+
+                        {/* Search results */}
+                        <div className="max-h-[250px] overflow-y-auto space-y-2">
+                          {inviteSearchResults.length > 0 ? (
+                            inviteSearchResults.map((u) => (
+                              <div key={u.id} className="flex items-center gap-3 p-3 rounded-lg border hover:bg-accent transition-colors">
+                                <Avatar className="h-10 w-10">
+                                  <AvatarImage src={u.avatar_url || undefined} />
+                                  <AvatarFallback>{u.name?.slice(0, 2)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{u.name}</p>
+                                  <p className="text-sm text-muted-foreground truncate">{u.email}</p>
+                                </div>
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleDirectInvite(u.id)}
+                                  disabled={invitingUserId === u.id}
+                                >
+                                  {invitingUserId === u.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                  ) : (
+                                    <>
+                                      <UserPlus className="h-4 w-4 mr-1" />
+                                      초대
+                                    </>
+                                  )}
+                                </Button>
+                              </div>
+                            ))
+                          ) : inviteSearchQuery && !inviteSearchLoading ? (
+                            <p className="text-sm text-muted-foreground text-center py-4">검색 결과가 없습니다</p>
+                          ) : (
+                            <p className="text-sm text-muted-foreground text-center py-4">닉네임을 입력하고 검색하세요</p>
+                          )}
+                        </div>
+
+                        {/* Invite link section */}
+                        <div className="border-t pt-3 mt-2">
+                          <p className="text-xs text-muted-foreground mb-2">또는 초대 링크 공유</p>
+                          <div className="flex gap-2">
+                            <input 
+                              type="text" 
+                              value={inviteLink} 
+                              readOnly 
+                              className="flex-1 px-3 py-2 text-sm border rounded-lg bg-muted"
+                            />
+                            <Button onClick={copyInviteLink} variant="outline" size="icon">
+                              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                            </Button>
+                          </div>
                         </div>
                       </DialogContent>
                     </Dialog>
