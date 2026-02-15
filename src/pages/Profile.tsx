@@ -34,7 +34,7 @@ import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { useToast } from '@/hooks/use-toast';
 import { UserAvatar } from '@/components/ui/UserAvatar';
-import { useFriends } from '@/hooks/useFriends';
+import { useFollows } from '@/hooks/useFollows';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
@@ -105,7 +105,7 @@ export default function Profile() {
   const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
-  const { friends, pendingRequests, acceptFriendRequest, rejectFriendRequest, removeFriend } = useFriends();
+  const { following, followers, isFollowing, follow, unfollow } = useFollows();
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState(false);
   const [selectedApplication, setSelectedApplication] = useState<{ id: string; teamName: string; isPending: boolean } | null>(null);
   const [performanceExpanded, setPerformanceExpanded] = useState(false);
@@ -563,14 +563,9 @@ export default function Profile() {
                 <Code className="w-4 h-4" />
                 <span className="hidden sm:inline text-sm">역량</span>
               </TabsTrigger>
-              <TabsTrigger value="friends" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg relative">
+              <TabsTrigger value="follows" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg relative">
                 <UserCheck className="w-4 h-4" />
-                <span className="hidden sm:inline text-sm">친구</span>
-                {pendingRequests.filter(r => !r.isSentByMe).length > 0 && (
-                  <span className="absolute -top-1 -right-1 h-4 min-w-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] flex items-center justify-center">
-                    {pendingRequests.filter(r => !r.isSentByMe).length}
-                  </span>
-                )}
+                <span className="hidden sm:inline text-sm">팔로우</span>
               </TabsTrigger>
               <TabsTrigger value="career" className="gap-1.5 py-3 data-[state=active]:bg-card data-[state=active]:shadow-sm rounded-lg">
                 <Briefcase className="w-4 h-4" />
@@ -586,115 +581,102 @@ export default function Profile() {
               </TabsTrigger>
             </TabsList>
 
-            {/* 역량 Tab: 직무 + 스킬 */}
+            {/* 역량 Tab */}
             <TabsContent value="skills" className="p-4 md:p-6 space-y-6 m-0">
               <RoleTypeManagement />
               <SkillManagement />
             </TabsContent>
 
-            {/* 친구 Tab */}
-            <TabsContent value="friends" className="p-4 md:p-6 space-y-6 m-0">
-              {/* 받은 친구 요청 */}
-              {pendingRequests.filter(r => !r.isSentByMe).length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-primary" />
-                    받은 친구 요청 ({pendingRequests.filter(r => !r.isSentByMe).length})
-                  </h3>
-                  <div className="space-y-2">
-                    {pendingRequests.filter(r => !r.isSentByMe).map(req => (
-                      <Card key={req.id}>
-                        <div className="p-3 flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={req.avatar_url || undefined} />
-                            <AvatarFallback>{req.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{req.name}</p>
-                            <p className="text-xs text-muted-foreground">{req.primary_role || '사용자'}</p>
-                          </div>
-                          <div className="flex gap-1">
-                            <Button size="sm" onClick={() => acceptFriendRequest(req.id)}>수락</Button>
-                            <Button size="sm" variant="ghost" onClick={() => rejectFriendRequest(req.id)}>거절</Button>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 보낸 요청 */}
-              {pendingRequests.filter(r => r.isSentByMe).length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold flex items-center gap-2 text-muted-foreground">
-                    <Clock className="w-4 h-4" />
-                    보낸 요청 ({pendingRequests.filter(r => r.isSentByMe).length})
-                  </h3>
-                  <div className="space-y-2">
-                    {pendingRequests.filter(r => r.isSentByMe).map(req => (
-                      <Card key={req.id} className="opacity-70">
-                        <div className="p-3 flex items-center gap-3">
-                          <Avatar className="h-10 w-10">
-                            <AvatarImage src={req.avatar_url || undefined} />
-                            <AvatarFallback>{req.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">{req.name}</p>
-                          </div>
-                          <Badge variant="outline" className="text-xs"><Clock className="h-3 w-3 mr-1" />대기 중</Badge>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* 친구 목록 */}
+            {/* 팔로우 Tab */}
+            <TabsContent value="follows" className="p-4 md:p-6 space-y-6 m-0">
+              {/* 팔로잉 */}
               <div className="space-y-3">
                 <h3 className="font-semibold flex items-center gap-2">
                   <UserCheck className="w-4 h-4 text-primary" />
-                  내 친구 ({friends.length})
+                  팔로잉 ({following.length})
                 </h3>
-                {friends.length === 0 ? (
+                {following.length === 0 ? (
                   <div className="text-center py-8 text-muted-foreground">
                     <UserPlus className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                    <p>아직 친구가 없습니다</p>
-                    <p className="text-sm mt-1">채팅에서 친구를 추가해보세요!</p>
-                    <Button variant="outline" size="sm" className="mt-3" onClick={() => navigate('/chat')}>
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      채팅으로 이동
-                    </Button>
+                    <p>아직 팔로우하는 사용자가 없습니다</p>
+                    <p className="text-sm mt-1">다른 사용자의 프로필에서 팔로우해보세요!</p>
                   </div>
                 ) : (
                   <div className="grid md:grid-cols-2 gap-2">
-                    {friends.map(friend => (
-                      <Card key={friend.id} className="hover:shadow-md transition-shadow">
+                    {following.map(f => (
+                      <Card key={f.id} className="hover:shadow-md transition-shadow">
                         <div className="p-3 flex items-center gap-3">
                           <Avatar 
                             className="h-10 w-10 cursor-pointer hover:opacity-80 transition-opacity" 
-                            onClick={() => navigate(`/profile/${friend.friendId}`)}
+                            onClick={() => navigate(`/profile/${f.userId}`)}
                           >
-                            <AvatarImage src={friend.avatar_url || undefined} />
-                            <AvatarFallback>{friend.name.charAt(0)}</AvatarFallback>
+                            <AvatarImage src={f.avatar_url || undefined} />
+                            <AvatarFallback>{f.name.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate cursor-pointer hover:text-primary" onClick={() => navigate(`/profile/${friend.friendId}`)}>
-                              {friend.name}
+                            <p className="font-medium truncate cursor-pointer hover:text-primary" onClick={() => navigate(`/profile/${f.userId}`)}>
+                              {f.name}
                             </p>
-                            {friend.primary_role && (
-                              <p className="text-xs text-muted-foreground">{friend.primary_role}</p>
+                            {f.primary_role && (
+                              <p className="text-xs text-muted-foreground">{f.primary_role}</p>
                             )}
                           </div>
                           <Button
                             variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => removeFriend(friend.id)}
-                            title="친구 삭제"
+                            size="sm"
+                            className="h-8 text-xs text-destructive hover:text-destructive"
+                            onClick={() => unfollow(f.userId)}
                           >
-                            <X className="h-4 w-4" />
+                            팔로우 취소
                           </Button>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* 팔로워 */}
+              <div className="space-y-3">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Users className="w-4 h-4 text-muted-foreground" />
+                  팔로워 ({followers.length})
+                </h3>
+                {followers.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground text-sm">
+                    아직 팔로워가 없습니다
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-2">
+                    {followers.map(f => (
+                      <Card key={f.id} className="hover:shadow-md transition-shadow">
+                        <div className="p-3 flex items-center gap-3">
+                          <Avatar 
+                            className="h-10 w-10 cursor-pointer hover:opacity-80 transition-opacity" 
+                            onClick={() => navigate(`/profile/${f.userId}`)}
+                          >
+                            <AvatarImage src={f.avatar_url || undefined} />
+                            <AvatarFallback>{f.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate cursor-pointer hover:text-primary" onClick={() => navigate(`/profile/${f.userId}`)}>
+                              {f.name}
+                            </p>
+                            {f.primary_role && (
+                              <p className="text-xs text-muted-foreground">{f.primary_role}</p>
+                            )}
+                          </div>
+                          {!isFollowing(f.userId) && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 text-xs"
+                              onClick={() => follow(f.userId)}
+                            >
+                              <UserPlus className="h-3 w-3 mr-1" />
+                              맞팔로우
+                            </Button>
+                          )}
                         </div>
                       </Card>
                     ))}
