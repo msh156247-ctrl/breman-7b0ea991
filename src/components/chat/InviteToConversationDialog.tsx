@@ -79,19 +79,19 @@ export function InviteToConversationDialog({
 
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('friendships')
-        .select('user_id, friend_id, status')
-        .or(`user_id.eq.${user.id},friend_id.eq.${user.id}`)
-        .eq('status', 'accepted');
+      // Fetch users I follow
+      const { data: followData, error } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', user.id);
 
       if (error) throw error;
 
-      const friendIds = (data || []).map(f => 
-        f.user_id === user.id ? f.friend_id : f.user_id
-      ).filter(id => !existingParticipantIds.includes(id));
+      const followingIds = (followData || [])
+        .map(f => f.following_id)
+        .filter(id => !existingParticipantIds.includes(id));
 
-      if (friendIds.length === 0) {
+      if (followingIds.length === 0) {
         setFriends([]);
         setHasFriends(false);
         setActiveTab('search');
@@ -105,7 +105,7 @@ export function InviteToConversationDialog({
       const { data: profiles, error: profileError } = await supabase
         .from('profiles')
         .select('id, name, avatar_url, email')
-        .in('id', friendIds);
+        .in('id', followingIds);
 
       if (profileError) throw profileError;
 
@@ -114,7 +114,7 @@ export function InviteToConversationDialog({
         isFriend: true
       })));
     } catch (error) {
-      console.error('Error fetching friends:', error);
+      console.error('Error fetching follows:', error);
     } finally {
       setLoading(false);
     }
