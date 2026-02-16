@@ -141,6 +141,41 @@ export default function Onboarding() {
 
       if (profileError) throw profileError;
 
+      // Save selected skills to user_skills table
+      if (skills.length > 0) {
+        // Find or create skill entries
+        for (const skillName of skills) {
+          // Check if skill exists
+          let { data: existingSkill } = await supabase
+            .from('skills')
+            .select('id')
+            .eq('name', skillName)
+            .maybeSingle();
+
+          let skillId: string;
+          if (existingSkill) {
+            skillId = existingSkill.id;
+          } else {
+            // Create the skill
+            const { data: newSkill, error: skillError } = await supabase
+              .from('skills')
+              .insert({ name: skillName, type: 'tool' as const })
+              .select('id')
+              .single();
+            if (skillError || !newSkill) continue;
+            skillId = newSkill.id;
+          }
+
+          // Add to user_skills (ignore duplicates)
+          await supabase
+            .from('user_skills')
+            .upsert(
+              { user_id: user.id, skill_id: skillId, level: 1 },
+              { onConflict: 'user_id,skill_id', ignoreDuplicates: true }
+            );
+        }
+      }
+
       await refreshProfile();
       toast.success('온보딩 완료! 🎉 초기 100 XP를 획득했습니다.');
       navigate('/dashboard');

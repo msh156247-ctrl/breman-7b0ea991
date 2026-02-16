@@ -84,10 +84,94 @@ interface TeamWithHistory extends Team {
   }[];
 }
 
+function OpenProjectsList({ searchQuery }: { searchQuery: string }) {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOpenProjects = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('status', 'open')
+          .order('created_at', { ascending: false });
+        if (error) throw error;
+        setProjects(data || []);
+      } catch (error) {
+        console.error('Error fetching open projects:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOpenProjects();
+  }, []);
+
+  const filtered = projects.filter(p =>
+    p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
+
+  if (filtered.length === 0) return (
+    <div className="text-center py-12 text-muted-foreground">
+      <Inbox className="w-12 h-12 mx-auto mb-3 opacity-50" />
+      <p>공개된 의뢰가 없습니다</p>
+    </div>
+  );
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {filtered.map((project) => (
+        <Card
+          key={project.id}
+          className="hover:shadow-lg transition-shadow cursor-pointer group h-full"
+          onClick={() => navigate(`/projects/${project.id}`)}
+        >
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg line-clamp-1 group-hover:text-primary transition-colors">
+              {project.title}
+            </CardTitle>
+            <CardDescription className="line-clamp-2">
+              {project.description || '설명 없음'}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-2 mb-3">
+              {project.required_skills?.slice(0, 3).map((skill) => (
+                <Badge key={skill} variant="secondary" className="text-xs">{skill}</Badge>
+              ))}
+              {(project.required_skills?.length || 0) > 3 && (
+                <Badge variant="outline" className="text-xs">+{(project.required_skills?.length || 0) - 3}</Badge>
+              )}
+            </div>
+            <div className="flex items-center justify-between text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                {project.budget_min && project.budget_max && (
+                  <span>{(project.budget_min / 10000).toLocaleString()}~{(project.budget_max / 10000).toLocaleString()}만원</span>
+                )}
+              </div>
+              {project.deadline && (
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5" />
+                  {new Date(project.deadline).toLocaleDateString('ko-KR')}
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
 export default function Projects() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState('recommendations');
+  const [activeTab, setActiveTab] = useState('open');
   const [searchQuery, setSearchQuery] = useState('');
   const [showDirectProposalList, setShowDirectProposalList] = useState(false);
   const [directProposalTeams, setDirectProposalTeams] = useState<TeamWithHistory[]>([]);
@@ -323,7 +407,12 @@ export default function Projects() {
       </ScrollReveal>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-flex">
+        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-flex">
+          <TabsTrigger value="open" className="gap-2">
+            <Inbox className="w-4 h-4" />
+            <span className="hidden sm:inline">공개 의뢰</span>
+            <span className="sm:hidden">의뢰</span>
+          </TabsTrigger>
           <TabsTrigger value="recommendations" className="gap-2">
             <Users className="w-4 h-4" />
             <span className="hidden sm:inline">팀 추천</span>
@@ -335,6 +424,29 @@ export default function Projects() {
             <span className="sm:hidden">의뢰</span>
           </TabsTrigger>
         </TabsList>
+
+        {/* 공개 의뢰 목록 */}
+        <TabsContent value="open" className="space-y-4">
+          <ScrollReveal animation="fade-up" delay={100}>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="프로젝트 검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+          </ScrollReveal>
+
+          {requestsLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <OpenProjectsList searchQuery={searchQuery} />
+          )}
+        </TabsContent>
 
         {/* 팀 추천 리스트 */}
         <TabsContent value="recommendations" className="space-y-4">

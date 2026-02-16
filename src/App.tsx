@@ -29,6 +29,7 @@ import Showcase from "./pages/Showcase";
 import ShowcaseDetail from "./pages/ShowcaseDetail";
 import ShowcaseCreate from "./pages/ShowcaseCreate";
 import Profile from "./pages/Profile";
+import UserProfile from "./pages/UserProfile";
 import Notifications from "./pages/Notifications";
 import AdminSettings from "./pages/AdminSettings";
 import NotFound from "./pages/NotFound";
@@ -95,6 +96,7 @@ function AppRoutes() {
         <Route path="teams/:teamId" element={<TeamDetail />} />
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:projectId" element={<ProjectDetail />} />
+        <Route path="profile/:userId" element={<UserProfile />} />
       </Route>
       
       {/* Protected routes with AppShell */}
