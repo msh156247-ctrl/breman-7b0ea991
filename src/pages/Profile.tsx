@@ -55,49 +55,7 @@ import {
 
 // userTeams will be fetched from database
 
-const userBadges = [
-  { id: '1', name: '첫 프로젝트 완료', icon: '🎯', description: '첫 프로젝트를 성공적으로 완료했습니다', earnedAt: '2024-01-10' },
-  { id: '2', name: '팀 빌더', icon: '👥', description: '첫 팀을 만들었습니다', earnedAt: '2024-01-05' },
-  { id: '3', name: 'Siege 참가자', icon: '⚔️', description: 'Siege 대회에 처음 참가했습니다', earnedAt: '2024-01-15' },
-  { id: '4', name: '스킬 마스터', icon: '💪', description: '첫 스킬을 골드 티어로 올렸습니다', earnedAt: '2024-01-20' },
-  { id: '5', name: '완벽한 리뷰', icon: '⭐', description: '5점 만점 리뷰를 받았습니다', earnedAt: '2024-01-25' },
-];
-
-const userExperiences = [
-  { 
-    id: '1',
-    company: '테크스타트업',
-    role: '시니어 풀스택 개발자',
-    period: '2022.03 - 현재',
-    description: 'React/Node.js 기반 SaaS 플랫폼 개발 및 팀 리드'
-  },
-  { 
-    id: '2',
-    company: '디지털 에이전시',
-    role: '프론트엔드 개발자',
-    period: '2020.01 - 2022.02',
-    description: '다양한 클라이언트 프로젝트 프론트엔드 개발'
-  },
-];
-
-const userReviews = [
-  { 
-    id: '1',
-    from: '테크스타트 (클라이언트)',
-    project: 'AI 챗봇 개발',
-    rating: 5,
-    comment: '기술력과 커뮤니케이션 모두 훌륭했습니다. 일정도 완벽히 준수해주셨어요.',
-    date: '2024-01-20'
-  },
-  { 
-    id: '2',
-    from: '쇼핑몰코리아 (클라이언트)',
-    project: 'E-commerce 리뉴얼',
-    rating: 5,
-    comment: '디자인과 성능 모두 기대 이상이었습니다. 다음 프로젝트도 함께하고 싶어요.',
-    date: '2024-01-15'
-  },
-];
+// Mock data removed - now using DB queries
 
 export default function Profile() {
   const { profile, user, refreshProfile } = useAuth();
@@ -195,7 +153,84 @@ export default function Profile() {
     enabled: !!user?.id,
   });
 
-  // Fetch user applications
+  // Fetch user badges from DB
+  const { data: userBadges = [] } = useQuery({
+    queryKey: ['user-badges', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('user_badges')
+        .select('id, earned_at, badge:badges(id, name, description, icon, category)')
+        .eq('user_id', user.id)
+        .order('earned_at', { ascending: false });
+      if (error) throw error;
+      return (data || []).map((ub: any) => ({
+        id: ub.id,
+        name: ub.badge?.name || '배지',
+        icon: ub.badge?.icon || '🏅',
+        description: ub.badge?.description || '',
+        earnedAt: ub.earned_at,
+      }));
+    },
+    enabled: !!user?.id,
+  });
+
+  // Fetch user reviews from DB
+  const { data: userReviews = [] } = useQuery({
+    queryKey: ['user-reviews', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return [];
+      const { data, error } = await supabase
+        .from('reviews')
+        .select('id, rating, comment, created_at, from_user_id, project:projects(title)')
+        .eq('to_user_id', user.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      // Get reviewer names
+      const reviewerIds = [...new Set((data || []).map((r: any) => r.from_user_id).filter(Boolean))];
+      let reviewerMap = new Map<string, string>();
+      if (reviewerIds.length > 0) {
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, name')
+          .in('id', reviewerIds);
+        reviewerMap = new Map((profiles || []).map(p => [p.id, p.name]));
+      }
+      return (data || []).map((r: any) => ({
+        id: r.id,
+        from: reviewerMap.get(r.from_user_id) || '알 수 없음',
+        project: r.project?.title || '프로젝트',
+        rating: r.rating || 0,
+        comment: r.comment || '',
+        date: r.created_at ? new Date(r.created_at).toLocaleDateString('ko-KR') : '',
+      }));
+    },
+    enabled: !!user?.id,
+  });
+
+  // Fetch completed project count from DB
+  const { data: completedProjectCount = 0 } = useQuery({
+    queryKey: ['completed-projects', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return 0;
+      // Count as team member
+      const { count: memberCount } = await supabase
+        .from('contracts')
+        .select('*, teams!inner(team_memberships!inner(user_id))', { count: 'exact', head: true })
+        .eq('status', 'completed')
+        .eq('teams.team_memberships.user_id', user.id);
+      // Count as team leader
+      const { count: leaderCount } = await supabase
+        .from('contracts')
+        .select('*, teams!inner(leader_id)', { count: 'exact', head: true })
+        .eq('status', 'completed')
+        .eq('teams.leader_id', user.id);
+      return (memberCount || 0) + (leaderCount || 0);
+    },
+    enabled: !!user?.id,
+  });
+
+
   const { data: myApplications = [] } = useQuery({
     queryKey: ['my-applications', user?.id],
     queryFn: async () => {
@@ -480,7 +515,7 @@ export default function Profile() {
               <div className="flex flex-wrap gap-4 text-sm text-muted-foreground pt-2">
                 <div className="flex items-center gap-1.5">
                   <Calendar className="w-4 h-4 text-primary" />
-                  <span>2024년 1월 가입</span>
+                  <span>{(profile as any)?.created_at ? new Date((profile as any).created_at).toLocaleDateString('ko-KR', { year: 'numeric', month: 'long' }) + ' 가입' : '가입일 정보 없음'}</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Star className="w-4 h-4 text-secondary" />
@@ -510,8 +545,8 @@ export default function Profile() {
                 <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Trophy className="w-6 h-6 text-primary" />
                 </div>
-                <p className="text-2xl font-bold font-display">#42</p>
-                <p className="text-xs text-muted-foreground mt-1">전체 랭킹</p>
+                <p className="text-2xl font-bold font-display">{levelBreakdown?.level || 1}</p>
+                <p className="text-xs text-muted-foreground mt-1">레벨</p>
               </CardContent>
             </Card>
           </Link>
@@ -522,7 +557,7 @@ export default function Profile() {
                 <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-secondary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Briefcase className="w-6 h-6 text-secondary" />
                 </div>
-                <p className="text-2xl font-bold font-display">12</p>
+                <p className="text-2xl font-bold font-display">{completedProjectCount}</p>
                 <p className="text-xs text-muted-foreground mt-1">완료 프로젝트</p>
               </CardContent>
             </Card>
@@ -546,7 +581,7 @@ export default function Profile() {
                 <div className="w-12 h-12 mx-auto mb-3 rounded-xl bg-tier-gold/10 flex items-center justify-center group-hover:scale-110 transition-transform">
                   <Star className="w-6 h-6 text-tier-gold" />
                 </div>
-                <p className="text-2xl font-bold font-display">4.9</p>
+                <p className="text-2xl font-bold font-display">{profile?.rating_avg?.toFixed(1) || '0.0'}</p>
                 <p className="text-xs text-muted-foreground mt-1">평균 평점</p>
               </CardContent>
             </Card>
@@ -1033,26 +1068,10 @@ export default function Profile() {
                   이전 직장 및 프로젝트 경험
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {userExperiences.length === 0 ? (
-                  <p className="text-muted-foreground text-center py-8">등록된 경력이 없습니다</p>
-                ) : (
-                  userExperiences.map((exp) => (
-                    <div 
-                      key={exp.id}
-                      className="p-4 rounded-lg border border-border"
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-2 mb-2">
-                        <div>
-                          <p className="font-medium">{exp.role}</p>
-                          <p className="text-sm text-muted-foreground">{exp.company}</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground">{exp.period}</span>
-                      </div>
-                      <p className="text-sm text-muted-foreground">{exp.description}</p>
-                    </div>
-                  ))
-                )}
+              <CardContent>
+                <p className="text-muted-foreground text-center py-8">
+                  경력 기록 기능은 준비 중입니다. 쇼케이스를 통해 프로젝트 경험을 기록해보세요!
+                </p>
               </CardContent>
             </Card>
           </TabsContent>
