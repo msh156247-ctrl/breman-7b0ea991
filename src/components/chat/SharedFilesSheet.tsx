@@ -14,6 +14,7 @@ import { FileText, Download, Loader2, FileArchive } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { ImageLightbox } from './ImageLightbox';
+import { getSignedUrl } from '@/lib/storageUtils';
 
 interface SharedFile {
   id: string;
@@ -58,14 +59,16 @@ export function SharedFilesSheet({ open, onOpenChange, conversationId }: SharedF
       for (const msg of messages || []) {
         if (!msg.attachments || msg.attachments.length === 0) continue;
         const { data: sender } = await supabase.from('profiles').select('name').eq('id', msg.sender_id).single();
-        for (const url of msg.attachments) {
-          const isImage = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url) || url.includes('/image/') || url.includes('image%2F');
-          const urlParts = url.split('/');
+        for (const urlOrPath of msg.attachments) {
+          // Resolve to signed URL
+          const signedUrl = await getSignedUrl(urlOrPath);
+          const isImage = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(signedUrl) || signedUrl.includes('/image/') || signedUrl.includes('image%2F');
+          const urlParts = signedUrl.split('/');
           const encodedName = urlParts[urlParts.length - 1];
           const name = decodeURIComponent(encodedName.split('?')[0]);
           allFiles.push({
-            id: `${msg.id}-${url}`,
-            url, name: name || '파일',
+            id: `${msg.id}-${urlOrPath}`,
+            url: signedUrl, name: name || '파일',
             type: isImage ? 'image' : 'file',
             createdAt: msg.created_at,
             senderName: sender?.name || '알 수 없음'
