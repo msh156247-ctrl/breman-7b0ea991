@@ -2,25 +2,18 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
+  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet';
 import {
-  Drawer,
-  DrawerContent,
-  DrawerDescription,
-  DrawerHeader,
-  DrawerTitle,
+  Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle,
 } from '@/components/ui/drawer';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { FileText, Image, Download, ExternalLink, Loader2, FileArchive } from 'lucide-react';
+import { FileText, Download, Loader2, FileArchive } from 'lucide-react';
 import { format } from 'date-fns';
 import { ko } from 'date-fns/locale';
+import { ImageLightbox } from './ImageLightbox';
 
 interface SharedFile {
   id: string;
@@ -37,69 +30,48 @@ interface SharedFilesSheetProps {
   conversationId: string;
 }
 
-export function SharedFilesSheet({
-  open,
-  onOpenChange,
-  conversationId
-}: SharedFilesSheetProps) {
+export function SharedFilesSheet({ open, onOpenChange, conversationId }: SharedFilesSheetProps) {
   const isMobile = useIsMobile();
   const [files, setFiles] = useState<SharedFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'all' | 'images' | 'files'>('all');
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   useEffect(() => {
-    if (open) {
-      fetchSharedFiles();
-    }
+    if (open) fetchSharedFiles();
   }, [open, conversationId]);
 
   const fetchSharedFiles = async () => {
     setLoading(true);
     try {
-      // Fetch messages with attachments
       const { data: messages, error } = await supabase
         .from('messages')
         .select('id, attachments, created_at, sender_id')
         .eq('conversation_id', conversationId)
         .not('attachments', 'is', null)
         .order('created_at', { ascending: false });
-
       if (error) throw error;
 
-      // Extract files from attachments
       const allFiles: SharedFile[] = [];
-      
       for (const msg of messages || []) {
         if (!msg.attachments || msg.attachments.length === 0) continue;
-
-        // Fetch sender name
-        const { data: sender } = await supabase
-          .from('profiles')
-          .select('name')
-          .eq('id', msg.sender_id)
-          .single();
-
+        const { data: sender } = await supabase.from('profiles').select('name').eq('id', msg.sender_id).single();
         for (const url of msg.attachments) {
-          const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(url) || 
-                         url.includes('/image/') ||
-                         url.includes('image%2F');
-          
-          // Extract filename from URL
+          const isImage = /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url) || url.includes('/image/') || url.includes('image%2F');
           const urlParts = url.split('/');
           const encodedName = urlParts[urlParts.length - 1];
           const name = decodeURIComponent(encodedName.split('?')[0]);
-
           allFiles.push({
             id: `${msg.id}-${url}`,
-            url,
-            name: name || '파일',
+            url, name: name || '파일',
             type: isImage ? 'image' : 'file',
             createdAt: msg.created_at,
             senderName: sender?.name || '알 수 없음'
           });
         }
       }
-
       setFiles(allFiles);
     } catch (error) {
       console.error('Error fetching shared files:', error);
@@ -126,11 +98,25 @@ export function SharedFilesSheet({
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(downloadUrl);
-    } catch (error) {
-      console.error('Download error:', error);
-      // Fallback: open in new tab
+    } catch {
       window.open(url, '_blank');
     }
+  };
+
+  const handleImageClick = (clickedUrl: string) => {
+    // Collect all image URLs for the lightbox carousel
+    const imageUrls = filteredFiles.filter(f => f.type === 'image').map(f => f.url);
+    const idx = imageUrls.indexOf(clickedUrl);
+    setLightboxImages(imageUrls);
+    setLightboxIndex(idx >= 0 ? idx : 0);
+    setLightboxOpen(true);
+  };
+
+  const handleFileClick = (url: string) => {
+    // Open file in lightbox (supports PDF inline, others show preview card)
+    setLightboxImages([url]);
+    setLightboxIndex(0);
+    setLightboxOpen(true);
   };
 
   const content = (
@@ -164,18 +150,14 @@ export function SharedFilesSheet({
                         <div
                           key={file.id}
                           className="rounded-lg overflow-hidden bg-muted cursor-pointer group relative"
-                          onClick={() => window.open(file.url, '_blank')}
+                          onClick={() => handleImageClick(file.url)}
                         >
                           <div className="relative w-full" style={{ paddingBottom: '100%' }}>
-                            <img
-                              src={file.url}
-                              alt={file.name}
-                              className="absolute inset-0 w-full h-full object-cover"
-                              loading="lazy"
-                            />
+                            <img src={file.url} alt={file.name}
+                              className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
                           </div>
                           <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                            <ExternalLink className="h-5 w-5 text-white" />
+                            <span className="text-white text-xs">보기</span>
                           </div>
                         </div>
                       ))}
@@ -192,7 +174,8 @@ export function SharedFilesSheet({
                       .map((file) => (
                         <div
                           key={file.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent transition-colors"
+                          className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:bg-accent transition-colors cursor-pointer"
+                          onClick={() => handleFileClick(file.url)}
                         >
                           <div className="h-10 w-10 rounded bg-primary/10 flex items-center justify-center shrink-0">
                             <FileText className="h-5 w-5 text-primary" />
@@ -203,12 +186,8 @@ export function SharedFilesSheet({
                               {file.senderName} · {format(new Date(file.createdAt), 'M월 d일', { locale: ko })}
                             </p>
                           </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="shrink-0"
-                            onClick={() => handleDownload(file.url, file.name)}
-                          >
+                          <Button variant="ghost" size="icon" className="shrink-0"
+                            onClick={(e) => { e.stopPropagation(); handleDownload(file.url, file.name); }}>
                             <Download className="h-4 w-4" />
                           </Button>
                         </div>
@@ -220,6 +199,13 @@ export function SharedFilesSheet({
           )}
         </TabsContent>
       </Tabs>
+
+      <ImageLightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </div>
   );
 
@@ -231,9 +217,7 @@ export function SharedFilesSheet({
             <DrawerTitle>교류된 파일</DrawerTitle>
             <DrawerDescription>대화에서 공유된 파일과 이미지를 확인하세요</DrawerDescription>
           </DrawerHeader>
-          <div className="px-4 pb-6">
-            {content}
-          </div>
+          <div className="px-4 pb-6">{content}</div>
         </DrawerContent>
       </Drawer>
     );
@@ -246,9 +230,7 @@ export function SharedFilesSheet({
           <SheetTitle>교류된 파일</SheetTitle>
           <SheetDescription>대화에서 공유된 파일과 이미지를 확인하세요</SheetDescription>
         </SheetHeader>
-        <div className="mt-4">
-          {content}
-        </div>
+        <div className="mt-4">{content}</div>
       </SheetContent>
     </Sheet>
   );
