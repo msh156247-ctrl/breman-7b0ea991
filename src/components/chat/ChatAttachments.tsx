@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { compressImage } from '@/lib/imageCompression';
 import { ImageLightbox } from '@/components/chat/ImageLightbox';
 import { Progress } from '@/components/ui/progress';
+import { useSignedUrls } from '@/hooks/useSignedUrls';
 
 interface AttachmentFile {
   file: File;
@@ -131,11 +132,8 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
           idx === i ? { ...a, progress: 100 } : a
         ));
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('chat-attachments')
-          .getPublicUrl(fileName);
-
-        uploadedUrls.push(publicUrl);
+        // Store the path only (not a public URL) for signed URL generation
+        uploadedUrls.push(fileName);
       }
 
       // Clear attachments after successful upload
@@ -296,15 +294,17 @@ function getFileName(url: string): string {
 export function MessageAttachments({ attachments }: { attachments: string[] }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const { signedUrls, loading } = useSignedUrls(attachments || []);
 
   if (!attachments || attachments.length === 0) return null;
+  if (loading) return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
 
   const isImage = (url: string) => {
-    return /\.(jpg|jpeg|png|gif|webp)$/i.test(url);
+    return /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
   };
 
-  const images = attachments.filter(isImage);
-  const files = attachments.filter(url => !isImage(url));
+  const images = signedUrls.filter(isImage);
+  const files = signedUrls.filter(url => !isImage(url));
   
   // All items for lightbox (images first, then files)
   const allItems = [...images, ...files];
