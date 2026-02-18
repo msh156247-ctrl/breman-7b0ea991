@@ -23,7 +23,7 @@ import {
   Loader2,
   MailPlus,
 } from 'lucide-react';
-import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
 import { ko } from 'date-fns/locale';
 import { NewChatDialog } from '@/components/chat/NewChatDialog';
 import { MessageComposeDialog } from '@/components/messages/MessageComposeDialog';
@@ -67,7 +67,7 @@ export default function Chat() {
   const [chatLoading, setChatLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewChatDialog, setShowNewChatDialog] = useState(false);
-  const [activeFilter, setActiveFilter] = useState<'all' | 'direct' | 'team' | 'dm'>('all');
+  const [activeFilter, setActiveFilter] = useState<'all' | 'chat' | 'dm'>('all');
 
   // DM state
   const [dmMessages, setDmMessages] = useState<DirectMessage[]>([]);
@@ -96,6 +96,9 @@ export default function Chat() {
 
   useEffect(() => {
     if (activeFilter === 'dm' && user) {
+      fetchDmMessages();
+    }
+    if (activeFilter === 'all' && user) {
       fetchDmMessages();
     }
   }, [activeFilter, dmTab, user]);
@@ -300,15 +303,17 @@ export default function Chat() {
 
   const formatTime = (dateStr: string) => {
     const date = new Date(dateStr);
+    const now = new Date();
     if (isToday(date)) return format(date, 'a h:mm', { locale: ko });
     if (isYesterday(date)) return '어제';
-    return format(date, 'M/d', { locale: ko });
+    if (date.getFullYear() === now.getFullYear()) return format(date, 'M월 d일', { locale: ko });
+    return format(date, 'yyyy년 M월 d일', { locale: ko });
   };
 
   const filteredConversations = useMemo(() => {
     return conversations.filter(convo => {
-      if (activeFilter === 'direct' && convo.type !== 'direct') return false;
-      if (activeFilter === 'team' && convo.type !== 'team' && convo.type !== 'team_to_team') return false;
+      if (activeFilter === 'chat') return true; // chat tab shows all conversations
+      // 'all' shows everything - no filter
       const searchLower = searchQuery.toLowerCase();
       return !searchQuery || 
         convo.participant_name?.toLowerCase().includes(searchLower) ||
@@ -321,6 +326,7 @@ export default function Chat() {
   const dmUnreadCount = dmMessages.filter(m => !m.is_read && dmTab === 'inbox').length;
 
   const isDmView = activeFilter === 'dm';
+  const isAllView = activeFilter === 'all';
 
   return (
     <div className="flex flex-col h-[calc(100dvh-4rem)] -m-4 lg:-m-6 max-w-4xl mx-auto">
@@ -346,22 +352,21 @@ export default function Chat() {
       {/* Filter tabs */}
       <div className="px-4 pt-2">
         <Tabs value={activeFilter} onValueChange={(v) => setActiveFilter(v as any)}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="all" className="text-xs gap-1">
               <MessageCircle className="h-3.5 w-3.5" />
               전체
             </TabsTrigger>
-            <TabsTrigger value="direct" className="text-xs gap-1">
+            <TabsTrigger value="chat" className="text-xs gap-1">
               <MessageCircle className="h-3.5 w-3.5" />
-              1:1
+              채팅
             </TabsTrigger>
-            <TabsTrigger value="team" className="text-xs gap-1">
-              <Users className="h-3.5 w-3.5" />
-              팀
-            </TabsTrigger>
-            <TabsTrigger value="dm" className="text-xs gap-1">
+            <TabsTrigger value="dm" className="text-xs gap-1 relative">
               <Mail className="h-3.5 w-3.5" />
               쪽지
+              {dmMessages.filter(m => !m.is_read).length > 0 && activeFilter !== 'dm' && (
+                <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-destructive" />
+              )}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -439,15 +444,14 @@ export default function Chat() {
                       </Avatar>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className={cn('text-sm truncate', isUnread && 'font-bold')}>{otherUser?.name || '알 수 없는 사용자'}</span>
-                          <span className="text-xs text-muted-foreground shrink-0">
-                            {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ko })}
-                          </span>
+                          <span className={cn('text-sm font-medium truncate', isUnread && 'font-bold')}>{otherUser?.name || '알 수 없는 사용자'}</span>
+                          <Badge variant="outline" className="text-[10px] shrink-0 px-1 py-0">쪽지</Badge>
                         </div>
-                        {msg.subject && <p className={cn('text-sm truncate', isUnread ? 'font-semibold' : 'text-muted-foreground')}>{msg.subject}</p>}
-                        <p className="text-sm text-muted-foreground truncate">{msg.content}</p>
+                        {msg.subject && <p className={cn('text-xs truncate', isUnread ? 'font-semibold' : 'text-muted-foreground')}>{msg.subject}</p>}
+                        <p className="text-xs text-muted-foreground truncate">{msg.content}</p>
                       </div>
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="text-xs text-muted-foreground">{formatTime(msg.created_at)}</span>
                         {isUnread && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
                         {dmTab === 'sent' && (msg.is_read ? <MailOpen className="h-4 w-4 text-muted-foreground" /> : <Mail className="h-4 w-4 text-muted-foreground" />)}
                       </div>
@@ -458,7 +462,7 @@ export default function Chat() {
             </div>
           )
         ) : (
-          /* Chat conversation list */
+          /* Chat (+ all) conversation list */
           chatLoading ? (
             <div className="space-y-1">
               {[1, 2, 3, 4].map((i) => (
@@ -472,69 +476,131 @@ export default function Chat() {
                 </div>
               ))}
             </div>
-          ) : filteredConversations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <MessageCircle className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <p className="text-muted-foreground mb-2">채팅이 없습니다</p>
-              <p className="text-sm text-muted-foreground mb-4">
-                팀에 가입하거나 친구를 추가해서 채팅을 시작해보세요
-              </p>
-              <div className="flex gap-2">
-                <Button variant="default" onClick={() => setShowNewChatDialog(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  새 채팅
-                </Button>
-                <Button variant="outline" onClick={() => navigate('/teams')}>
-                  <Users className="h-4 w-4 mr-2" />
-                  팀 둘러보기
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {filteredConversations.map((convo) => (
-                <Card
-                  key={convo.id}
-                  className="p-3 cursor-pointer hover:bg-muted/50 transition-colors border-0 shadow-none rounded-none border-b border-border/50"
-                  onClick={() => navigate(`/chat/${convo.id}`)}
-                >
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-12 w-12">
-                      <AvatarImage src={convo.type === 'direct' ? convo.participant_avatar : convo.team_emblem} />
-                      <AvatarFallback className="bg-primary/10 text-lg">
-                        {convo.type === 'direct' 
-                          ? convo.participant_name?.charAt(0) 
-                          : convo.type === 'team'
-                            ? convo.team_name?.charAt(0)
-                            : '팀'}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-medium truncate">
-                          {convo.type === 'direct' ? convo.participant_name : convo.type === 'team' ? convo.team_name : convo.name}
-                        </span>
-                        <Badge variant="secondary" className="text-xs shrink-0 px-1.5 py-0">
-                          {convo.type === 'direct' ? '1:1' : convo.type === 'team' ? '팀' : '팀간'}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {convo.last_message || '메시지가 없습니다'}
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0">
-                      <span className="text-xs text-muted-foreground">{formatTime(convo.last_message_at)}</span>
-                      {convo.unread_count && convo.unread_count > 0 && (
-                        <Badge variant="destructive" className="h-5 min-w-5 flex items-center justify-center text-xs">
-                          {convo.unread_count}
-                        </Badge>
-                      )}
-                    </div>
+          ) : (() => {
+            // Build combined list for 'all' tab
+            type ListItem = 
+              | { kind: 'chat'; data: Conversation; sortTime: number }
+              | { kind: 'dm'; data: DirectMessage; sortTime: number };
+
+            let items: ListItem[] = filteredConversations.map(c => ({
+              kind: 'chat' as const,
+              data: c,
+              sortTime: new Date(c.last_message_at).getTime(),
+            }));
+
+            if (isAllView) {
+              const inboxDms = dmMessages.filter(m => !m.is_read || true); // show all inbox
+              inboxDms.forEach(dm => {
+                items.push({ kind: 'dm', data: dm, sortTime: new Date(dm.created_at).getTime() });
+              });
+              items.sort((a, b) => b.sortTime - a.sortTime);
+            }
+
+            if (items.length === 0) {
+              return (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <MessageCircle className="h-12 w-12 text-muted-foreground/50 mb-4" />
+                  <p className="text-muted-foreground mb-2">채팅이 없습니다</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    팀에 가입하거나 친구를 추가해서 채팅을 시작해보세요
+                  </p>
+                  <div className="flex gap-2">
+                    <Button variant="default" onClick={() => setShowNewChatDialog(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      새 채팅
+                    </Button>
+                    <Button variant="outline" onClick={() => navigate('/teams')}>
+                      <Users className="h-4 w-4 mr-2" />
+                      팀 둘러보기
+                    </Button>
                   </div>
-                </Card>
-              ))}
-            </div>
-          )
+                </div>
+              );
+            }
+
+            return (
+              <div className="space-y-0">
+                {items.map((item) => {
+                  if (item.kind === 'chat') {
+                    const convo = item.data;
+                    return (
+                      <Card
+                        key={`chat-${convo.id}`}
+                        className="p-3 cursor-pointer hover:bg-muted/50 transition-colors border-0 shadow-none rounded-none border-b border-border/50"
+                        onClick={() => navigate(`/chat/${convo.id}`)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={convo.type === 'direct' ? convo.participant_avatar : convo.team_emblem} />
+                            <AvatarFallback className="bg-primary/10 text-lg">
+                              {convo.type === 'direct' 
+                                ? convo.participant_name?.charAt(0) 
+                                : convo.type === 'team'
+                                  ? convo.team_name?.charAt(0)
+                                  : '팀'}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium truncate">
+                                {convo.type === 'direct' ? convo.participant_name : convo.type === 'team' ? convo.team_name : convo.name}
+                              </span>
+                              <Badge variant="secondary" className="text-xs shrink-0 px-1.5 py-0">
+                                {convo.type === 'direct' ? '1:1' : convo.type === 'team' ? '팀' : '팀간'}
+                              </Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {convo.last_message || '메시지가 없습니다'}
+                            </p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span className="text-xs text-muted-foreground">{formatTime(convo.last_message_at)}</span>
+                            {convo.unread_count && convo.unread_count > 0 && (
+                              <Badge variant="destructive" className="h-5 min-w-5 flex items-center justify-center text-xs">
+                                {convo.unread_count}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  } else {
+                    const msg = item.data;
+                    const otherUser = msg.sender;
+                    const isUnread = !msg.is_read;
+                    return (
+                      <Card
+                        key={`dm-${msg.id}`}
+                        className={cn(
+                          'cursor-pointer hover:bg-muted/50 transition-colors border-0 shadow-none rounded-none border-b border-border/50',
+                          isUnread && 'bg-primary/5'
+                        )}
+                        onClick={() => handleOpenDm(msg)}
+                      >
+                        <div className="flex items-center gap-3 p-3">
+                          <Avatar className="h-12 w-12">
+                            <AvatarImage src={otherUser?.avatar_url || undefined} />
+                            <AvatarFallback className="bg-primary/10 text-lg">{otherUser?.name?.charAt(0) || '?'}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className={cn('font-medium truncate', isUnread && 'font-bold')}>{otherUser?.name || '알 수 없는 사용자'}</span>
+                              <Badge variant="outline" className="text-[10px] shrink-0 px-1.5 py-0">쪽지</Badge>
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">{msg.subject || msg.content}</p>
+                          </div>
+                          <div className="flex flex-col items-end gap-1 shrink-0">
+                            <span className="text-xs text-muted-foreground">{formatTime(msg.created_at)}</span>
+                            {isUnread && <div className="h-2.5 w-2.5 rounded-full bg-primary" />}
+                          </div>
+                        </div>
+                      </Card>
+                    );
+                  }
+                })}
+              </div>
+            );
+          })()
         )}
       </div>
 

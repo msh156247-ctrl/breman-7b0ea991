@@ -354,9 +354,9 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
         </div>
       )}
 
-      {/* Files with extension icons and filenames - clickable for preview */}
+      {/* Files - kakao-style card with filename, expiry hint, label, and thumbnail */}
       {files.length > 0 && (
-        <div className="flex flex-col gap-1.5 mt-1.5">
+        <div className="flex flex-col gap-2 mt-1.5">
           {files.map((url, index) => {
             const extInfo = getFileExtInfo(url);
             const fileName = getFileName(url);
@@ -365,14 +365,14 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
                 key={index}
                 type="button"
                 onClick={() => handleFileClick(url)}
-                className="flex items-center gap-2.5 px-3 py-2 rounded-lg border bg-background hover:bg-muted transition-colors max-w-[260px] text-left"
+                className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-muted/60 border border-border hover:bg-muted transition-colors text-left w-full max-w-[280px]"
               >
-                <div className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 text-lg ${extInfo.color}`}>
-                  {extInfo.icon}
-                </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium truncate">{fileName}</p>
-                  <p className="text-[10px] text-muted-foreground">{extInfo.label} 파일</p>
+                  <p className="text-sm font-semibold truncate">{fileName}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{extInfo.label} 파일</p>
+                </div>
+                <div className={`flex items-center justify-center w-12 h-12 rounded-xl shrink-0 text-2xl ${extInfo.color}`}>
+                  {extInfo.icon}
                 </div>
               </button>
             );
