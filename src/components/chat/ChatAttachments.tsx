@@ -8,6 +8,7 @@ import { ImageLightbox } from '@/components/chat/ImageLightbox';
 import { Progress } from '@/components/ui/progress';
 import { useSignedUrls } from '@/hooks/useSignedUrls';
 import { FileThumbnail } from '@/components/chat/FileThumbnail';
+import { useFileMetadata } from '@/hooks/useFileMetadata';
 
 interface AttachmentFile {
   file: File;
@@ -56,7 +57,6 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
         continue;
       }
 
-      // Compress images before adding to attachment list
       let processedFile = file;
       if (ALLOWED_IMAGE_TYPES.includes(file.type)) {
         try {
@@ -81,7 +81,6 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
       setAttachments(prev => [...prev, ...validFiles]);
     }
 
-    // Reset input
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -113,7 +112,6 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
         const fileExt = attachment.file.name.split('.').pop();
         const fileName = `${userId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-        // Simulate progress for smaller files
         const progressInterval = setInterval(() => {
           setAttachments(prev => prev.map((a, idx) =>
             idx === i && a.progress < 90 ? { ...a, progress: a.progress + 15 } : a
@@ -128,16 +126,13 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
 
         if (uploadError) throw uploadError;
 
-        // Set to 100%
         setAttachments(prev => prev.map((a, idx) =>
           idx === i ? { ...a, progress: 100 } : a
         ));
 
-        // Store the path only (not a public URL) for signed URL generation
         uploadedUrls.push(fileName);
       }
 
-      // Clear attachments after successful upload
       attachments.forEach(a => {
         if (a.preview) URL.revokeObjectURL(a.preview);
       });
@@ -160,7 +155,7 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
     return <FileText className="h-4 w-4" />;
   };
 
-  const formatFileSize = (bytes: number) => {
+  const formatUploadSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes}B`;
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
     return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
@@ -214,13 +209,12 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
                 <div className="flex-1 min-w-0">
                   <p className="text-xs truncate">{attachment.file.name}</p>
                   <p className="text-[10px] text-muted-foreground">
-                    {formatFileSize(attachment.file.size)}
+                    {formatUploadSize(attachment.file.size)}
                   </p>
                 </div>
               </div>
             )}
 
-            {/* Upload progress overlay */}
             {attachment.uploading && (
               <div className="absolute inset-0 bg-background/80 flex flex-col items-center justify-center gap-1 px-2">
                 <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -246,30 +240,28 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
   };
 }
 
-// Parse expiry date from Supabase signed URL JWT token
-function parseSignedUrlExpiry(url: string): Date | null {
-  try {
-    const tokenMatch = url.match(/[?&]token=([^&]+)/);
-    if (!tokenMatch) return null;
-    const payload = tokenMatch[1].split('.')[1];
-    if (!payload) return null;
-    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
-    if (decoded.exp) return new Date(decoded.exp * 1000);
-    return null;
-  } catch {
-    return null;
-  }
+// ─── Helper functions for MessageAttachments ───────────────────────────────
+
+const FILE_SIZE_THRESHOLD = 5 * 1024 * 1024; // 5MB
+const FILE_RETENTION_DAYS = 14;
+
+function getExpiryFromMeta(meta: { size: number; created_at: string } | undefined): Date | null {
+  if (!meta || meta.size <= FILE_SIZE_THRESHOLD) return null;
+  return new Date(new Date(meta.created_at).getTime() + FILE_RETENTION_DAYS * 24 * 60 * 60 * 1000);
 }
 
-function formatExpiry(date: Date | null): string {
+function formatExpiryDate(date: Date | null): string {
   if (!date) return '';
-  const y = date.getFullYear();
-  const m = date.getMonth() + 1;
-  const d = date.getDate();
-  return `~${y}. ${m}. ${d}.`;
+  return `~${date.getFullYear()}. ${date.getMonth() + 1}. ${date.getDate()}.`;
 }
 
-// File extension to icon/label mapping
+function formatBytes(bytes: number): string {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function getFileExtInfo(url: string): { icon: string; label: string; color: string } {
   const ext = url.split('?')[0].split('.').pop()?.toLowerCase() || '';
   switch (ext) {
@@ -297,20 +289,15 @@ function getFileExtInfo(url: string): { icon: string; label: string; color: stri
 
 function getFileName(url: string): string {
   try {
-    // Strip query params first
     const cleanUrl = url.split('?')[0];
     const pathParts = cleanUrl.split('/');
     const fullName = pathParts[pathParts.length - 1];
     const decoded = decodeURIComponent(fullName);
-    // Remove timestamp prefix: "userId/timestamp-random.ext" → strip up to second dash-segment
-    // Pattern: <timestamp>-<randomStr>.<ext>  →  keep everything after first dash
+    // Remove timestamp prefix: "<timestamp>-<randomStr>.<ext>" → keep after first dash
     const dashIndex = decoded.indexOf('-');
     if (dashIndex > 0 && dashIndex < 20) {
       const afterDash = decoded.substring(dashIndex + 1);
-      const dotIndex = afterDash.lastIndexOf('.');
-      if (dotIndex > 0) {
-        return afterDash;
-      }
+      if (afterDash.lastIndexOf('.') > 0) return afterDash;
     }
     return decoded;
   } catch {
@@ -318,24 +305,28 @@ function getFileName(url: string): string {
   }
 }
 
-// Component to display attachments in messages with lightbox
+// ─── Component to display attachments in messages with lightbox ────────────
+
 export function MessageAttachments({ attachments }: { attachments: string[] }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const { signedUrls, loading } = useSignedUrls(attachments || []);
+  const { metadata } = useFileMetadata(attachments || []);
 
   if (!attachments || attachments.length === 0) return null;
   if (loading) return <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />;
 
-  const isImage = (url: string) => {
-    return /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
-  };
+  const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp)(\?|$)/i.test(url);
 
-  const images = signedUrls.filter(isImage);
-  const files = signedUrls.filter(url => !isImage(url));
-  
-  // All items for lightbox (images first, then files)
-  const allItems = [...images, ...files];
+  // Maintain index correlation: signedUrls[i] corresponds to attachments[i]
+  const indexedItems = attachments.map((originalPath, i) => ({
+    originalPath,
+    signedUrl: signedUrls[i] || originalPath,
+  }));
+
+  const imageItems = indexedItems.filter(item => isImage(item.signedUrl));
+  const fileItems = indexedItems.filter(item => !isImage(item.signedUrl));
+  const allItems = [...imageItems, ...fileItems].map(item => item.signedUrl);
 
   const handleImageClick = (url: string) => {
     const idx = allItems.indexOf(url);
@@ -349,7 +340,6 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
     setLightboxOpen(true);
   };
 
-  // Grid layout for images
   const getImageGridClass = (count: number) => {
     if (count === 1) return 'grid-cols-1 max-w-[220px]';
     if (count === 2) return 'grid-cols-2 max-w-[280px]';
@@ -359,20 +349,19 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
 
   return (
     <>
-      {/* Images in grid */}
-      {images.length > 0 && (
-        <div className={`grid gap-1 mt-1 ${getImageGridClass(images.length)}`}>
-          {images.map((url, index) => (
+      {imageItems.length > 0 && (
+        <div className={`grid gap-1 mt-1 ${getImageGridClass(imageItems.length)}`}>
+          {imageItems.map((item, index) => (
             <button
               key={index}
               type="button"
-              onClick={() => handleImageClick(url)}
+              onClick={() => handleImageClick(item.signedUrl)}
               className={`block rounded-lg overflow-hidden border hover:opacity-90 transition-opacity cursor-pointer ${
-                images.length === 3 && index === 0 ? 'col-span-2' : ''
+                imageItems.length === 3 && index === 0 ? 'col-span-2' : ''
               }`}
             >
               <img
-                src={url}
+                src={item.signedUrl}
                 alt={`이미지 ${index + 1}`}
                 className="w-full h-full object-cover aspect-square"
                 loading="lazy"
@@ -382,19 +371,21 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
         </div>
       )}
 
-      {/* Files - kakao-style card with filename, expiry, size, and thumbnail */}
-      {files.length > 0 && (
+      {fileItems.length > 0 && (
         <div className="flex flex-col gap-2 mt-1.5">
-          {files.map((url, index) => {
-            const extInfo = getFileExtInfo(url);
-            const fileName = getFileName(url);
-            const expiry = parseSignedUrlExpiry(url);
-            const expiryStr = formatExpiry(expiry);
+          {fileItems.map((item, index) => {
+            const extInfo = getFileExtInfo(item.signedUrl);
+            const fileName = getFileName(item.signedUrl);
+            const meta = metadata[item.originalPath];
+            const expiry = getExpiryFromMeta(meta);
+            const expiryStr = formatExpiryDate(expiry);
+            const sizeStr = meta ? formatBytes(meta.size) : '';
+
             return (
               <button
                 key={index}
                 type="button"
-                onClick={() => handleFileClick(url)}
+                onClick={() => handleFileClick(item.signedUrl)}
                 className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-muted/70 border border-border hover:bg-muted transition-colors text-left w-full min-w-[260px] max-w-[340px]"
               >
                 <div className="flex-1 min-w-0">
@@ -404,13 +395,18 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
                       유효기간 {expiryStr}
                     </p>
                   )}
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {extInfo.label} 파일
-                  </p>
+                  {sizeStr && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      용량 {sizeStr}
+                    </p>
+                  )}
+                  {!sizeStr && !expiryStr && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{extInfo.label} 파일</p>
+                  )}
                 </div>
                 <FileThumbnail
-                  url={url}
-                  fileType={url.split('?')[0].split('.').pop()?.toLowerCase() || ''}
+                  url={item.signedUrl}
+                  fileType={item.signedUrl.split('?')[0].split('.').pop()?.toLowerCase() || ''}
                   icon={extInfo.icon}
                   colorClass={extInfo.color}
                   className="w-16 h-16 shrink-0"
