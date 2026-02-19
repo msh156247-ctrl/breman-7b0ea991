@@ -245,9 +245,32 @@ export function ChatAttachments({ userId, onAttachmentsChange, disabled }: ChatA
   };
 }
 
+// Parse expiry date from Supabase signed URL JWT token
+function parseSignedUrlExpiry(url: string): Date | null {
+  try {
+    const tokenMatch = url.match(/[?&]token=([^&]+)/);
+    if (!tokenMatch) return null;
+    const payload = tokenMatch[1].split('.')[1];
+    if (!payload) return null;
+    const decoded = JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+    if (decoded.exp) return new Date(decoded.exp * 1000);
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function formatExpiry(date: Date | null): string {
+  if (!date) return '';
+  const y = date.getFullYear();
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  return `~${y}. ${m}. ${d}.`;
+}
+
 // File extension to icon/label mapping
 function getFileExtInfo(url: string): { icon: string; label: string; color: string } {
-  const ext = url.split('.').pop()?.toLowerCase() || '';
+  const ext = url.split('?')[0].split('.').pop()?.toLowerCase() || '';
   switch (ext) {
     case 'pdf':
       return { icon: '📕', label: 'PDF', color: 'bg-red-500/10 text-red-600 dark:text-red-400' };
@@ -273,9 +296,13 @@ function getFileExtInfo(url: string): { icon: string; label: string; color: stri
 
 function getFileName(url: string): string {
   try {
-    const pathParts = url.split('/');
+    // Strip query params first
+    const cleanUrl = url.split('?')[0];
+    const pathParts = cleanUrl.split('/');
     const fullName = pathParts[pathParts.length - 1];
     const decoded = decodeURIComponent(fullName);
+    // Remove timestamp prefix: "userId/timestamp-random.ext" → strip up to second dash-segment
+    // Pattern: <timestamp>-<randomStr>.<ext>  →  keep everything after first dash
     const dashIndex = decoded.indexOf('-');
     if (dashIndex > 0 && dashIndex < 20) {
       const afterDash = decoded.substring(dashIndex + 1);
@@ -354,24 +381,31 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
         </div>
       )}
 
-      {/* Files - kakao-style card with filename, expiry hint, label, and thumbnail */}
+      {/* Files - kakao-style card with filename, expiry, size, and thumbnail */}
       {files.length > 0 && (
         <div className="flex flex-col gap-2 mt-1.5">
           {files.map((url, index) => {
             const extInfo = getFileExtInfo(url);
             const fileName = getFileName(url);
+            const expiry = parseSignedUrlExpiry(url);
+            const expiryStr = formatExpiry(expiry);
             return (
               <button
                 key={index}
                 type="button"
                 onClick={() => handleFileClick(url)}
-                className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-muted/60 border border-border hover:bg-muted transition-colors text-left w-full max-w-[280px]"
+                className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-muted/70 border border-border hover:bg-muted transition-colors text-left w-full max-w-[300px]"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold truncate">{fileName}</p>
+                  <p className="text-sm font-bold truncate leading-tight">{fileName}</p>
+                  {expiryStr && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      유효기간 {expiryStr}
+                    </p>
+                  )}
                   <p className="text-xs text-muted-foreground mt-0.5">{extInfo.label} 파일</p>
                 </div>
-                <div className={`flex items-center justify-center w-12 h-12 rounded-xl shrink-0 text-2xl ${extInfo.color}`}>
+                <div className={`flex items-center justify-center w-14 h-14 rounded-xl shrink-0 text-3xl ${extInfo.color}`}>
                   {extInfo.icon}
                 </div>
               </button>
