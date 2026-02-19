@@ -395,23 +395,25 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
                 key={index}
                 type="button"
                 onClick={() => handleFileClick(url)}
-                className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-muted/70 border border-border hover:bg-muted transition-colors text-left w-full max-w-[300px]"
+                className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-muted/70 border border-border hover:bg-muted transition-colors text-left w-full min-w-[260px] max-w-[340px]"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold truncate leading-tight">{fileName}</p>
+                  <p className="text-sm font-bold leading-tight break-all">{fileName}</p>
                   {expiryStr && (
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground mt-1.5">
                       유효기간 {expiryStr}
                     </p>
                   )}
-                  <p className="text-xs text-muted-foreground mt-0.5">{extInfo.label} 파일</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {extInfo.label} 파일
+                  </p>
                 </div>
                 <FileThumbnail
                   url={url}
                   fileType={url.split('?')[0].split('.').pop()?.toLowerCase() || ''}
                   icon={extInfo.icon}
                   colorClass={extInfo.color}
-                  className="w-14 h-14"
+                  className="w-16 h-16 shrink-0"
                 />
               </button>
             );
