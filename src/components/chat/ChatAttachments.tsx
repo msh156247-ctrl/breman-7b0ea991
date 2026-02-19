@@ -7,6 +7,7 @@ import { compressImage } from '@/lib/imageCompression';
 import { ImageLightbox } from '@/components/chat/ImageLightbox';
 import { Progress } from '@/components/ui/progress';
 import { useSignedUrls } from '@/hooks/useSignedUrls';
+import { FileThumbnail } from '@/components/chat/FileThumbnail';
 
 interface AttachmentFile {
   file: File;
@@ -405,9 +406,13 @@ export function MessageAttachments({ attachments }: { attachments: string[] }) {
                   )}
                   <p className="text-xs text-muted-foreground mt-0.5">{extInfo.label} 파일</p>
                 </div>
-                <div className={`flex items-center justify-center w-14 h-14 rounded-xl shrink-0 text-3xl ${extInfo.color}`}>
-                  {extInfo.icon}
-                </div>
+                <FileThumbnail
+                  url={url}
+                  fileType={url.split('?')[0].split('.').pop()?.toLowerCase() || ''}
+                  icon={extInfo.icon}
+                  colorClass={extInfo.color}
+                  className="w-14 h-14"
+                />
               </button>
             );
           })}
