@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { X, Download, ChevronLeft, ChevronRight, Share2, FileText } from 'lucide-react';
+import { PdfCanvasViewer } from './PdfCanvasViewer';
 
 interface ImageLightboxProps {
   images: string[];
@@ -191,10 +192,10 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
 
     if (slideIsPdf) {
       return (
-        <div className="bg-background rounded-none md:rounded-2xl w-screen md:w-full md:max-w-[90vw] h-[90vh] md:h-[85vh] flex flex-col shadow-2xl overflow-hidden"
+        <div className="bg-background rounded-none md:rounded-2xl w-screen md:w-full md:max-w-[90vw] h-[100dvh] md:h-[85vh] flex flex-col shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50">
+          <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50 shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <span className="text-2xl">📕</span>
               <span className="text-sm font-medium truncate">{getFileName(src)}</span>
@@ -208,11 +209,7 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
               새 탭에서 열기
             </a>
           </div>
-          <iframe
-            src={src}
-            className="flex-1 w-full border-0"
-            title={getFileName(src)}
-          />
+          <PdfCanvasViewer url={src} />
         </div>
       );
     }
