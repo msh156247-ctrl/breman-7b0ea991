@@ -191,7 +191,7 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
 
     if (slideIsPdf) {
       return (
-        <div className="bg-background rounded-2xl w-full max-w-[90vw] md:max-w-[700px] h-[80vh] flex flex-col shadow-2xl overflow-hidden"
+        <div className="bg-background rounded-2xl w-full max-w-[95vw] md:max-w-[90vw] h-[85vh] flex flex-col shadow-2xl overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/50">
