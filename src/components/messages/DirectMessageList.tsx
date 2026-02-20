@@ -32,6 +32,8 @@ interface DirectMessage {
   is_read: boolean;
   created_at: string;
   read_at: string | null;
+  is_cc?: boolean;
+  group_id?: string | null;
   sender?: { name: string; avatar_url: string | null };
   recipient?: { name: string; avatar_url: string | null };
 }
@@ -257,6 +259,9 @@ export function DirectMessageList() {
                           <span className={cn('text-sm truncate', isUnread && 'font-bold')}>
                             {otherUser?.name || '알 수 없는 사용자'}
                           </span>
+                          {activeTab === 'inbox' && msg.is_cc && (
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 shrink-0">참조</Badge>
+                          )}
                           <span className="text-xs text-muted-foreground shrink-0">
                             {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ko })}
                           </span>

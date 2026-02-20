@@ -338,7 +338,9 @@ export type Database = {
         Row: {
           content: string
           created_at: string
+          group_id: string | null
           id: string
+          is_cc: boolean
           is_read: boolean
           read_at: string | null
           recipient_deleted: boolean
@@ -350,7 +352,9 @@ export type Database = {
         Insert: {
           content: string
           created_at?: string
+          group_id?: string | null
           id?: string
+          is_cc?: boolean
           is_read?: boolean
           read_at?: string | null
           recipient_deleted?: boolean
@@ -362,7 +366,9 @@ export type Database = {
         Update: {
           content?: string
           created_at?: string
+          group_id?: string | null
           id?: string
+          is_cc?: boolean
           is_read?: boolean
           read_at?: string | null
           recipient_deleted?: boolean
