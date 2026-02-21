@@ -546,7 +546,7 @@ export default function Chat() {
                                 {convo.type === 'direct' ? convo.participant_name : convo.type === 'team' ? convo.team_name : convo.name}
                               </span>
                               <Badge variant="secondary" className="text-xs shrink-0 px-1.5 py-0">
-                                {convo.type === 'direct' ? '1:1' : convo.type === 'team' ? '팀' : '팀간'}
+                                {convo.type === 'direct' ? '1:1' : convo.type === 'team' ? '채팅' : '팀간'}
                               </Badge>
                             </div>
                             <p className="text-sm text-muted-foreground truncate">

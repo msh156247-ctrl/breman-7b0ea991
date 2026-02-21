@@ -81,7 +81,7 @@ export function PdfCanvasViewer({ url }: PdfCanvasViewerProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div data-pdf-viewer className="flex-1 overflow-y-auto overscroll-contain" style={{ WebkitOverflowScrolling: 'touch' }}>
       {loading && (
         <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">
           PDF 로딩 중...
