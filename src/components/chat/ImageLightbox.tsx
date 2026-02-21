@@ -81,6 +81,10 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
 
   // Touch handlers for smooth carousel swipe
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    // Don't handle swipe if touching inside a PDF viewer (scrollable content)
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-pdf-viewer]')) return;
+    
     touchStartX.current = e.touches[0].clientX;
     touchDeltaX.current = 0;
     isSwiping.current = false;
@@ -90,6 +94,10 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
   }, []);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    // Don't handle swipe if touching inside a PDF viewer
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-pdf-viewer]')) return;
+    
     const delta = e.touches[0].clientX - touchStartX.current;
     touchDeltaX.current = delta;
 

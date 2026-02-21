@@ -167,6 +167,9 @@ export default function Teams() {
 
   const filteredTeams = teams
     .filter((team) => {
+      // 지원한 팀은 팀 페이지에서 숨기기
+      if (appliedTeamIds.has(team.id)) return false;
+      
       const matchesSearch = team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         team.slogan?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         team.description?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -179,11 +182,6 @@ export default function Teams() {
       return matchesSearch && matchesRoleType && matchesStatus;
     })
     .sort((a, b) => {
-      // 지원한 팀 우선 정렬
-      const aApplied = appliedTeamIds.has(a.id) ? 1 : 0;
-      const bApplied = appliedTeamIds.has(b.id) ? 1 : 0;
-      if (bApplied !== aApplied) return bApplied - aApplied;
-      
       switch (sortOption) {
         case 'level':
           return (b.avg_level || 1) - (a.avg_level || 1);
@@ -286,16 +284,8 @@ export default function Teams() {
         {filteredTeams.map((team, index) => (
           <ScrollReveal key={team.id} animation="fade-up" delay={150 + index * 50}>
             <Link to={`/teams/${team.id}`}>
-              <Card className={`h-full hover:shadow-md transition-all hover:border-primary/30 cursor-pointer ${appliedTeamIds.has(team.id) ? 'ring-2 ring-primary/50 bg-primary/5' : ''}`}>
+              <Card className="h-full hover:shadow-md transition-all hover:border-primary/30 cursor-pointer">
                 <CardContent className="p-5">
-                  {/* Applied badge */}
-                  {appliedTeamIds.has(team.id) && (
-                    <div className="mb-3 -mt-1">
-                      <Badge variant="default" className="text-xs">
-                        ✓ 지원함
-                      </Badge>
-                    </div>
-                  )}
                   {/* Header */}
                   <div className="flex items-start gap-4 mb-4">
                     <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-3xl flex-shrink-0">
