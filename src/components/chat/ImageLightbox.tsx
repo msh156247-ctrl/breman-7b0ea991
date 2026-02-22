@@ -99,6 +99,11 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
     if (target.closest('[data-pdf-viewer]')) return;
     
     const delta = e.touches[0].clientX - touchStartX.current;
+
+    // Prevent browser vertical scroll while swiping in lightbox
+    if (Math.abs(delta) > 5) {
+      e.preventDefault();
+    }
     touchDeltaX.current = delta;
 
     // Prevent overscroll at edges
