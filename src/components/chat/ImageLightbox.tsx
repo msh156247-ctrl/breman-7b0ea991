@@ -303,9 +303,6 @@ export function ImageLightbox({ images, initialIndex = 0, open, onClose }: Image
       {/* Carousel track with smooth swipe */}
       <div
         className="w-full h-full flex items-center overflow-hidden"
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
       >
         <div
           className="flex items-center h-full"
