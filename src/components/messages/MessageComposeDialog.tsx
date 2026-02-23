@@ -416,28 +416,30 @@ export function MessageComposeDialog({
 
   if (isMobile) {
     return (
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[90vh]">
-          <DrawerHeader className="text-left">
-            <DrawerTitle className="flex items-center gap-2">
-              <UserCircle className="h-5 w-5" />
-              쪽지 쓰기
-            </DrawerTitle>
-            <DrawerDescription>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="fixed inset-0 z-50 flex flex-col w-full h-full max-w-none translate-x-0 translate-y-0 left-0 top-0 rounded-none p-0 border-0">
+          <DialogHeader className="flex-shrink-0 px-4 pt-4 pb-2 border-b">
+            <div className="flex items-center justify-between">
+              <DialogTitle className="flex items-center gap-2">
+                <UserCircle className="h-5 w-5" />
+                쪽지 쓰기
+              </DialogTitle>
+            </div>
+            <DialogDescription>
               여러 명 또는 팀에게 쪽지를 보냅니다
-            </DrawerDescription>
-          </DrawerHeader>
-          <div className="px-4 pb-6 overflow-y-auto">
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-4 py-4 pb-safe">
             {formContent}
           </div>
-        </DrawerContent>
-      </Drawer>
+        </DialogContent>
+      </Dialog>
     );
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserCircle className="h-5 w-5" />
