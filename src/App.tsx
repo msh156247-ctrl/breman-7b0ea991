@@ -97,6 +97,10 @@ function AppRoutes() {
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:projectId" element={<ProjectDetail />} />
         <Route path="profile/:userId" element={<UserProfile />} />
+        <Route path="showcase" element={<Showcase />} />
+        <Route path="showcase/:showcaseId" element={<ShowcaseDetail />} />
+        <Route path="service-offers" element={<ServiceOffers />} />
+        <Route path="service-offers/:offerId" element={<ServiceOfferDetail />} />
       </Route>
       
       {/* Protected routes with AppShell */}
@@ -113,12 +117,8 @@ function AppRoutes() {
         <Route path="projects/create" element={<ProjectCreate />} />
         <Route path="projects/:projectId/edit" element={<ProjectEdit />} />
         <Route path="contracts/:contractId" element={<ContractManagement />} />
-        <Route path="showcase" element={<Showcase />} />
         <Route path="showcase/create" element={<ShowcaseCreate />} />
-        <Route path="showcase/:showcaseId" element={<ShowcaseDetail />} />
-        <Route path="service-offers" element={<ServiceOffers />} />
         <Route path="service-offers/create" element={<ServiceOfferCreate />} />
-        <Route path="service-offers/:offerId" element={<ServiceOfferDetail />} />
         <Route path="service-offers/:offerId/edit" element={<ServiceOfferEdit />} />
         <Route path="client" element={<ClientDashboard />} />
         <Route path="messages" element={<Navigate to="/chat" replace />} />
