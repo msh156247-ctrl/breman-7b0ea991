@@ -1011,6 +1011,7 @@ export default function TeamDetail() {
                   </div>
                   <ApplicationManagementSheet 
                     teamId={team.id} 
+                    teamName={team.name}
                     onApplicationHandled={fetchTeamData}
                   />
                 </div>
