@@ -19,15 +19,21 @@ export default function Landing() {
           </Link>
 
           <nav className="hidden md:flex items-center gap-6">
-            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              기능
-            </a>
+            <Link to="/teams" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              팀
+            </Link>
+            <Link to="/projects" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              프로젝트
+            </Link>
+            <Link to="/showcase" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              쇼케이스
+            </Link>
+            <Link to="/service-offers" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              서비스
+            </Link>
             <Link to="/roles" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               역할
             </Link>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              요금
-            </a>
           </nav>
 
           <div className="flex items-center gap-3">
