@@ -1,5 +1,8 @@
 import { useState } from 'react';
-import { Check, X, Loader2, Calendar, CheckCircle2, XCircle, AlertCircle, FileText, Briefcase, ChevronDown, ExternalLink } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Check, X, Loader2, Calendar, CheckCircle2, XCircle, AlertCircle, FileText, Briefcase, ChevronDown, ExternalLink, MessageSquare } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -85,6 +88,7 @@ interface ApplicantDetailCardProps {
   onAccept: (applicationId: string) => void;
   onReject: (applicationId: string) => void;
   isPending?: boolean;
+  teamName?: string;
 }
 
 export function ApplicantDetailCard({ 
@@ -92,9 +96,70 @@ export function ApplicantDetailCard({
   processingId, 
   onAccept, 
   onReject,
-  isPending = true 
+  isPending = true,
+  teamName
 }: ApplicantDetailCardProps) {
+  const navigate = useNavigate();
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
+
+  const handleStartInterviewChat = async () => {
+    setIsCreatingChat(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('로그인이 필요합니다');
+        return;
+      }
+
+      // Check if an interview chat already exists
+      const { data: existingConvs } = await supabase
+        .from('conversations')
+        .select(`id, name, conversation_participants!inner(user_id)`)
+        .like('name', `면접:%${application.user.name}%`);
+
+      if (existingConvs && existingConvs.length > 0) {
+        const myConv = existingConvs.find((c: any) => 
+          c.conversation_participants?.some((p: any) => p.user_id === user.id)
+        );
+        if (myConv) {
+          navigate(`/chat/${myConv.id}`);
+          return;
+        }
+      }
+
+      const convName = `면접: ${application.user.name} (${teamName || '팀'})`;
+      const { data: newConv, error: convError } = await supabase
+        .from('conversations')
+        .insert({ type: 'group' as any, name: convName })
+        .select('id')
+        .single();
+
+      if (convError) throw convError;
+
+      const { error: partError } = await supabase
+        .from('conversation_participants')
+        .insert([
+          { conversation_id: newConv.id, user_id: user.id },
+          { conversation_id: newConv.id, user_id: application.user_id },
+        ]);
+
+      if (partError) throw partError;
+
+      await supabase.from('messages').insert({
+        conversation_id: newConv.id,
+        sender_id: user.id,
+        content: `📋 ${application.user.name}님의 지원서 면접 채팅이 시작되었습니다. 필요 시 팀원을 초대할 수 있습니다.`,
+      });
+
+      toast.success('면접 채팅이 생성되었습니다');
+      navigate(`/chat/${newConv.id}`);
+    } catch (err: any) {
+      toast.error('채팅 생성 실패: ' + err.message);
+    } finally {
+      setIsCreatingChat(false);
+    }
+  };
 
   // Group skill experiences by skill name
   const experiencesBySkill = application.skillExperiences.reduce<Record<string, SkillExperience[]>>((acc, exp) => {
@@ -184,6 +249,21 @@ export function ApplicantDetailCard({
                 {APPLICATION_STATUS[application.status]?.name || application.status}
               </Badge>
             )}
+
+          {/* Interview Chat Button */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleStartInterviewChat}
+            disabled={isCreatingChat}
+          >
+            {isCreatingChat ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-1" />
+            ) : (
+              <MessageSquare className="w-4 h-4 mr-1" />
+            )}
+            면접 채팅
+          </Button>
 
           {/* Actions (only for pending) */}
           {isPending && (

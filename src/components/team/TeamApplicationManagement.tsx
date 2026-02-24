@@ -105,10 +105,11 @@ interface Application {
 
 interface TeamApplicationManagementProps {
   teamId: string;
+  teamName?: string;
   onApplicationHandled?: () => void;
 }
 
-export function TeamApplicationManagement({ teamId, onApplicationHandled }: TeamApplicationManagementProps) {
+export function TeamApplicationManagement({ teamId, teamName, onApplicationHandled }: TeamApplicationManagementProps) {
   const queryClient = useQueryClient();
   const [processingId, setProcessingId] = useState<string | null>(null);
 
@@ -343,6 +344,7 @@ export function TeamApplicationManagement({ teamId, onApplicationHandled }: Team
                 onAccept={handleAccept}
                 onReject={handleReject}
                 isPending={true}
+                teamName={teamName}
               />
             ))}
           </div>
@@ -364,6 +366,7 @@ export function TeamApplicationManagement({ teamId, onApplicationHandled }: Team
                 onAccept={handleAccept}
                 onReject={handleReject}
                 isPending={false}
+                teamName={teamName}
               />
             ))}
           </div>

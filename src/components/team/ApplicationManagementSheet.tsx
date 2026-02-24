@@ -22,11 +22,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface ApplicationManagementSheetProps {
   teamId: string;
+  teamName?: string;
   onApplicationHandled?: () => void;
 }
 
 export function ApplicationManagementSheet({ 
   teamId, 
+  teamName,
   onApplicationHandled 
 }: ApplicationManagementSheetProps) {
   const isMobile = useIsMobile();
@@ -34,6 +36,7 @@ export function ApplicationManagementSheet({
   const content = (
     <TeamApplicationManagement 
       teamId={teamId} 
+      teamName={teamName}
       onApplicationHandled={onApplicationHandled}
     />
   );
