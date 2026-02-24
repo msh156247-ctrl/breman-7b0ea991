@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { ROLE_TYPES, type RoleType } from '@/lib/constants';
+import { ROLE_TYPES, APPLICATION_STATUS, type RoleType } from '@/lib/constants';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -167,7 +167,23 @@ export function ApplicantDetailCard({
                 <span>{new Date(application.created_at).toLocaleDateString('ko-KR')}</span>
               </div>
             </div>
-          </div>
+            </div>
+
+            {/* Status badge for handled applications */}
+            {!isPending && (
+              <Badge 
+                variant="outline"
+                className={`text-xs shrink-0 ${
+                  application.status === 'accepted' 
+                    ? 'bg-green-500/10 text-green-700 border-green-500/30' 
+                    : application.status === 'rejected'
+                    ? 'bg-red-500/10 text-red-700 border-red-500/30'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {APPLICATION_STATUS[application.status]?.name || application.status}
+              </Badge>
+            )}
 
           {/* Actions (only for pending) */}
           {isPending && (

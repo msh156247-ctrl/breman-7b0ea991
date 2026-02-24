@@ -3,8 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Loader2, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
-import { StatusBadge } from '@/components/ui/StatusBadge';
-import { ROLE_TYPES, APPLICATION_STATUS, type RoleType } from '@/lib/constants';
+import { ROLE_TYPES, type RoleType } from '@/lib/constants';
 import { toast } from 'sonner';
 import { ApplicantDetailCard } from './ApplicantDetailCard';
 
@@ -356,40 +355,16 @@ export function TeamApplicationManagement({ teamId, onApplicationHandled }: Team
           <h3 className="text-sm font-semibold text-muted-foreground">
             처리된 지원 ({handledApplications.length}건)
           </h3>
-          <div className="grid gap-3">
-            {handledApplications.slice(0, 5).map((application) => (
-              <Card key={application.id} className="bg-muted/30">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-sm overflow-hidden">
-                        {application.user.avatar_url ? (
-                          <img 
-                            src={application.user.avatar_url} 
-                            alt={application.user.name}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          application.user.name.charAt(0)
-                        )}
-                      </div>
-                      <div>
-                        <span className="font-medium">{application.user.name}</span>
-                        <div className="text-xs text-muted-foreground">
-                          {application.role_type 
-                            ? ROLE_TYPES[application.role_type]?.name 
-                            : application.desired_role
-                          }
-                        </div>
-                      </div>
-                    </div>
-                    <StatusBadge 
-                      status={APPLICATION_STATUS[application.status]?.name || application.status}
-                      variant={APPLICATION_STATUS[application.status]?.color as any || 'muted'}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+          <div className="grid gap-4">
+            {handledApplications.map((application) => (
+              <ApplicantDetailCard
+                key={application.id}
+                application={application}
+                processingId={processingId}
+                onAccept={handleAccept}
+                onReject={handleReject}
+                isPending={false}
+              />
             ))}
           </div>
         </div>
