@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { 
@@ -37,6 +38,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { TeamMemberManagement } from '@/components/team/TeamMemberManagement';
+import { MemberEvaluationManagement } from '@/components/team/MemberEvaluationManagement';
 import { ApplicationManagementSheet } from '@/components/team/ApplicationManagementSheet';
 import { ProposalListSheet } from '@/components/team/ProposalListSheet';
 import { TeamApplicationDialog } from '@/components/team/TeamApplicationDialog';
@@ -1047,7 +1049,7 @@ export default function TeamDetail() {
       {/* Content tabs */}
       <ScrollReveal animation="fade-up" delay={isLeader ? 200 : 150}>
         <Tabs defaultValue="intro" className="space-y-6">
-          <TabsList className="w-full grid grid-cols-2">
+          <TabsList className={cn("w-full grid", isLeader ? "grid-cols-3" : "grid-cols-2")}>
             <TabsTrigger value="intro" className="gap-1.5">
               <Users className="w-4 h-4" />
               소개
@@ -1057,6 +1059,13 @@ export default function TeamDetail() {
               <span className="hidden sm:inline">모집 포지션</span>
               <span className="sm:hidden">모집</span>
             </TabsTrigger>
+            {isLeader && (
+              <TabsTrigger value="evaluation" className="gap-1.5">
+                <ClipboardList className="w-4 h-4" />
+                <span className="hidden sm:inline">팀원 평가</span>
+                <span className="sm:hidden">평가</span>
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Team Introduction Tab - includes members */}
@@ -1279,6 +1288,21 @@ export default function TeamDetail() {
               </Card>
             )}
           </TabsContent>
+
+          {/* Evaluation Tab - Leader only */}
+          {isLeader && (
+            <TabsContent value="evaluation" className="space-y-6">
+              <MemberEvaluationManagement
+                teamId={team.id}
+                members={members.filter(m => !m.isLeader).map(m => ({
+                  id: m.id,
+                  name: m.name,
+                  avatar_url: m.avatar_url,
+                  level: m.level,
+                }))}
+              />
+            </TabsContent>
+          )}
         </Tabs>
       </ScrollReveal>
 
