@@ -411,7 +411,7 @@ export default function Projects() {
           <TabsTrigger value="open" className="gap-2">
             <Inbox className="w-4 h-4" />
             <span className="hidden sm:inline">공개 의뢰</span>
-            <span className="sm:hidden">의뢰</span>
+            <span className="sm:hidden">공개</span>
           </TabsTrigger>
           <TabsTrigger value="recommendations" className="gap-2">
             <Users className="w-4 h-4" />
