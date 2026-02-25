@@ -580,6 +580,76 @@ export type Database = {
           },
         ]
       }
+      member_evaluations: {
+        Row: {
+          comment: string | null
+          contract_id: string | null
+          contribution_score: number
+          created_at: string
+          evaluated_user_id: string
+          evaluation_type: string
+          evaluator_id: string
+          id: string
+          milestone_id: string | null
+          overall_score: number | null
+          punctuality_score: number
+          quality_score: number
+          team_id: string
+        }
+        Insert: {
+          comment?: string | null
+          contract_id?: string | null
+          contribution_score: number
+          created_at?: string
+          evaluated_user_id: string
+          evaluation_type?: string
+          evaluator_id: string
+          id?: string
+          milestone_id?: string | null
+          overall_score?: number | null
+          punctuality_score: number
+          quality_score: number
+          team_id: string
+        }
+        Update: {
+          comment?: string | null
+          contract_id?: string | null
+          contribution_score?: number
+          created_at?: string
+          evaluated_user_id?: string
+          evaluation_type?: string
+          evaluator_id?: string
+          id?: string
+          milestone_id?: string | null
+          overall_score?: number | null
+          punctuality_score?: number
+          quality_score?: number
+          team_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_evaluations_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "contracts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_evaluations_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_evaluations_team_id_fkey"
+            columns: ["team_id"]
+            isOneToOne: false
+            referencedRelation: "teams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           attachments: string[] | null
