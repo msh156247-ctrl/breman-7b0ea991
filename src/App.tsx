@@ -25,9 +25,6 @@ import ProjectCreate from "./pages/ProjectCreate";
 import ProjectEdit from "./pages/ProjectEdit";
 import ProjectDetail from "./pages/ProjectDetail";
 import ContractManagement from "./pages/ContractManagement";
-import Showcase from "./pages/Showcase";
-import ShowcaseDetail from "./pages/ShowcaseDetail";
-import ShowcaseCreate from "./pages/ShowcaseCreate";
 import Profile from "./pages/Profile";
 import UserProfile from "./pages/UserProfile";
 import Notifications from "./pages/Notifications";
@@ -97,8 +94,6 @@ function AppRoutes() {
         <Route path="projects" element={<Projects />} />
         <Route path="projects/:projectId" element={<ProjectDetail />} />
         <Route path="profile/:userId" element={<UserProfile />} />
-        <Route path="showcase" element={<Showcase />} />
-        <Route path="showcase/:showcaseId" element={<ShowcaseDetail />} />
         <Route path="service-offers" element={<ServiceOffers />} />
         <Route path="service-offers/:offerId" element={<ServiceOfferDetail />} />
       </Route>
@@ -117,7 +112,7 @@ function AppRoutes() {
         <Route path="projects/create" element={<ProjectCreate />} />
         <Route path="projects/:projectId/edit" element={<ProjectEdit />} />
         <Route path="contracts/:contractId" element={<ContractManagement />} />
-        <Route path="showcase/create" element={<ShowcaseCreate />} />
+        
         <Route path="service-offers/create" element={<ServiceOfferCreate />} />
         <Route path="service-offers/:offerId/edit" element={<ServiceOfferEdit />} />
         <Route path="client" element={<ClientDashboard />} />

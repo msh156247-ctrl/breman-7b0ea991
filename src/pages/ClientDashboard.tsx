@@ -209,7 +209,7 @@ export default function ClientDashboard() {
           <TabsTrigger value="my-projects" className="gap-2">
             <FileText className="w-4 h-4" />
             <span className="hidden sm:inline">내 의뢰</span>
-            <span className="sm:hidden">의뢰</span>
+            <span className="sm:hidden">내 의뢰</span>
           </TabsTrigger>
           <TabsTrigger value="teams" className="gap-2">
             <Users className="w-4 h-4" />

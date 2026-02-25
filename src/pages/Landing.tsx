@@ -25,12 +25,6 @@ export default function Landing() {
             <Link to="/projects" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               프로젝트
             </Link>
-            <Link to="/showcase" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              쇼케이스
-            </Link>
-            <Link to="/service-offers" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-              서비스
-            </Link>
             <Link to="/roles" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               역할
             </Link>
@@ -198,7 +192,7 @@ export default function Landing() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-success mt-0.5">•</span>
-                    <span>Showcase에 기록된 성과와 회고</span>
+                    <span>프로젝트에서 기록된 성과와 회고</span>
                   </li>
                 </ul>
               </div>
@@ -391,7 +385,7 @@ export default function Landing() {
                 <h3 className="font-display font-bold text-xl mb-2">개인 / 팀</h3>
                 <div className="text-4xl font-bold mb-4">무료</div>
                 <ul className="space-y-3 mb-6">
-                  {["팀 생성 및 참여", "프로젝트 지원", "Showcase 등록", "성장 시스템"].map((f, i) => <li key={i} className="flex items-center gap-2 text-sm">
+                  {["팀 생성 및 참여", "프로젝트 지원", "포트폴리오 관리", "성장 시스템"].map((f, i) => <li key={i} className="flex items-center gap-2 text-sm">
                       <Star className="w-4 h-4 text-success" />
                       {f}
                     </li>)}
