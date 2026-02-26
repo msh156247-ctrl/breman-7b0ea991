@@ -14,8 +14,7 @@ import {
   Plus,
   Search,
   Star,
-  Loader2,
-  Send
+  Loader2
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -73,7 +72,7 @@ export default function ClientDashboard() {
 
   // 팀 추천 로드
   useEffect(() => {
-    if (activeTab === 'teams' || activeTab === 'request') {
+    if (activeTab === 'teams') {
       fetchTeams();
     }
   }, [activeTab]);
@@ -205,7 +204,7 @@ export default function ClientDashboard() {
 
       {/* 메인 탭 */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-flex">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-flex">
           <TabsTrigger value="my-projects" className="gap-2">
             <FileText className="w-4 h-4" />
             <span className="hidden sm:inline">내 의뢰</span>
@@ -215,11 +214,6 @@ export default function ClientDashboard() {
             <Users className="w-4 h-4" />
             <span className="hidden sm:inline">팀 추천</span>
             <span className="sm:hidden">추천</span>
-          </TabsTrigger>
-          <TabsTrigger value="request" className="gap-2">
-            <Send className="w-4 h-4" />
-            <span className="hidden sm:inline">의뢰하기</span>
-            <span className="sm:hidden">의뢰</span>
           </TabsTrigger>
         </TabsList>
 
@@ -392,54 +386,6 @@ export default function ClientDashboard() {
           </div>
         </TabsContent>
 
-        {/* 의뢰하기 탭 */}
-        <TabsContent value="request" className="mt-6 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>새 프로젝트 의뢰</CardTitle>
-              <CardDescription>
-                프로젝트를 등록하고 팀들의 제안을 받아보세요
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card 
-                  className="p-6 cursor-pointer hover:shadow-md transition-shadow border-dashed"
-                  onClick={() => navigate('/projects/create')}
-                >
-                  <div className="flex flex-col items-center text-center gap-3">
-                    <div className="p-4 rounded-full bg-primary/10">
-                      <Plus className="w-8 h-8 text-primary" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">공개 의뢰 등록</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        마켓에 공개하고 다양한 팀의 제안을 받아보세요
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-
-                <Card 
-                  className="p-6 cursor-pointer hover:shadow-md transition-shadow border-dashed"
-                  onClick={() => setActiveTab('teams')}
-                >
-                  <div className="flex flex-col items-center text-center gap-3">
-                    <div className="p-4 rounded-full bg-secondary/50">
-                      <Users className="w-8 h-8 text-secondary-foreground" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">팀에 직접 제안</h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        원하는 팀을 선택해 직접 프로젝트를 제안하세요
-                      </p>
-                    </div>
-                  </div>
-                </Card>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );
