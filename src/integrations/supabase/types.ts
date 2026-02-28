@@ -594,12 +594,14 @@ export type Database = {
           overall_score: number | null
           punctuality_score: number
           quality_score: number
+          skill_ratings: Json | null
+          task_ratings: Json | null
           team_id: string
         }
         Insert: {
           comment?: string | null
           contract_id?: string | null
-          contribution_score: number
+          contribution_score?: number
           created_at?: string
           evaluated_user_id: string
           evaluation_type?: string
@@ -607,8 +609,10 @@ export type Database = {
           id?: string
           milestone_id?: string | null
           overall_score?: number | null
-          punctuality_score: number
-          quality_score: number
+          punctuality_score?: number
+          quality_score?: number
+          skill_ratings?: Json | null
+          task_ratings?: Json | null
           team_id: string
         }
         Update: {
@@ -624,6 +628,8 @@ export type Database = {
           overall_score?: number | null
           punctuality_score?: number
           quality_score?: number
+          skill_ratings?: Json | null
+          task_ratings?: Json | null
           team_id?: string
         }
         Relationships: [
