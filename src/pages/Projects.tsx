@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Search, 
@@ -7,14 +7,14 @@ import {
   Star, 
   TrendingUp,
   Send,
-  FileText,
   Inbox,
   ArrowRight,
   Clock,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  Loader2
+  Loader2,
+  SlidersHorizontal,
+  FileText,
+  ArrowUpDown,
+  X
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ko } from 'date-fns/locale';
@@ -27,7 +27,19 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { BackToTop } from '@/components/ui/BackToTop';
 import { ScrollReveal } from '@/components/ui/ScrollReveal';
 import { LevelBadge } from '@/components/ui/LevelBadge';
-import { TeamSelectionPanel } from '@/components/project/TeamSelectionPanel';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -42,27 +54,6 @@ interface Team {
   updated_at: string | null;
 }
 
-interface Proposal {
-  id: string;
-  project_id: string | null;
-  team_id: string | null;
-  proposed_budget: number | null;
-  proposed_timeline_weeks: number | null;
-  proposal_text: string | null;
-  status: string | null;
-  created_at: string | null;
-  project?: {
-    id: string;
-    title: string;
-    client_id: string | null;
-  };
-  team?: {
-    id: string;
-    name: string;
-    emblem_url: string | null;
-  };
-}
-
 interface Project {
   id: string;
   title: string;
@@ -74,11 +65,29 @@ interface Project {
   client_id: string | null;
   created_at: string | null;
   required_skills: string[] | null;
+  timeline_weeks: number | null;
+  proposalCount?: number;
 }
 
-function OpenProjectsList({ searchQuery }: { searchQuery: string }) {
+type SortOption = 'newest' | 'budget_high' | 'budget_low' | 'deadline';
+
+function formatBudgetShort(amount: number): string {
+  if (amount >= 10000) return `${(amount / 10000).toLocaleString()}만`;
+  return amount.toLocaleString();
+}
+
+function OpenProjectsList({ 
+  searchQuery, 
+  sortBy, 
+  budgetFilter,
+  skillFilter 
+}: { 
+  searchQuery: string; 
+  sortBy: SortOption;
+  budgetFilter: string;
+  skillFilter: string;
+}) {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -91,7 +100,28 @@ function OpenProjectsList({ searchQuery }: { searchQuery: string }) {
           .eq('status', 'open')
           .order('created_at', { ascending: false });
         if (error) throw error;
-        setProjects(data || []);
+
+        // Fetch proposal counts
+        const projectIds = (data || []).map(p => p.id);
+        let proposalCounts: Record<string, number> = {};
+        
+        if (projectIds.length > 0) {
+          const { data: proposals } = await supabase
+            .from('project_proposals')
+            .select('project_id')
+            .in('project_id', projectIds);
+          
+          (proposals || []).forEach(p => {
+            proposalCounts[p.project_id!] = (proposalCounts[p.project_id!] || 0) + 1;
+          });
+        }
+
+        const enriched = (data || []).map(p => ({
+          ...p,
+          proposalCount: proposalCounts[p.id] || 0,
+        }));
+
+        setProjects(enriched);
       } catch (error) {
         console.error('Error fetching open projects:', error);
       } finally {
@@ -101,61 +131,141 @@ function OpenProjectsList({ searchQuery }: { searchQuery: string }) {
     fetchOpenProjects();
   }, []);
 
-  const filtered = projects.filter(p =>
-    p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    p.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filtered = useMemo(() => {
+    let result = projects.filter(p =>
+      p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Budget filter
+    if (budgetFilter && budgetFilter !== 'all') {
+      result = result.filter(p => {
+        const max = p.budget_max || p.budget_min || 0;
+        switch (budgetFilter) {
+          case 'under_100': return max < 1000000;
+          case '100_500': return max >= 1000000 && max <= 5000000;
+          case '500_1000': return max >= 5000000 && max <= 10000000;
+          case 'over_1000': return max > 10000000;
+          default: return true;
+        }
+      });
+    }
+
+    // Skill filter
+    if (skillFilter) {
+      result = result.filter(p => 
+        p.required_skills?.some(s => 
+          s.toLowerCase().includes(skillFilter.toLowerCase())
+        )
+      );
+    }
+
+    // Sort
+    switch (sortBy) {
+      case 'newest':
+        result.sort((a, b) => new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime());
+        break;
+      case 'budget_high':
+        result.sort((a, b) => (b.budget_max || 0) - (a.budget_max || 0));
+        break;
+      case 'budget_low':
+        result.sort((a, b) => (a.budget_min || 0) - (b.budget_min || 0));
+        break;
+      case 'deadline':
+        result.sort((a, b) => {
+          if (!a.deadline) return 1;
+          if (!b.deadline) return -1;
+          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        });
+        break;
+    }
+
+    return result;
+  }, [projects, searchQuery, sortBy, budgetFilter, skillFilter]);
 
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-primary" /></div>;
 
   if (filtered.length === 0) return (
-    <div className="text-center py-12 text-muted-foreground">
-      <Inbox className="w-12 h-12 mx-auto mb-3 opacity-50" />
-      <p>공개된 의뢰가 없습니다</p>
+    <div className="text-center py-16 text-muted-foreground">
+      <Inbox className="w-14 h-14 mx-auto mb-4 opacity-40" />
+      <p className="text-lg font-medium">공개된 의뢰가 없습니다</p>
+      <p className="text-sm mt-1">새로운 프로젝트가 등록되면 여기에 표시됩니다</p>
     </div>
   );
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {filtered.map((project) => (
-        <Card
-          key={project.id}
-          className="hover:shadow-lg transition-shadow cursor-pointer group h-full"
-          onClick={() => navigate(`/projects/${project.id}`)}
-        >
-          <CardHeader className="pb-2">
-            <CardTitle className="text-lg line-clamp-1 group-hover:text-primary transition-colors">
-              {project.title}
-            </CardTitle>
-            <CardDescription className="line-clamp-2">
-              {project.description || '설명 없음'}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2 mb-3">
-              {project.required_skills?.slice(0, 3).map((skill) => (
-                <Badge key={skill} variant="secondary" className="text-xs">{skill}</Badge>
-              ))}
-              {(project.required_skills?.length || 0) > 3 && (
-                <Badge variant="outline" className="text-xs">+{(project.required_skills?.length || 0) - 3}</Badge>
-              )}
-            </div>
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <div className="flex items-center gap-2">
-                {project.budget_min && project.budget_max && (
-                  <span>{(project.budget_min / 10000).toLocaleString()}~{(project.budget_max / 10000).toLocaleString()}만원</span>
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">{filtered.length}개의 프로젝트</p>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {filtered.map((project, index) => (
+          <ScrollReveal key={project.id} animation="fade-up" delay={index * 40}>
+            <Card
+              className="hover:shadow-lg transition-all cursor-pointer group h-full border-border/60 hover:border-primary/30"
+              onClick={() => navigate(`/projects/${project.id}`)}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="text-base line-clamp-1 group-hover:text-primary transition-colors">
+                    {project.title}
+                  </CardTitle>
+                  {project.proposalCount! > 0 && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+                      <FileText className="w-3 h-3 mr-0.5" />
+                      {project.proposalCount}
+                    </Badge>
+                  )}
+                </div>
+                <CardDescription className="line-clamp-2 text-xs">
+                  {project.description || '설명 없음'}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                {/* Skills */}
+                {project.required_skills && project.required_skills.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5 mb-3">
+                    {project.required_skills.slice(0, 3).map((skill) => (
+                      <Badge key={skill} variant="outline" className="text-[10px] px-1.5 py-0 font-normal">
+                        {skill}
+                      </Badge>
+                    ))}
+                    {project.required_skills.length > 3 && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal opacity-60">
+                        +{project.required_skills.length - 3}
+                      </Badge>
+                    )}
+                  </div>
                 )}
-              </div>
-              {project.deadline && (
-                <span className="flex items-center gap-1">
-                  <Clock className="w-3.5 h-3.5" />
-                  {new Date(project.deadline).toLocaleDateString('ko-KR')}
-                </span>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+
+                {/* Bottom info */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/40">
+                  <div className="flex items-center gap-3">
+                    {project.budget_min || project.budget_max ? (
+                      <span className="font-medium text-foreground/80">
+                        {project.budget_min && project.budget_max 
+                          ? `${formatBudgetShort(project.budget_min)}~${formatBudgetShort(project.budget_max)}원`
+                          : project.budget_max 
+                            ? `~${formatBudgetShort(project.budget_max)}원`
+                            : `${formatBudgetShort(project.budget_min!)}원~`
+                        }
+                      </span>
+                    ) : (
+                      <span>예산 협의</span>
+                    )}
+                    {project.timeline_weeks && (
+                      <span>{project.timeline_weeks}주</span>
+                    )}
+                  </div>
+                  {project.created_at && (
+                    <span>
+                      {formatDistanceToNow(new Date(project.created_at), { addSuffix: true, locale: ko })}
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </ScrollReveal>
+        ))}
+      </div>
     </div>
   );
 }
@@ -165,32 +275,20 @@ export default function Projects() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('open');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showDirectProposalList, setShowDirectProposalList] = useState(false);
-  // States
+
+  // Filter states
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+  const [budgetFilter, setBudgetFilter] = useState('all');
+  const [skillFilter, setSkillFilter] = useState('');
+  const hasActiveFilters = budgetFilter !== 'all' || skillFilter !== '';
+
+  // Team recommendations
   const [recommendedTeams, setRecommendedTeams] = useState<Team[]>([]);
   const [teamsLoading, setTeamsLoading] = useState(true);
-  const [myTeams, setMyTeams] = useState<{ id: string; name: string }[]>([]);
-  const [myRequests, setMyRequests] = useState<Project[]>([]);
-  const [requestsLoading, setRequestsLoading] = useState(true);
-  const [receivedProposals, setReceivedProposals] = useState<Proposal[]>([]);
-  const [receivedLoading, setReceivedLoading] = useState(true);
-  const [sentProposals, setSentProposals] = useState<Proposal[]>([]);
-  const [sentLoading, setSentLoading] = useState(true);
 
   useEffect(() => {
     fetchRecommendedTeams();
-    if (user?.id) {
-      fetchMyTeams();
-      fetchMyRequests();
-      fetchReceivedProposals();
-    }
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (myTeams.length > 0) {
-      fetchSentProposals();
-    }
-  }, [myTeams]);
+  }, []);
 
   const fetchRecommendedTeams = async () => {
     try {
@@ -211,118 +309,14 @@ export default function Projects() {
     }
   };
 
-  const fetchMyTeams = async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('teams')
-        .select('id, name')
-        .eq('leader_id', user.id);
-      
-      if (error) throw error;
-      setMyTeams(data || []);
-    } catch (error) {
-      console.error('Error fetching my teams:', error);
-    }
-  };
-
-  const fetchMyRequests = async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('client_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      setMyRequests(data || []);
-    } catch (error) {
-      console.error('Error fetching requests:', error);
-    } finally {
-      setRequestsLoading(false);
-    }
-  };
-
-  const fetchReceivedProposals = async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('project_proposals')
-        .select(`
-          *,
-          project:projects(id, title, client_id),
-          team:teams(id, name, emblem_url)
-        `)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      // Filter to only my projects
-      const filtered = (data || []).filter((p: any) => p.project?.client_id === user.id);
-      setReceivedProposals(filtered);
-    } catch (error) {
-      console.error('Error fetching received proposals:', error);
-    } finally {
-      setReceivedLoading(false);
-    }
-  };
-
-  const fetchSentProposals = async () => {
-    if (!user || myTeams.length === 0) return;
-    try {
-      const teamIds = myTeams.map(t => t.id);
-      
-      const { data, error } = await supabase
-        .from('project_proposals')
-        .select(`
-          *,
-          project:projects(id, title, client_id),
-          team:teams(id, name, emblem_url)
-        `)
-        .in('team_id', teamIds)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      setSentProposals(data || []);
-    } catch (error) {
-      console.error('Error fetching sent proposals:', error);
-    } finally {
-      setSentLoading(false);
-    }
-  };
-
-  const handleDirectProposalClick = () => {
-    setShowDirectProposalList(true);
-  };
-
-  const isTeamLeader = myTeams.length > 0;
-
   const filteredTeams = recommendedTeams.filter(team =>
     team.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     team.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getStatusIcon = (status: string | null) => {
-    switch (status) {
-      case 'accepted':
-        return <CheckCircle className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />;
-      case 'rejected':
-        return <XCircle className="w-4 h-4 text-destructive" />;
-      case 'pending':
-        return <Clock className="w-4 h-4 text-amber-600 dark:text-amber-400" />;
-      default:
-        return <AlertCircle className="w-4 h-4 text-muted-foreground" />;
-    }
-  };
-
-  const getStatusLabel = (status: string | null) => {
-    switch (status) {
-      case 'accepted': return '수락됨';
-      case 'rejected': return '거절됨';
-      case 'pending': return '대기중';
-      default: return status || '알 수 없음';
-    }
+  const clearFilters = () => {
+    setBudgetFilter('all');
+    setSkillFilter('');
   };
 
   return (
@@ -334,11 +328,18 @@ export default function Projects() {
             <h1 className="text-2xl md:text-3xl font-display font-bold">프로젝트 마켓</h1>
             <p className="text-muted-foreground mt-1">팀을 찾고 프로젝트를 의뢰하세요</p>
           </div>
+          <Button
+            onClick={() => navigate(user ? '/projects/create' : '/auth')}
+            className="bg-gradient-primary gap-2 shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            프로젝트 의뢰
+          </Button>
         </div>
       </ScrollReveal>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-flex">
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-flex">
           <TabsTrigger value="open" className="gap-2">
             <Inbox className="w-4 h-4" />
             <span className="hidden sm:inline">공개 의뢰</span>
@@ -349,49 +350,135 @@ export default function Projects() {
             <span className="hidden sm:inline">팀 추천</span>
             <span className="sm:hidden">추천</span>
           </TabsTrigger>
-          <TabsTrigger value="request" className="gap-2">
-            <Send className="w-4 h-4" />
-            <span className="hidden sm:inline">의뢰하기</span>
-            <span className="sm:hidden">의뢰</span>
-          </TabsTrigger>
         </TabsList>
 
         {/* 공개 의뢰 목록 */}
         <TabsContent value="open" className="space-y-4">
           <ScrollReveal animation="fade-up" delay={100}>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="프로젝트 검색..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-          </ScrollReveal>
-
-          {requestsLoading ? (
-            <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            </div>
-          ) : (
-            <OpenProjectsList searchQuery={searchQuery} />
-          )}
-        </TabsContent>
-
-        {/* 팀 추천 리스트 */}
-        <TabsContent value="recommendations" className="space-y-4">
-          <ScrollReveal animation="fade-up" delay={100}>
-            <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* Search */}
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="팀 검색..."
+                  placeholder="프로젝트 검색..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-9"
                 />
               </div>
+
+              {/* Sort */}
+              <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+                <SelectTrigger className="w-full sm:w-[160px]">
+                  <ArrowUpDown className="w-3.5 h-3.5 mr-2 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="newest">최신순</SelectItem>
+                  <SelectItem value="budget_high">예산 높은순</SelectItem>
+                  <SelectItem value="budget_low">예산 낮은순</SelectItem>
+                  <SelectItem value="deadline">마감 임박순</SelectItem>
+                </SelectContent>
+              </Select>
+
+              {/* Filter */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="icon" className="relative shrink-0">
+                    <SlidersHorizontal className="w-4 h-4" />
+                    {hasActiveFilters && (
+                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-primary" />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-72" align="end">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium text-sm">필터</h4>
+                      {hasActiveFilters && (
+                        <Button variant="ghost" size="sm" className="h-auto p-0 text-xs text-muted-foreground" onClick={clearFilters}>
+                          초기화
+                        </Button>
+                      )}
+                    </div>
+                    <Separator />
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground">예산 범위</label>
+                      <Select value={budgetFilter} onValueChange={setBudgetFilter}>
+                        <SelectTrigger className="h-9">
+                          <SelectValue placeholder="전체" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">전체</SelectItem>
+                          <SelectItem value="under_100">100만원 미만</SelectItem>
+                          <SelectItem value="100_500">100~500만원</SelectItem>
+                          <SelectItem value="500_1000">500~1,000만원</SelectItem>
+                          <SelectItem value="over_1000">1,000만원 이상</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs font-medium text-muted-foreground">기술 스택</label>
+                      <Input
+                        placeholder="예: React, Python..."
+                        value={skillFilter}
+                        onChange={(e) => setSkillFilter(e.target.value)}
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Active filters display */}
+            {hasActiveFilters && (
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground">활성 필터:</span>
+                {budgetFilter !== 'all' && (
+                  <Badge variant="secondary" className="text-xs gap-1">
+                    {{
+                      'under_100': '100만원 미만',
+                      '100_500': '100~500만원',
+                      '500_1000': '500~1,000만원',
+                      'over_1000': '1,000만원 이상',
+                    }[budgetFilter]}
+                    <button onClick={() => setBudgetFilter('all')}>
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                )}
+                {skillFilter && (
+                  <Badge variant="secondary" className="text-xs gap-1">
+                    {skillFilter}
+                    <button onClick={() => setSkillFilter('')}>
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                )}
+              </div>
+            )}
+          </ScrollReveal>
+
+          <OpenProjectsList 
+            searchQuery={searchQuery} 
+            sortBy={sortBy}
+            budgetFilter={budgetFilter}
+            skillFilter={skillFilter}
+          />
+        </TabsContent>
+
+        {/* 팀 추천 리스트 */}
+        <TabsContent value="recommendations" className="space-y-4">
+          <ScrollReveal animation="fade-up" delay={100}>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="팀 검색..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
             </div>
           </ScrollReveal>
 
@@ -401,14 +488,15 @@ export default function Projects() {
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
               </div>
             ) : filteredTeams.length === 0 ? (
-              <div className="col-span-full text-center py-12 text-muted-foreground">
-                추천할 팀이 없습니다
+              <div className="col-span-full text-center py-16 text-muted-foreground">
+                <Users className="w-14 h-14 mx-auto mb-4 opacity-40" />
+                <p className="text-lg font-medium">추천할 팀이 없습니다</p>
               </div>
             ) : (
               filteredTeams.map((team, index) => (
-                <ScrollReveal key={team.id} animation="fade-up" delay={100 + index * 50}>
+                <ScrollReveal key={team.id} animation="fade-up" delay={100 + index * 40}>
                   <Card 
-                    className="hover:shadow-lg transition-shadow cursor-pointer group h-full"
+                    className="hover:shadow-lg transition-all cursor-pointer group h-full border-border/60 hover:border-primary/30"
                     onClick={() => navigate(`/teams/${team.id}`)}
                   >
                     <CardHeader className="pb-2">
@@ -465,68 +553,6 @@ export default function Projects() {
             )}
           </div>
         </TabsContent>
-
-        {/* 의뢰하기 */}
-        <TabsContent value="request" className="space-y-4">
-          {!showDirectProposalList ? (
-            <ScrollReveal animation="fade-up" delay={100}>
-              <Card>
-                <CardHeader>
-                  <CardTitle>새 프로젝트 의뢰</CardTitle>
-                  <CardDescription>
-                    프로젝트를 등록하고 팀들의 제안을 받아보세요
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Card 
-                      className="p-6 cursor-pointer hover:shadow-md transition-shadow border-dashed"
-                      onClick={() => navigate(user ? '/projects/create' : '/auth')}
-                    >
-                      <div className="flex flex-col items-center text-center gap-3">
-                        <div className="p-4 rounded-full bg-primary/10">
-                          <Plus className="w-8 h-8 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold">공개 의뢰 등록</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            마켓에 공개하고 다양한 팀의 제안을 받아보세요
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-
-                    <Card 
-                      className="p-6 cursor-pointer hover:shadow-md transition-shadow border-dashed"
-                      onClick={() => {
-                        if (!user) {
-                          navigate('/auth');
-                          return;
-                        }
-                        handleDirectProposalClick();
-                      }}
-                    >
-                      <div className="flex flex-col items-center text-center gap-3">
-                        <div className="p-4 rounded-full bg-secondary/50">
-                          <Users className="w-8 h-8 text-secondary-foreground" />
-                        </div>
-                        <div>
-                          <h3 className="font-semibold">팀 신뢰 검증 후 계약</h3>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            팀 실적을 비교하고 최적의 파트너와 계약을 시작하세요
-                          </p>
-                        </div>
-                      </div>
-                    </Card>
-                  </div>
-                </CardContent>
-              </Card>
-            </ScrollReveal>
-          ) : (
-            <TeamSelectionPanel onBack={() => setShowDirectProposalList(false)} />
-          )}
-        </TabsContent>
-
       </Tabs>
 
       <BackToTop />
