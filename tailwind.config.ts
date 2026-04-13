@@ -28,8 +28,8 @@ export default {
   				'sans-serif'
   			],
   			display: [
-  				'Space Grotesk"',
-  				'Noto Sans KR"',
+  				'Space Grotesk',
+  				'Noto Sans KR',
   				'sans-serif'
   			],
   			serif: [
